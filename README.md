@@ -4,6 +4,9 @@
 
 > Formerly explored as “MandateGuard”; renamed to avoid collision with unrelated projects using that name.
 
+**Live demo:** https://spendgate.vercel.app  
+**Repo:** https://github.com/aspekt19/SpendGate
+
 Human mandate → strict USDC policy → every spend is **allow / deny / escalate** → AgentKit moves funds **only after ALLOW**.
 
 > SERV Hackathon Edition 01 · track: **Coinbase AgentKit**
