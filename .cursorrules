@@ -1,0 +1,118 @@
+# SpendGate — OpenServ spending turnstile for Base AgentKit wallets
+
+## Project Overview
+SpendGate is an OpenServ agent that turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
+It does **not** custody user funds. Deterministic policy evaluation must never be replaced by LLM judgment.
+
+**Hackathon:** SERV Hackathon Edition 01 · track **Coinbase AgentKit**  
+**Repo:** https://github.com/aspekt19/SpendGate  
+**Product name:** SpendGate (do not rebrand back to MandateGuard — that name collides with unrelated projects).
+
+## Tech Stack
+- Runtime: Node.js, TypeScript, ESM (`"type": "module"`)
+- OpenServ: `@openserv-labs/sdk`, `@openserv-labs/client` (`provision`, `run`, `generate`, x402 triggers)
+- Schemas: Zod
+- Onchain executor: `@coinbase/agentkit` + CDP (`CdpEvmWalletProvider`), USDC on Base / Base Sepolia
+- Local UI: Vite (vanilla TS) in `web/` → build output `web-dist/`
+- Offline policy compile for UI: heuristic `src/policy/local-compile.ts` (production path uses OpenServ `compile_mandate`)
+
+## Architecture (do not blur roles)
+
+```
+Human (owner) → SpendGate (OpenServ) → allow/deny/escalate → Spender (AgentKit) signs on Base
+```
+
+| Role | Responsibility |
+|------|----------------|
+| Human | Sets mandate; confirms escalations |
+| SpendGate | Compile policy; deterministic gate; optional gated transfer |
+| Spender | Proposes spends; may execute **only** after ALLOW |
+
+## Project Structure
+```
+src/
+  agent.ts                 # OpenServ agent + capabilities + provision/run
+  policy/
+    schema.ts              # MandatePolicy, SpendIntent, EvaluationResult (Zod)
+    engine.ts              # Deterministic evaluateIntent / commitIntent / ledger
+    local-compile.ts       # Offline NL→policy heuristics for UI only
+  executor/
+    gated-executor.ts      # evaluate → AgentKit transfer (or dry-run)
+  store/
+    fs-store.ts            # Persist policies/ledgers under data/
+  demo/
+    run-demo.ts            # CLI allow/deny/escalate scenarios
+web/                       # Dialog UI (You / SpendGate / Spender)
+web-dist/                  # Vite production build (Vercel output)
+```
+
+## Capabilities (OpenServ agent)
+- `compile_mandate` — NL → MandatePolicy (via `this.generate` + Zod)
+- `get_policy` — inspect policy + ledger + execute mode
+- `evaluate_intent` — deterministic allow | deny | escalate (no tx)
+- `execute_gated_transfer` — evaluate then AgentKit USDC transfer / dry-run
+- `reset_ledger` — demo helper
+
+## Chains & tokens
+- Chain focus: **Base** (`base` / `base-sepolia` via `NETWORK_ID`)
+- Currency in policy: **USDC only**
+- USDC Base mainnet: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- USDC Base Sepolia: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+- Example allowlisted router (Uniswap Universal Router on Base): `0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD`
+
+## Environment
+- Secrets only in `.env` — never commit `.env`, `.openserv.json`, CDP keys, or wallet private keys
+- OpenServ: filled by `provision()` (`WALLET_PRIVATE_KEY`, `OPENSERV_API_KEY`, …)
+- Optional deploy: `OPENSERV_USER_API_KEY`
+- AgentKit live: `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `NETWORK_ID`
+- Execute mode: `SPENDGATE_EXECUTE_MODE=dry-run|live` (default: live if CDP set, else dry-run)
+- Legacy alias: `MANDATEGUARD_EXECUTE_MODE` still accepted in executor
+
+## Scripts
+- `npm run ui` — dialog UI (Vite)
+- `npm run ui:build` — static build → `web-dist` (Vercel)
+- `npm run demo` — offline CLI scenarios
+- `npm run dev` — provision + run OpenServ agent
+- `npm run typecheck` — `tsc --noEmit`
+
+## Coding Rules
+- Prefer ESM imports with `.js` extensions in compiled TS sources under `src/`
+- Policy **decisions** live in `engine.ts` — pure, deterministic, no LLM
+- LLM only for: mandate compilation helpers, explanations, OpenServ task routing
+- Do not add custody, private-key handling in the UI, or blind auto-approve paths
+- Keep components/files focused; match existing style; minimal diffs
+- Do not invent on-chain spend vaults unless explicitly requested (roadmap item)
+- Avoid renaming product to MandateGuard
+
+## LLM workflow
+
+Behavioral rules to reduce over-engineering and unclear edits. Prefer caution over speculative speed.
+
+### 1. Think before coding
+- State assumptions; if uncertain, ask.
+- If multiple interpretations exist, present them — do not pick silently.
+- Prefer the simpler approach; push back when warranted.
+
+### 2. Simplicity first
+- Minimum code that solves the request; nothing speculative.
+- No features or abstractions beyond what was asked.
+- If a change balloons, simplify before shipping.
+
+### 3. Surgical changes
+- Touch only what you must; do not “improve” adjacent code.
+- Match existing style; do not refactor unrelated areas.
+- Every changed line should trace to the user request.
+
+### 4. Goal-driven execution
+- Prefer verifiable outcomes (`npm run demo`, `npm run ui:build`, typecheck).
+- For multi-step work, short plan + verify per step.
+
+## Product positioning (for docs / pitches)
+- **Not** “first spending-limit product in the world”
+- **Yes** “OpenServ-native turnstile for AgentKit wallets on Base”: NL → policy → gate → optional execute
+- Competitors may share the problem space (signed mandates, MCP guards); differentiate on SERV + AgentKit + dialog UX
+
+## Frozen / out of scope (unless asked)
+- Building a new marketplace or Ideaboard clone
+- Robinhood Chain / brokerage MCP (possible later; not v1)
+- Full Uniswap swap routing in executor (v1: evaluate swaps; execute transfer / x402_pay)

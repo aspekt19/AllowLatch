@@ -1,0 +1,26 @@
+---
+description: SpendGate core — architecture, naming, and policy-gate invariants
+alwaysApply: true
+---
+
+# SpendGate
+
+OpenServ spending turnstile for Base AgentKit wallets. Full detail: `.cursorrules` and `AGENTS.md`.
+
+## Invariants
+
+- Product name is **SpendGate** (never rebrand to MandateGuard).
+- Allow / deny / escalate decisions are **deterministic** in `src/policy/engine.ts` — do not let the LLM override them.
+- No fund custody; AgentKit executes only after ALLOW (or escalate + human approval).
+- Secrets stay in `.env`; never commit CDP keys or `.openserv.json`.
+
+## Stack touchpoints
+
+- Agent: `src/agent.ts`
+- Policy: `src/policy/`
+- Executor: `src/executor/gated-executor.ts`
+- UI: `web/`
+
+## Edit style
+
+Minimal diffs, simplicity first, match existing TypeScript/ESM style. Prefer `npm run demo` / `npm run ui:build` to verify.
