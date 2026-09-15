@@ -10,7 +10,8 @@
     "ui:build": "vite build",
     "ui:preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "reasoning:ping": "tsx src/demo/reasoning-ping.ts"
+    "reasoning:ping": "tsx src/demo/reasoning-ping.ts",
+    "reasoning:compile": "tsx src/demo/reasoning-compile.ts"
   },
   "keywords": [],
   "author": "",
