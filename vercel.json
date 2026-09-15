@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run ui:build",
+  "outputDirectory": "web-dist",
+  "framework": null
+}

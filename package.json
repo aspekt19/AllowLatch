@@ -4,9 +4,11 @@
   "description": "OpenServ agent: NL mandates → enforceable spend policy for Base AgentKit wallets",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx src/agent.ts",
     "demo": "tsx src/demo/run-demo.ts",
+    "ui": "vite",
+    "ui:build": "vite build",
+    "ui:preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@types/node": "^26.6.0",
     "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
   }
 }

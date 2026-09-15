@@ -24,10 +24,22 @@ MandateGuard does **not** custody user funds.
 
 ```bash
 npm install
-npm run demo    # offline allow/deny/escalate — no API keys
+npm run ui      # minimal dialog UI (mandate → spender → allow/deny/escalate)
+npm run demo    # CLI offline scenarios
 cp .env.example .env
 npm run dev     # provision OpenServ agent + x402 trigger
 ```
+
+### Dialog UI
+
+`npm run ui` opens a chat-style template:
+
+1. **You** set the mandate (NL)
+2. **MandateGuard** compiles a Base/USDC policy
+3. **Spender** (AgentKit stand-in) proposes spends via chips or text
+4. Guard answers **ALLOW / DENY / ESCALATE** (human yes/no on escalate)
+
+Runs fully offline in the browser against the same policy engine. Production path still uses the OpenServ agent + AgentKit.
 
 ### Live AgentKit transfers (optional)
 

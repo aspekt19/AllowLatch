@@ -1,0 +1,350 @@
+:root {
+  --bg: #0e1110;
+  --bg-elev: #171c1a;
+  --bg-chat: #121614;
+  --line: #2a3330;
+  --text: #e8efe9;
+  --muted: #8b9a92;
+  --you: #2a3540;
+  --guard: #1a2a22;
+  --spender: #2a2418;
+  --allow: #7dffb3;
+  --deny: #ff7a6e;
+  --escalate: #ffc857;
+  --accent: #c8f542;
+  --radius: 14px;
+  --font: "Outfit", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #1b2a22 0%, transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, #243018 0%, transparent 50%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 32px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.mark {
+  width: 14px;
+  height: 36px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent), #5f8a2a);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.brand-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.brand-sub {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.meta {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elev) 80%, transparent);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-panel,
+.card {
+  background: color-mix(in srgb, var(--bg-elev) 92%, black);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 620px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-chat) 88%, #000) 0%, var(--bg-elev) 100%);
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  max-width: min(92%, 520px);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  animation: rise 0.28s ease-out;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.msg .who {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  color: var(--muted);
+}
+
+.msg .body {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 0.98rem;
+}
+
+.msg.you {
+  align-self: flex-end;
+  background: var(--you);
+}
+
+.msg.guard {
+  align-self: flex-start;
+  background: var(--guard);
+}
+
+.msg.spender {
+  align-self: flex-start;
+  background: var(--spender);
+  border-color: color-mix(in srgb, var(--escalate) 35%, var(--line));
+}
+
+.msg.decision {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+}
+
+.msg.decision.allow {
+  border-color: color-mix(in srgb, var(--allow) 45%, var(--line));
+  box-shadow: inset 3px 0 0 var(--allow);
+}
+
+.msg.decision.deny {
+  border-color: color-mix(in srgb, var(--deny) 45%, var(--line));
+  box-shadow: inset 3px 0 0 var(--deny);
+}
+
+.msg.decision.escalate {
+  border-color: color-mix(in srgb, var(--escalate) 45%, var(--line));
+  box-shadow: inset 3px 0 0 var(--escalate);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: #0f1412;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 7px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.composer {
+  border-top: 1px solid var(--line);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #0f1311;
+}
+
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 64px;
+  max-height: 160px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0a0d0c;
+  color: var(--text);
+  padding: 12px;
+  font: 0.95rem/1.4 var(--font);
+}
+
+.composer textarea:focus {
+  outline: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.composer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+button {
+  font-family: var(--font);
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #12160f;
+  border-color: transparent;
+}
+
+button.primary:hover {
+  filter: brightness(1.05);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+button.ghost:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  padding: 14px;
+}
+
+.card h2 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.code {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  color: #c9d6cc;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.ledger {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+}
+
+.hints ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hints strong {
+  color: var(--text);
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-panel {
+    min-height: 70vh;
+  }
+
+  .top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
