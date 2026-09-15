@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "npm run ui:build",
-  "outputDirectory": "web-dist",
-  "installCommand": "npm install"
+  "installCommand": "node scripts/vercel-ui-install.mjs",
+  "buildCommand": "npx vite build",
+  "outputDirectory": "web-dist"
 }

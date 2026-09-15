@@ -11,7 +11,8 @@
     "ui:preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "reasoning:ping": "tsx src/demo/reasoning-ping.ts",
-    "reasoning:compile": "tsx src/demo/reasoning-compile.ts"
+    "reasoning:compile": "tsx src/demo/reasoning-compile.ts",
+    "reasoning:cycle": "tsx src/demo/reasoning-cycle.ts"
   },
   "keywords": [],
   "author": "",
