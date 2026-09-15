@@ -10,12 +10,15 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import { MandatePolicySchema, type SpendIntent } from '../policy/schema.js'
+import { type SpendIntent } from '../policy/schema.js'
 import { PolicyStore } from '../store/fs-store.js'
 import { gatedTransfer, resolveExecuteMode } from '../executor/gated-executor.js'
-import { servStructured } from '../llm/serv-reasoning.js'
+import {
+  BASE_UNISWAP_UNIVERSAL_ROUTER,
+  compileMandateWithServ,
+} from '../llm/compile-mandate.js'
 
-const UNISWAP = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
+const UNISWAP = BASE_UNISWAP_UNIVERSAL_ROUTER
 const POLICY_ID = 'battle'
 
 const DEFAULT_MANDATE =
@@ -75,23 +78,10 @@ async function main() {
   console.log('\n=== Owner → SpendGate: compile mandate (SERV Reasoning) ===')
   console.log(mandateText)
 
-  const policy = await servStructured({
-    system:
-      'You are SpendGate policy compiler. Output only valid structured MandatePolicy JSON for Base/USDC agent wallets. Be conservative.',
-    user: `Convert this mandate into MandatePolicy for Base USDC.
-
-"""
-${mandateText}
-"""
-
-version "1.0", chain "base", currency "USDC".
-Defaults if missing: maxPerOrderUsd 10, maxNotionalUsdPerDay 40, maxTransactionsPerHour 20, agentWalletBudgetUsd 200.
-If Uniswap mentioned, allow ${UNISWAP}.
-If meme/PEPE denied, put PEPE in deniedSymbols.
-Escalation threshold slightly below maxPerOrder when "ask above $X".`,
-    schema: MandatePolicySchema,
-    schemaName: 'mandate_policy',
-  })
+  const { policy, meta } = await compileMandateWithServ(mandateText)
+  console.error(
+    `[serv] compile model=${meta.model} prompt=${meta.promptVersion} ${meta.latencyMs}ms`
+  )
 
   // Optional battle destination (your second wallet) — auto-allowlist for live transfers
   const dest = process.env.BATTLE_DESTINATION_ADDRESS

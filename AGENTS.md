@@ -14,7 +14,19 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | AgentKit gated executor | [`src/executor/gated-executor.ts`](./src/executor/gated-executor.ts) |
 | Battle Spender CLI | [`src/spender/battle.ts`](./src/spender/battle.ts) |
 | Live battle checklist | [`docs/BATTLE.md`](./docs/BATTLE.md) |
+| SERV Reasoning client | [`src/llm/serv-reasoning.ts`](./src/llm/serv-reasoning.ts) |
+| Mandate compile (SERV) | [`src/llm/compile-mandate.ts`](./src/llm/compile-mandate.ts) |
 | Dialog UI | [`web/`](./web/) |
+
+## SERV Reasoning (how we use it)
+
+Docs: https://docs.openserv.ai/serv-reasoning/
+
+- **LLM only for judgment** — NL → `MandatePolicy` via `compileMandateWithServ`
+- **Deterministic gate** — allow/deny/escalate stays in `engine.ts` (never LLM)
+- Day-one defaults: small model, versioned system prompt, structured JSON + Zod, `reasoning_effort`, no tight `max_tokens`
+- Compile extras: Multipath (`*-serv-multipath`), `serv_prompt_guard`, `serv_shadow_agent`
+- Env: `SERV_API_KEY`, optional `SERV_MODEL` / `SERV_COMPILE_MODEL` / `SERV_REASONING_EFFORT`
 
 ## Two surfaces (do not conflate)
 

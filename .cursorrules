@@ -11,6 +11,9 @@ It does **not** custody user funds. Deterministic policy evaluation must never b
 ## Tech Stack
 - Runtime: Node.js, TypeScript, ESM (`"type": "module"`)
 - OpenServ Reasoning: `SERV_API_KEY` → `https://inference-api.openserv.ai/v1` (compile_mandate LLM)
+  - Client: `src/llm/serv-reasoning.ts` · compiler: `src/llm/compile-mandate.ts`
+  - Day-one: small model, versioned system prompt, structured JSON + Zod, `reasoning_effort`, no tight max_tokens
+  - Compile uses Multipath + `serv_prompt_guard` + `serv_shadow_agent`; gate stays in `engine.ts`
 - OpenServ Platform (optional host): `@openserv-labs/sdk` + `provision` / x402 — not a replacement for Reasoning
 - Schemas: Zod
 - Onchain executor: `@coinbase/agentkit` + CDP (`CdpEvmWalletProvider`), USDC on Base / Base Sepolia

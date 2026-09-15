@@ -12,11 +12,11 @@ dotenv.config()
 import { Agent, run } from '@openserv-labs/sdk'
 import { provision, triggers } from '@openserv-labs/client'
 import { z } from 'zod'
-import { MandatePolicySchema, SpendIntentSchema } from './policy/schema.js'
+import { SpendIntentSchema } from './policy/schema.js'
 import { evaluateIntent } from './policy/engine.js'
 import { PolicyStore } from './store/fs-store.js'
 import { gatedTransfer, resolveExecuteMode } from './executor/gated-executor.js'
-import { servStructured } from './llm/serv-reasoning.js'
+import { compileMandateWithServ } from './llm/compile-mandate.js'
 
 const store = new PolicyStore()
 
@@ -44,29 +44,7 @@ agent.addCapability({
     mandateText: z.string().min(10),
   }),
   async run({ args }) {
-    const draft = await servStructured({
-      system:
-        'You are SpendGate policy compiler. Output only valid structured MandatePolicy JSON for Base/USDC agent wallets. Be conservative on limits.',
-      user: `Convert this human spending mandate into a MandatePolicy object for an AI agent wallet on Base (USDC only).
-
-Mandate:
-"""
-${args.mandateText}
-"""
-
-Rules:
-- chain must be "base", currency "USDC", version "1.0"
-- Pick a short name
-- Fill capital limits from the text; if missing, use safe defaults (maxPerOrderUsd 10, maxNotionalUsdPerDay 40, maxTransactionsPerHour 20, agentWalletBudgetUsd 200)
-- allowedSymbols / deniedSymbols / allowedAddresses / deniedAddresses as arrays (empty if unspecified)
-- If user mentions Uniswap, include Base Universal Router 0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD in allowedAddresses
-- escalation.requireHumanConfirmAboveUsd: use stated confirm threshold, or slightly below maxPerOrderUsd so escalate can fire
-- actions: enable swap/transfer/x402_pay unless user forbids them`,
-      schema: MandatePolicySchema,
-      schemaName: 'mandate_policy',
-    })
-
-    const policy = MandatePolicySchema.parse(draft)
+    const { policy, meta } = await compileMandateWithServ(args.mandateText)
     await store.setPolicy(args.policyId, policy)
 
     return JSON.stringify(
@@ -75,6 +53,13 @@ Rules:
         policyId: args.policyId,
         policy,
         brain: 'SERV Reasoning (inference-api.openserv.ai)',
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          reasoningEffort: meta.reasoningEffort,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
         note: 'Policy stored on disk. Call evaluate_intent or execute_gated_transfer before any Base spend.',
       },
       null,

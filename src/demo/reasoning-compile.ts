@@ -7,8 +7,7 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import { MandatePolicySchema } from '../policy/schema.js'
-import { servStructured } from '../llm/serv-reasoning.js'
+import { compileMandateWithServ } from '../llm/compile-mandate.js'
 
 async function main() {
   const mandateText =
@@ -18,23 +17,12 @@ async function main() {
   console.log('Compiling via SERV Reasoning…')
   console.log('Mandate:', mandateText)
 
-  const policy = await servStructured({
-    system:
-      'You are SpendGate policy compiler. Output only valid structured MandatePolicy JSON for Base/USDC agent wallets. Be conservative on limits.',
-    user: `Convert this human spending mandate into a MandatePolicy for Base (USDC only).
-
-Mandate:
-"""
-${mandateText}
-"""
-
-Rules: version "1.0", chain "base", currency "USDC". Defaults if missing: maxPerOrderUsd 10, maxNotionalUsdPerDay 40, maxTransactionsPerHour 20, agentWalletBudgetUsd 200. If Uniswap mentioned, allow 0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD.`,
-    schema: MandatePolicySchema,
-    schemaName: 'mandate_policy',
-  })
+  const { policy, meta } = await compileMandateWithServ(mandateText)
 
   console.log(JSON.stringify(policy, null, 2))
-  console.log('\nOK — this used console.openserv.ai credits (SERV Reasoning).')
+  console.log(
+    `\nOK — model=${meta.model} prompt=${meta.promptVersion} effort=${meta.reasoningEffort} ${meta.latencyMs}ms tokens=${meta.usage?.totalTokens ?? '?'}`
+  )
 }
 
 main().catch((err) => {

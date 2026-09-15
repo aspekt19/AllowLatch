@@ -9,11 +9,14 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import { MandatePolicySchema, type SpendIntent } from '../policy/schema.js'
+import { type SpendIntent } from '../policy/schema.js'
 import { commitIntent, evaluateIntent, freshLedger } from '../policy/engine.js'
-import { servStructured } from '../llm/serv-reasoning.js'
+import {
+  BASE_UNISWAP_UNIVERSAL_ROUTER,
+  compileMandateWithServ,
+} from '../llm/compile-mandate.js'
 
-const UNISWAP = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
+const UNISWAP = BASE_UNISWAP_UNIVERSAL_ROUTER
 
 const DEFAULT_MANDATE =
   'Agent wallet $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap allowed. Ask me above $8. No meme coins.'
@@ -24,22 +27,12 @@ async function main() {
   console.log('=== 1) Compile mandate via SERV Reasoning ===')
   console.log(mandateText)
 
-  const policy = await servStructured({
-    system:
-      'You are SpendGate policy compiler. Output only valid structured MandatePolicy JSON for Base/USDC agent wallets. Be conservative on limits.',
-    user: `Convert this human spending mandate into a MandatePolicy for Base (USDC only).
-
-Mandate:
-"""
-${mandateText}
-"""
-
-Rules: version "1.0", chain "base", currency "USDC". Defaults if missing: maxPerOrderUsd 10, maxNotionalUsdPerDay 40, maxTransactionsPerHour 20, agentWalletBudgetUsd 200. If Uniswap mentioned, allow ${UNISWAP}. If "no meme" / PEPE denied, put PEPE in deniedSymbols.`,
-    schema: MandatePolicySchema,
-    schemaName: 'mandate_policy',
-  })
+  const { policy, meta } = await compileMandateWithServ(mandateText)
 
   console.log(JSON.stringify(policy, null, 2))
+  console.log(
+    `[serv] model=${meta.model} prompt=${meta.promptVersion} effort=${meta.reasoningEffort} ${meta.latencyMs}ms`
+  )
 
   console.log('\n=== 2) Evaluate spends (deterministic engine, no LLM) ===')
   let ledger = freshLedger()
@@ -99,7 +92,6 @@ Rules: version "1.0", chain "base", currency "USDC". Defaults if missing: maxPer
   ]
 
   for (const s of scenarios) {
-    // Skip escalate case if threshold >= maxPerOrder (cannot fire)
     if (
       s.title.startsWith('ESCALATE') &&
       policy.escalation.requireHumanConfirmAboveUsd >= policy.capital.maxPerOrderUsd

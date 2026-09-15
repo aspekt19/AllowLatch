@@ -7,11 +7,13 @@ dotenv.config()
 import { servChat } from '../llm/serv-reasoning.js'
 
 async function main() {
-  const text = await servChat({
+  const { text, meta } = await servChat({
     system: 'You are a concise assistant for SpendGate.',
     user: 'Reply with exactly: SERV Reasoning OK',
+    reasoningEffort: 'low',
   })
   console.log(text)
+  console.error(`[serv] ping model=${meta.model} ${meta.latencyMs}ms`)
 }
 
 main().catch((err) => {
