@@ -73,3 +73,7 @@ While others ship wallets with soft limits in code, SpendGate is an OpenServ age
 ## License
 
 ISC
+
+## For coding agents
+
+See [AGENTS.md](./AGENTS.md) and [`.cursorrules`](./.cursorrules).
