@@ -5,7 +5,10 @@
 > Formerly explored as “MandateGuard”; renamed to avoid collision with unrelated projects using that name.
 
 **Live demo:** https://spendgate.vercel.app  
-**Repo:** https://github.com/aspekt19/SpendGate
+**Repo:** https://github.com/aspekt19/SpendGate  
+
+**Brain:** [SERV Reasoning](https://console.openserv.ai) (`SERV_API_KEY` → `inference-api.openserv.ai`)  
+**Optional host:** OpenServ Platform agent + x402 (orchestration), not a substitute for Reasoning.
 
 Human mandate → strict USDC policy → every spend is **allow / deny / escalate** → AgentKit moves funds **only after ALLOW**.
 

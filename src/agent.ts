@@ -16,14 +16,18 @@ import { MandatePolicySchema, SpendIntentSchema } from './policy/schema.js'
 import { evaluateIntent } from './policy/engine.js'
 import { PolicyStore } from './store/fs-store.js'
 import { gatedTransfer, resolveExecuteMode } from './executor/gated-executor.js'
+import { servStructured } from './llm/serv-reasoning.js'
 
 const store = new PolicyStore()
 
 const agent = new Agent({
   systemPrompt: `You are SpendGate, a spending-policy agent for AI wallets on Base (Coinbase AgentKit).
 
+LLM brain: SERV Reasoning (console.openserv.ai / inference-api.openserv.ai).
+Policy decisions (allow/deny/escalate) are deterministic code — never invent overrides.
+
 Your job:
-1) Turn human risk mandates into strict JSON policies (USDC on Base).
+1) Turn human risk mandates into strict JSON policies (USDC on Base) via SERV Reasoning.
 2) Evaluate proposed spends (swap / transfer / x402_pay) against that policy.
 3) Optionally execute USDC transfers via AgentKit ONLY after ALLOW.
 4) Explain allow / deny / escalate clearly.
@@ -39,27 +43,27 @@ agent.addCapability({
     policyId: z.string().default('default'),
     mandateText: z.string().min(10),
   }),
-  async run({ args, action }) {
-    const draft = await this.generate({
-      prompt: `Convert this human spending mandate into a MandatePolicy object for an AI agent wallet on Base (USDC only).
+  async run({ args }) {
+    const draft = await servStructured({
+      system:
+        'You are SpendGate policy compiler. Output only valid structured MandatePolicy JSON for Base/USDC agent wallets. Be conservative on limits.',
+      user: `Convert this human spending mandate into a MandatePolicy object for an AI agent wallet on Base (USDC only).
 
 Mandate:
 """
 ${args.mandateText}
 """
 
-Rules for you:
+Rules:
 - chain must be "base", currency "USDC", version "1.0"
 - Pick a short name
 - Fill capital limits from the text; if missing, use safe defaults (maxPerOrderUsd 10, maxNotionalUsdPerDay 40, maxTransactionsPerHour 20, agentWalletBudgetUsd 200)
 - allowedSymbols / deniedSymbols / allowedAddresses / deniedAddresses as arrays (empty if unspecified)
 - If user mentions Uniswap, include Base Universal Router 0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD in allowedAddresses
 - escalation.requireHumanConfirmAboveUsd: use stated confirm threshold, or slightly below maxPerOrderUsd so escalate can fire
-- actions: enable swap/transfer/x402_pay unless user forbids them
-
-Return ONLY valid JSON matching the schema — no markdown.`,
-      outputSchema: MandatePolicySchema,
-      action,
+- actions: enable swap/transfer/x402_pay unless user forbids them`,
+      schema: MandatePolicySchema,
+      schemaName: 'mandate_policy',
     })
 
     const policy = MandatePolicySchema.parse(draft)
@@ -70,6 +74,7 @@ Return ONLY valid JSON matching the schema — no markdown.`,
         ok: true,
         policyId: args.policyId,
         policy,
+        brain: 'SERV Reasoning (inference-api.openserv.ai)',
         note: 'Policy stored on disk. Call evaluate_intent or execute_gated_transfer before any Base spend.',
       },
       null,
