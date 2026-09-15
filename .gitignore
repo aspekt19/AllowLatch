@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.openserv.json
+*.log
+.DS_Store
+data/*.json
