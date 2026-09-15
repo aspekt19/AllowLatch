@@ -1,5 +1,5 @@
 /**
- * MandateGuard — OpenServ agent
+ * SpendGate — OpenServ agent
  *
  * NL mandate → Policy JSON
  * Spend intent → allow / deny / escalate (deterministic)
@@ -20,7 +20,7 @@ import { gatedTransfer, resolveExecuteMode } from './executor/gated-executor.js'
 const store = new PolicyStore()
 
 const agent = new Agent({
-  systemPrompt: `You are MandateGuard, a spending-policy agent for AI wallets on Base (Coinbase AgentKit).
+  systemPrompt: `You are SpendGate, a spending-policy agent for AI wallets on Base (Coinbase AgentKit).
 
 Your job:
 1) Turn human risk mandates into strict JSON policies (USDC on Base).
@@ -169,17 +169,17 @@ async function main() {
   const result = await provision({
     agent: {
       instance: agent,
-      name: 'mandateguard',
+      name: 'spendgate',
       description:
         'Turns human spending mandates into enforceable Base/USDC policies and gates AgentKit execution with allow/deny/escalate.',
     },
     workflow: {
-      name: 'MandateGuard',
+      name: 'SpendGate',
       goal: 'Compile natural-language risk mandates into strict Base USDC spending policies, then deterministically evaluate each proposed agent spend and only allow Coinbase AgentKit to move funds after an explicit allow decision, with clear deny or human-escalation paths and an audit trail for autonomous AI wallets.',
       trigger: triggers.x402({
-        name: 'MandateGuard Evaluate',
+        name: 'SpendGate Evaluate',
         description:
-          'Pay to compile a mandate or evaluate/execute a gated spend against MandateGuard policy (Base USDC + AgentKit).',
+          'Pay to compile a mandate or evaluate/execute a gated spend against SpendGate policy (Base USDC + AgentKit).',
         price: '0.01',
         timeout: 600,
         input: {
@@ -198,7 +198,7 @@ async function main() {
     },
   })
 
-  console.log('MandateGuard provisioned')
+  console.log('SpendGate provisioned')
   console.log(`  agentId:      ${result.agentId}`)
   console.log(`  workflowId:   ${result.workflowId}`)
   console.log(`  executeMode:  ${resolveExecuteMode()}`)

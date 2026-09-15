@@ -58,7 +58,7 @@ const scenarios: { title: string; intent: SpendIntent; commit?: boolean }[] = [
 ]
 
 function main() {
-  console.log('MandateGuard offline demo')
+  console.log('SpendGate offline demo')
   console.log('Policy:', DEMO_POLICY.name)
   console.log(JSON.stringify(DEMO_POLICY.capital, null, 2))
   console.log('---')

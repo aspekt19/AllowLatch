@@ -1,5 +1,5 @@
 /**
- * Gated executor: MandateGuard decide → only then AgentKit may move USDC on Base.
+ * Gated executor: SpendGate decide → only then AgentKit may move USDC on Base.
  * Without CDP credentials → dry-run (policy still enforced).
  */
 
@@ -29,7 +29,7 @@ type KitBundle = {
 let kitBundle: Promise<KitBundle> | null = null
 
 export function resolveExecuteMode(): ExecuteMode {
-  const forced = process.env.MANDATEGUARD_EXECUTE_MODE
+  const forced = process.env.SPENDGATE_EXECUTE_MODE || process.env.MANDATEGUARD_EXECUTE_MODE
   if (forced === 'dry-run' || forced === 'live') return forced
   const hasCdp =
     !!process.env.CDP_API_KEY_ID &&
@@ -107,7 +107,7 @@ export async function gatedTransfer(
       mode: resolveExecuteMode(),
       evaluation,
       executed: false,
-      message: 'Blocked by MandateGuard. No transaction sent.',
+      message: 'Blocked by SpendGate. No transaction sent.',
     }
   }
 
@@ -147,7 +147,7 @@ export async function gatedTransfer(
       mode,
       evaluation,
       executed: true,
-      message: `DRY-RUN: would transfer $${input.intent.amountUsd} USDC to ${input.intent.toAddress}. Ledger updated. Set CDP_* + MANDATEGUARD_EXECUTE_MODE=live for real Base tx.`,
+      message: `DRY-RUN: would transfer $${input.intent.amountUsd} USDC to ${input.intent.toAddress}. Ledger updated. Set CDP_* + SPENDGATE_EXECUTE_MODE=live for real Base tx.`,
     }
   }
 

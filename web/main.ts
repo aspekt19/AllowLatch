@@ -42,7 +42,7 @@ function addMessage(role: Role, body: string, extraClass = '') {
   const el = document.createElement('article')
   el.className = `msg ${role} ${extraClass}`.trim()
   const who =
-    role === 'you' ? 'You · owner' : role === 'guard' ? 'MandateGuard' : 'Spender · AgentKit'
+    role === 'you' ? 'You · owner' : role === 'guard' ? 'SpendGate' : 'Spender · AgentKit'
   el.innerHTML = `<p class="who">${who}</p><p class="body"></p>`
   el.querySelector('.body')!.textContent = body
   messagesEl.appendChild(el)
@@ -299,7 +299,7 @@ input.addEventListener('keydown', (e) => {
 // Boot dialog
 addMessage(
   'guard',
-  'I am MandateGuard — the spending turnstile for an AgentKit wallet on Base.\n\nFirst, tell me the rules for your agent (limits, allowed tokens/addresses, when to ask you).\n\nThen a Spender agent will try to move USDC. I will allow, deny, or escalate.'
+  'I am SpendGate — the spending turnstile for an AgentKit wallet on Base.\n\nFirst, tell me the rules for your agent (limits, allowed tokens/addresses, when to ask you).\n\nThen a Spender agent will try to move USDC. I will allow, deny, or escalate.'
 )
 setPhase('mandate')
 renderPolicy()

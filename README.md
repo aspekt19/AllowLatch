@@ -1,6 +1,8 @@
-# MandateGuard
+# SpendGate
 
 **OpenServ + Coinbase AgentKit** — spending turnstile for AI wallets on Base.
+
+> Formerly explored as “MandateGuard”; renamed to avoid collision with unrelated projects using that name.
 
 Human mandate → strict USDC policy → every spend is **allow / deny / escalate** → AgentKit moves funds **only after ALLOW**.
 
@@ -18,7 +20,7 @@ An agent with a funded Base wallet can drain itself via loops, bad addresses, or
 | Deterministic engine | Hard caps, allowlists, velocity limits (not LLM judgment) |
 | Coinbase AgentKit | Sign USDC transfers on Base **only if** policy allows |
 
-MandateGuard does **not** custody user funds.
+SpendGate does **not** custody user funds.
 
 ## Quick start
 
@@ -35,7 +37,7 @@ npm run dev     # provision OpenServ agent + x402 trigger
 `npm run ui` opens a chat-style template:
 
 1. **You** set the mandate (NL)
-2. **MandateGuard** compiles a Base/USDC policy
+2. **SpendGate** compiles a Base/USDC policy
 3. **Spender** (AgentKit stand-in) proposes spends via chips or text
 4. Guard answers **ALLOW / DENY / ESCALATE** (human yes/no on escalate)
 
@@ -46,7 +48,7 @@ Runs fully offline in the browser against the same policy engine. Production pat
 1. Create CDP keys at [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com)
 2. Set `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `NETWORK_ID=base-sepolia`
 3. Fund the agent wallet with test USDC
-4. `MANDATEGUARD_EXECUTE_MODE=live npm run dev`
+4. `SPENDGATE_EXECUTE_MODE=live npm run dev`
 
 Without CDP credentials, `execute_gated_transfer` runs in **dry-run** (policy + ledger still apply).
 
@@ -60,7 +62,7 @@ Without CDP credentials, `execute_gated_transfer` runs in **dry-run** (policy + 
 
 ## Pitch (one line)
 
-While others ship wallets with soft limits in code, MandateGuard is an OpenServ agent that turns your words into rules and will not let an AgentKit wallet spend outside them — with a reason every time.
+While others ship wallets with soft limits in code, SpendGate is an OpenServ agent that turns your words into rules and will not let an AgentKit wallet spend outside them — with a reason every time.
 
 ## Hackathon notes
 

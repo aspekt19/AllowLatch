@@ -1,5 +1,5 @@
 {
-  "name": "mandateguard",
+  "name": "spendgate",
   "version": "0.1.0",
   "description": "OpenServ agent: NL mandates → enforceable spend policy for Base AgentKit wallets",
   "main": "index.js",
