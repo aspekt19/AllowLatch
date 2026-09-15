@@ -59,10 +59,10 @@ export function compileMandateLocally(mandateText: string): MandatePolicy {
   if (/\beth\b|ethereum|эфир/i.test(lower)) {
     allowedSymbols.push('ETH', 'WETH')
   }
+  // Only known ticker-like tokens — do not scoop English words from the mandate text
+  const KNOWN = new Set(['WBTC', 'CBBTC', 'DAI', 'USDT', 'EURC', 'DEGEN', 'AERO'])
   for (const sym of text.toUpperCase().match(/\b[A-Z]{2,6}\b/g) ?? []) {
-    if (['USDC', 'ETH', 'WETH', 'BASE'].includes(sym)) continue
-    if (['ONLY', 'MAX', 'USD', 'DAY', 'PER', 'AND', 'THE'].includes(sym)) continue
-    if (!allowedSymbols.includes(sym) && allowedSymbols.length < 6) allowedSymbols.push(sym)
+    if (KNOWN.has(sym) && !allowedSymbols.includes(sym)) allowedSymbols.push(sym)
   }
 
   const deniedSymbols = ['PEPE']

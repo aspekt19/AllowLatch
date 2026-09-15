@@ -12,6 +12,8 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Deterministic gate | [`src/policy/engine.ts`](./src/policy/engine.ts) |
 | OpenServ agent | [`src/agent.ts`](./src/agent.ts) |
 | AgentKit gated executor | [`src/executor/gated-executor.ts`](./src/executor/gated-executor.ts) |
+| Battle Spender CLI | [`src/spender/battle.ts`](./src/spender/battle.ts) |
+| Live battle checklist | [`docs/BATTLE.md`](./docs/BATTLE.md) |
 | Dialog UI | [`web/`](./web/) |
 
 ## Two surfaces (do not conflate)
@@ -32,6 +34,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 
 ```bash
 npm run demo
+npm run battle
 npm run typecheck
 npm run ui:build
 ```

@@ -34,11 +34,13 @@ SpendGate does **not** custody user funds.
 npm install
 npm run reasoning:ping      # SERV Reasoning smoke test
 npm run reasoning:cycle     # Reasoning compile → allow/deny/escalate
+npm run battle              # Spender → SpendGate → AgentKit (dry-run without CDP)
 npm run ui                  # local dialog UI
 npm run demo                # offline engine-only scenarios
 ```
 
 **Live UI:** https://spendgate.vercel.app  
+**Real battle (Spender + gate + AgentKit):** [docs/BATTLE.md](./docs/BATTLE.md)
 
 ### Dialog UI
 
@@ -48,16 +50,16 @@ npm run demo                # offline engine-only scenarios
 2. **SpendGate** compiles a Base/USDC policy (offline heuristics in UI; Reasoning via CLI scripts)
 3. **Spender** proposes spends → **ALLOW / DENY / ESCALATE**
 
+UI Spender is simulated. Live path: `npm run battle` (see [docs/BATTLE.md](./docs/BATTLE.md)).
 
-### Live AgentKit transfers (optional)
+### Live AgentKit transfers
 
 1. Create CDP keys at [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com)
 2. Set `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `NETWORK_ID=base-sepolia`
-3. Fund the agent wallet with test USDC
-4. `SPENDGATE_EXECUTE_MODE=live npm run dev`
+3. Fund the agent wallet with Sepolia ETH + test USDC
+4. `npm run battle -- --live`
 
-Without CDP credentials, `execute_gated_transfer` runs in **dry-run** (policy + ledger still apply).
-
+Without CDP credentials, battle / `execute_gated_transfer` runs in **dry-run** (policy + ledger still apply).
 ## Capabilities
 
 - `compile_mandate` — NL → `MandatePolicy`
