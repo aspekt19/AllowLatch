@@ -1,12 +1,15 @@
 /**
  * Public host info for the demo UI (paywall URL for Enforce CTA).
- * Set SPENDGATE_PAYWALL_URL in .env / Vercel.
+ * Set ALLOWLATCH_PAYWALL_URL in .env / Vercel.
  */
 export function getHostInfo() {
   return {
-    paywallUrl: process.env.SPENDGATE_PAYWALL_URL?.trim() || null,
+    paywallUrl:
+      process.env.ALLOWLATCH_PAYWALL_URL?.trim() ||
+      process.env.SPENDGATE_PAYWALL_URL?.trim() || // legacy
+      null,
     priceUsd: '0.1',
-    monetize: 'https://github.com/aspekt19/SpendGate/blob/main/docs/MONETIZE.md',
-    embed: 'https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md',
+    monetize: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md',
+    embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
   }
 }

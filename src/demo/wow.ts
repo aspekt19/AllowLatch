@@ -1,5 +1,5 @@
 /**
- * SpendGate WOW demo — the full product story in one run.
+ * AllowLatch WOW demo — the full product story in one run.
  *
  *   npm run wow
  *
@@ -57,7 +57,7 @@ async function main() {
     process.exit(1)
   }
 
-  banner('SpendGate WOW — Reasoning drafts · code judges · AgentKit waits')
+  banner('AllowLatch WOW — Reasoning drafts · code judges · AgentKit waits')
   console.log('End-user keys: none. This is the host Copilot path.\n')
 
   banner('1) Messy mandate → SERV Policy Copilot')

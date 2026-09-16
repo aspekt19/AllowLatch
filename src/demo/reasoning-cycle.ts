@@ -112,7 +112,7 @@ async function main() {
   }
 
   console.log('\nDone. Reasoning used for compile only; gate is local code.')
-  console.log('UI demo: https://spendgate.vercel.app')
+  console.log('UI demo: https://allowlatch.vercel.app')
 }
 
 main().catch((err) => {

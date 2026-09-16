@@ -16,8 +16,8 @@ import {
   type ServMeta,
 } from './serv-reasoning.js'
 
-export const DRAFT_PROMPT_VERSION = 'spendgate-draft-v1'
-export const COMPILER_PROMPT_VERSION = 'spendgate-compile-v2'
+export const DRAFT_PROMPT_VERSION = 'allowlatch-draft-v1'
+export const COMPILER_PROMPT_VERSION = 'allowlatch-compile-v2'
 
 /** Uniswap Universal Router on Base — only when mandate mentions Uniswap. */
 export const BASE_UNISWAP_UNIVERSAL_ROUTER =
@@ -31,15 +31,18 @@ export function resolveCompileModel(): string {
 }
 
 const POLICY_RULES = `MandatePolicy constraints:
-- version "1.0", chain "base", currency "USDC"
+- version "1.0", chain "base" or "base-sepolia", currency "USDC"
+- ownerId / agentId optional identity strings when known
 - Do not invent tickers or addresses. Symbols only if clearly allowed (USDC, ETH, WETH, or named). Addresses only if named, or Uniswap Universal Router on Base when Uniswap is mentioned: ${BASE_UNISWAP_UNIVERSAL_ROUTER}
 - deniedSymbols: memes / explicitly banned (e.g. PEPE) when forbidden
-- allowedAddresses non-empty ⇒ gate requires destination on list — only if mandate implies allowlist
+- allowedAddresses / allowedContracts / allowedFunctionSelectors non-empty ⇒ gate requires matching fields — only if mandate implies allowlist
+- risk.maxSlippageBps when mandate mentions slippage; risk.emergencyStop only if owner says pause/stop all spends
+- agentWalletBudgetUsd is a HARD lifetime ledger ceiling (not soft metadata)
 - requireHumanConfirmAboveUsd ≤ maxPerOrderUsd; if "ask above $X", use X; else slightly below maxPerOrderUsd
 - Defaults if omitted: agentWalletBudgetUsd 200, maxNotionalUsdPerDay 40, maxPerOrderUsd 10, maxTransactionsPerHour 20; actions true unless forbidden
 - Prefer tighter limits when ambiguous; leave arrays empty rather than guessing`
 
-export const DRAFT_SYSTEM_PROMPT = `You are SpendGate Policy Copilot for AI agent wallets on Base (USDC).
+export const DRAFT_SYSTEM_PROMPT = `You are AllowLatch Policy Copilot for AI agent wallets on Base (USDC).
 
 Objective: turn a human spending mandate into a PolicyDraft the owner can review before the deterministic gate enforces it. You do NOT approve spends.
 
@@ -55,7 +58,7 @@ Decision priorities: safety > fidelity to stated numbers > conservatism on gaps 
 
 ${POLICY_RULES}`
 
-export const COMPILE_SYSTEM_PROMPT = `You are SpendGate's mandate compiler for AI agent wallets on Base.
+export const COMPILE_SYSTEM_PROMPT = `You are AllowLatch's mandate compiler for AI agent wallets on Base.
 
 Objective: turn a human spending mandate into a strict MandatePolicy JSON that a deterministic gate will enforce. You do not approve spends; you only compile rules.
 

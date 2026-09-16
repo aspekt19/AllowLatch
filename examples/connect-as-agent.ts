@@ -1,11 +1,11 @@
 /**
- * How another agent connects to SpendGate — no end-user SERV/CDP keys.
+ * How another agent connects to AllowLatch — no end-user SERV/CDP keys.
  *
  *   npx tsx examples/connect-as-agent.ts
  *   npx tsx examples/connect-as-agent.ts "draft mandate: max $10/tx, $40/day, USDC+ETH only"
  *
  * Discovery is public. Paying the x402 call needs a funded OpenServ/client wallet
- * on the *caller* agent (the owner's agent), not SpendGate host secrets.
+ * on the *caller* agent (the owner's agent), not AllowLatch host secrets.
  *
  * discoverServices() may omit numeric workflowId — then we pay via webhookUrl / paywall.
  */
@@ -28,14 +28,14 @@ async function main() {
   const client = new PlatformClient()
   console.log('Discovering OpenServ x402 services…')
   const services = (await client.payments.discoverServices()) as Discovered[]
-  const spendgate = services.find((s) => /spendgate/i.test(String(s.name ?? '')))
+  const allowlatch = services.find((s) => /allowlatch/i.test(String(s.name ?? '')))
 
-  if (!spendgate) {
+  if (!allowlatch) {
     console.error(
-      'SpendGate not found in discoverServices().\n' +
+      'AllowLatch not found in discoverServices().\n' +
         'The host must be running `npm run dev` (provisioned x402 workflow).\n' +
-        'Until then use the demo UI: https://spendgate.vercel.app\n' +
-        'or install the spendgate Cursor skill and point at docs/CONNECT.md.'
+        'Until then use the demo UI: https://allowlatch.vercel.app\n' +
+        'or install the allowlatch Cursor skill and point at docs/CONNECT.md.'
     )
     console.log(
       '\nKnown services (sample):',
@@ -47,13 +47,13 @@ async function main() {
     process.exit(1)
   }
 
-  console.log('Found:', spendgate.name)
-  console.log('Price: $' + (spendgate.x402Pricing ?? '?'))
+  console.log('Found:', allowlatch.name)
+  console.log('Price: $' + (allowlatch.x402Pricing ?? '?'))
   console.log('Prompt:', prompt)
 
-  const triggerUrl = spendgate.webhookUrl
-  const paywall = spendgate.paywallUrl
-  const workflowId = spendgate.workflowId
+  const triggerUrl = allowlatch.webhookUrl
+  const paywall = allowlatch.paywallUrl
+  const workflowId = allowlatch.workflowId
 
   try {
     let result: unknown
@@ -70,7 +70,7 @@ async function main() {
     } else {
       throw new Error('Service has neither workflowId nor webhookUrl')
     }
-    console.log('\nSpendGate response:\n', JSON.stringify(result, null, 2))
+    console.log('\nAllowLatch response:\n', JSON.stringify(result, null, 2))
   } catch (err) {
     console.error('\nProgrammatic pay failed:', err instanceof Error ? err.message : err)
     console.error(

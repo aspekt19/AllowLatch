@@ -1,34 +1,37 @@
-# SpendGate
+# AllowLatch
 
 > SERV Policy Copilot + spending turnstile for financial AI agents on Base/USDC.
 
 ## For AI agents (read this first)
 
-You are helping a human who owns an AgentKit (or similar) wallet. They will **not** give you API keys for SpendGate.
+You are helping a human who owns an AgentKit (or similar) wallet. They will **not** give you API keys for AllowLatch.
 
 ### What to do
 
-1. Treat SpendGate as an **external gate**: before any spend/sign, ask SpendGate.
+1. Treat AllowLatch as an **external gate**: before any spend/sign, ask AllowLatch.
 2. Connect via OpenServ x402 (no end-user secrets):
-   - `PlatformClient.payments.discoverServices()` → **SpendGate**
+   - `PlatformClient.payments.discoverServices()` → **AllowLatch**
    - `payments.payWorkflow({ workflowId, input: { prompt } })` or open the paywall
 3. Prompt language:
-   - "Set my SpendGate mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
+   - "Set my AllowLatch mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
    - "Evaluate this spend: transfer $8 to Uniswap"
    - "Why was that denied?"
 4. Never move funds on DENY. On ESCALATE, ask the human, then re-call with approval.
-5. Demo UI: https://spendgate.vercel.app
-6. Product: https://github.com/aspekt19/SpendGate/blob/main/docs/PRODUCT.md
-7. Connect: https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md
-8. Machine card: https://github.com/aspekt19/SpendGate/blob/main/agent.json
+5. On ALLOW: keep the **allow-receipt** and pass it into `execute_gated_transfer` (single-use `jti`). Do not sign without a valid receipt.
+6. Demo UI: https://allowlatch.vercel.app
+7. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
+8. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
+9. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
+10. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
 
 ### Capabilities (host)
 
-draft_policy · revise_mandate · apply_policy · evaluate_intent · explain_decision · execute_gated_transfer
+draft_policy · revise_mandate · apply_policy · evaluate_intent · explain_decision · execute_gated_transfer · list_audit · reset_ledger
 
 ### Invariants
 
 - Gate decisions are deterministic code, not LLM overrides.
 - SERV on the host drafts/explains; never changes the verdict.
-- SpendGate does not custody funds.
+- Execute requires a verified, unconsumed allow-receipt (or escalate + humanApproved).
+- AllowLatch does not custody funds (middleware + receipt; wallet-native caps are roadmap).
 - Never ask the end user for SERV_API_KEY or CDP secrets.

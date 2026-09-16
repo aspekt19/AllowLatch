@@ -149,7 +149,7 @@ function addMessage(role: Role, body: string, extraClass = '') {
   const el = document.createElement('article')
   el.className = `msg ${role} ${extraClass}`.trim()
   const who =
-    role === 'you' ? 'You · owner' : role === 'guard' ? 'SpendGate' : 'Spender · AgentKit'
+    role === 'you' ? 'You · owner' : role === 'guard' ? 'AllowLatch' : 'Spender · AgentKit'
   el.innerHTML = `<p class="who">${who}</p><div class="body"></div>`
   const bodyEl = el.querySelector('.body')!
 
@@ -218,7 +218,7 @@ function downloadPolicyJson() {
   const demoOnly = {
     enforcement: 'demo-only',
     warning:
-      'Not production. Pay SpendGate ($0.10) to apply on the host; agents must evaluate_intent remotely before signing.',
+      'Not production. Pay AllowLatch ($0.10) to apply on the host; agents must evaluate_intent remotely before signing.',
     exportedAt: new Date().toISOString(),
     policy: p,
   }
@@ -226,12 +226,12 @@ function downloadPolicyJson() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `spendgate-demo-only-${Date.now()}.json`
+  a.download = `allowlatch-demo-only-${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
   addMessage(
     'guard',
-    'Downloaded a watermarked demo snapshot (not enforced).\n\nFor production: Enforce on SpendGate ($0.10), then your agent must call evaluate_intent remotely — see docs/MONETIZE.md'
+    'Downloaded a watermarked demo snapshot (not enforced).\n\nFor production: Enforce on AllowLatch ($0.10), then your agent must call evaluate_intent remotely — see docs/MONETIZE.md'
   )
 }
 
@@ -255,7 +255,7 @@ async function enforceOnHost() {
   if (!paywall) {
     addMessage(
       'guard',
-      'Set SPENDGATE_PAYWALL_URL on the deploy (OpenServ paywall from `npm run dev` logs), then retry Enforce.\n\nMeanwhile copy this prompt into the paywall manually:\n\n' +
+      'Set ALLOWLATCH_PAYWALL_URL on the deploy (OpenServ paywall from `npm run dev` logs), then retry Enforce.\n\nMeanwhile copy this prompt into the paywall manually:\n\n' +
         prompt
     )
     try {
@@ -275,7 +275,7 @@ async function enforceOnHost() {
   window.open(paywall, '_blank', 'noopener,noreferrer')
   addMessage(
     'guard',
-    'Opened SpendGate paywall ($0.10). Paste the apply prompt (copied if clipboard allowed) and pay to host the policy.\n\nAfter that, agents must call evaluate_intent on SpendGate before every spend — not a local JSON file.'
+    'Opened AllowLatch paywall ($0.10). Paste the apply prompt (copied if clipboard allowed) and pay to host the policy.\n\nAfter that, agents must call evaluate_intent on AllowLatch before every spend — not a local JSON file.'
   )
 }
 
@@ -411,7 +411,7 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click “Enforce on SpendGate · $0.10”. Local demo snapshot is watermarked and not production.`
+    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click “Enforce on AllowLatch · $0.10”. Local demo snapshot is watermarked and not production.`
   )
   setPhase('spend')
   addSpendChips()
@@ -686,7 +686,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am SpendGate — SERV Policy Copilot + hard turnstile for AgentKit on Base.\n\n1. You state a mandate (try messy or injection).\n2. SERV drafts policy with conflicts — you review, then apply.\n3. Spender proposes spends; deterministic code allow / deny / escalate. AgentKit only after ALLOW.\n\nNo API keys for you — the host holds SERV. Start with your rules, or load the example.'
+  'I am AllowLatch — SERV Policy Copilot + hard turnstile for AgentKit on Base.\n\n1. You state a mandate (try messy or injection).\n2. SERV drafts policy with conflicts — you review, then apply.\n3. Spender proposes spends; deterministic code allow / deny / escalate. AgentKit only after ALLOW.\n\nNo API keys for you — the host holds SERV. Start with your rules, or load the example.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

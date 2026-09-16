@@ -16,7 +16,7 @@ import {
   type ServMeta,
 } from './serv-reasoning.js'
 
-export const EXPLAIN_PROMPT_VERSION = 'spendgate-explain-v1'
+export const EXPLAIN_PROMPT_VERSION = 'allowlatch-explain-v1'
 
 function explainModel(): string {
   if (process.env.SERV_EXPLAIN_MODEL) return process.env.SERV_EXPLAIN_MODEL
@@ -26,7 +26,7 @@ function explainModel(): string {
   return `${base}-serv-multipath`
 }
 
-const EXPLAIN_SYSTEM = `You are SpendGate Policy Copilot explaining a gate decision.
+const EXPLAIN_SYSTEM = `You are AllowLatch Policy Copilot explaining a gate decision.
 
 The allow/deny/escalate verdict was produced by deterministic code — you must NOT contradict it or invent a different decision.
 
@@ -47,7 +47,7 @@ export async function explainDecisionWithServ(params: {
 
   const { data, meta } = await servStructured({
     system: EXPLAIN_SYSTEM,
-    user: `Explain this SpendGate gate result for the wallet owner.
+    user: `Explain this AllowLatch gate result for the wallet owner.
 
 Policy JSON:
 ${JSON.stringify(params.policy, null, 2)}

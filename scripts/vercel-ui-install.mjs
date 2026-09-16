@@ -8,7 +8,7 @@ writeFileSync(
   'package.json',
   JSON.stringify(
     {
-      name: 'spendgate-ui',
+      name: 'allowlatch-ui',
       private: true,
       type: 'module',
       dependencies: {

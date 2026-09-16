@@ -1,14 +1,16 @@
-# SpendGate
+# AllowLatch
 
 **SERV Policy Copilot + spending turnstile** for financial AI agents on Base (USDC / AgentKit).
 
-**Live demo:** https://spendgate.vercel.app  
-**Repo:** https://github.com/aspekt19/SpendGate  
+**Live demo:** https://allowlatch.vercel.app  
+**Repo:** https://github.com/aspekt19/AllowLatch  
 **Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)
 
-> Reasoning drafts the law. Code judges every spend. AgentKit only after ALLOW.
+> Reasoning drafts the law. Code judges every spend. AgentKit only after ALLOW + allow-receipt.
 
-No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pay x402.
+No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pay x402 ($0.10) or an evaluate pack ($1 / 25).
+
+> Product name is **AllowLatch** (not SpendGate / MandateGuard — those collide with other projects). Unrelated: commercial spendgate.ai.
 
 > SERV Hackathon Edition 01 · track: **Coinbase AgentKit**
 
@@ -16,10 +18,10 @@ No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pa
 
 Tell your agent:
 
-> Connect to SpendGate. Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, ask SpendGate.
+> Connect to AllowLatch. Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, ask AllowLatch.
 
-- Cursor skill: `.cursor/skills/spendgate`
-- Demo UI: https://spendgate.vercel.app
+- Cursor skill: `.cursor/skills/allowlatch`
+- Demo UI: https://allowlatch.vercel.app
 - Full theater (host): `npm run wow`
 
 ## Solution
@@ -35,10 +37,12 @@ Tell your agent:
 
 ```bash
 npm install
+npm run test                # engine + receipt unit tests
 npm run ui                  # dialog UI (live SERV via /api/copilot when key set)
 npm run wow                 # full SERV → injection → gate → explain → AgentKit
 npm run battle              # Spender → gate → AgentKit dry-run
-npm run connect             # discover SpendGate as another agent
+npm run connect             # discover AllowLatch as another agent
+npm run http:gate           # framework-agnostic HTTP evaluate/execute
 npm run dev                 # provision + run OpenServ host
 ```
 

@@ -2,7 +2,7 @@
  * Offline Policy Copilot draft for the UI demo (no LLM).
  * Mirrors SERV draft shape: policy + conflicts / assumptions / questions.
  */
-import { DEMO_POLICY, type MandatePolicy, type PolicyDraft } from './schema.js'
+import { DEMO_POLICY, MandatePolicySchema, type MandatePolicy, type PolicyDraft } from './schema.js'
 
 const UNISWAP_BASE = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
 
@@ -150,7 +150,7 @@ export function draftPolicyLocally(mandateText: string): PolicyDraft {
   const name =
     text.length > 48 ? `${text.slice(0, 45).trim()}…` : text || DEMO_POLICY.name
 
-  const policy: MandatePolicy = {
+  const policy: MandatePolicy = MandatePolicySchema.parse({
     version: '1.0',
     name,
     chain: 'base',
@@ -166,12 +166,17 @@ export function draftPolicyLocally(mandateText: string): PolicyDraft {
       deniedSymbols,
       allowedAddresses,
       deniedAddresses: [],
+      allowedContracts: [],
+      deniedContracts: [],
+      allowedFunctionSelectors: [],
+      deniedFunctionSelectors: [],
     },
     actions: { allowSwap, allowTransfer, allowX402Pay },
+    risk: { emergencyStop: false },
     escalation: {
       requireHumanConfirmAboveUsd: Math.min(confirmAbove, maxPerOrderUsd),
     },
-  }
+  })
 
   const readyToApply = questions.length === 0
   const summary = readyToApply

@@ -8,7 +8,7 @@ import { servChat } from '../llm/serv-reasoning.js'
 
 async function main() {
   const { text, meta } = await servChat({
-    system: 'You are a concise assistant for SpendGate.',
+    system: 'You are a concise assistant for AllowLatch.',
     user: 'Reply with exactly: SERV Reasoning OK',
     reasoningEffort: 'low',
   })

@@ -1,5 +1,5 @@
 /**
- * Test SpendGate policy compile via SERV Reasoning (no Platform host required).
+ * Test AllowLatch policy compile via SERV Reasoning (no Platform host required).
  *
  * Usage:
  *   SERV_API_KEY=... npm run reasoning:compile -- "Max $10 per tx, $40/day, only ETH and USDC"

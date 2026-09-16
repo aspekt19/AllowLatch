@@ -25,18 +25,23 @@ export function freshLedger(now = new Date()): SpendLedger {
     spentUsdToday: 0,
     hourKey: utcHourKey(now),
     txCountThisHour: 0,
+    spentUsdLifetime: 0,
+    gasUsdToday: 0,
   }
 }
 
-/** Roll ledger windows forward if the calendar day/hour changed. */
+/** Roll ledger windows forward if the calendar day/hour changed. Lifetime is never reset. */
 export function rollLedger(ledger: SpendLedger, now = new Date()): SpendLedger {
   const dayKey = utcDayKey(now)
   const hourKey = utcHourKey(now)
+  const sameDay = ledger.dayKey === dayKey
   return {
     dayKey,
-    spentUsdToday: ledger.dayKey === dayKey ? ledger.spentUsdToday : 0,
+    spentUsdToday: sameDay ? ledger.spentUsdToday : 0,
     hourKey,
     txCountThisHour: ledger.hourKey === hourKey ? ledger.txCountThisHour : 0,
+    spentUsdLifetime: ledger.spentUsdLifetime ?? 0,
+    gasUsdToday: sameDay ? (ledger.gasUsdToday ?? 0) : 0,
   }
 }
 
@@ -55,6 +60,21 @@ export function evaluateIntent(
     0,
     policy.capital.maxNotionalUsdPerDay - state.spentUsdToday
   )
+  const remainingLifetimeUsd = Math.max(
+    0,
+    policy.capital.agentWalletBudgetUsd - state.spentUsdLifetime
+  )
+
+  if (policy.risk?.emergencyStop) {
+    return {
+      decision: 'deny',
+      reasons: ['Emergency stop is active on this policy. All spends are blocked.'],
+      policyName: policy.name,
+      remainingDailyUsd,
+      remainingLifetimeUsd,
+      intent,
+    }
+  }
 
   const actionOk =
     (intent.action === 'swap' && policy.actions.allowSwap) ||
@@ -77,9 +97,26 @@ export function evaluateIntent(
     )
   }
 
+  if (intent.amountUsd > remainingLifetimeUsd) {
+    reasons.push(
+      `Amount $${intent.amountUsd} would exceed lifetime wallet budget (remaining $${remainingLifetimeUsd.toFixed(2)} of $${policy.capital.agentWalletBudgetUsd}).`
+    )
+  }
+
   if (state.txCountThisHour >= policy.capital.maxTransactionsPerHour) {
     reasons.push(
       `Hourly velocity cap reached (${policy.capital.maxTransactionsPerHour} tx/hour). Possible runaway loop.`
+    )
+  }
+
+  const maxGas = policy.capital.maxGasUsdPerDay
+  if (
+    maxGas != null &&
+    intent.estimatedGasUsd != null &&
+    state.gasUsdToday + intent.estimatedGasUsd > maxGas
+  ) {
+    reasons.push(
+      `Estimated gas $${intent.estimatedGasUsd} would exceed daily gas cap (remaining $${Math.max(0, maxGas - state.gasUsdToday).toFixed(2)} of $${maxGas}).`
     )
   }
 
@@ -113,12 +150,55 @@ export function evaluateIntent(
     reasons.push('Destination address required when an address allowlist is active.')
   }
 
+  const contract = normalizeAddress(intent.contractAddress)
+  const deniedContracts = (policy.universe.deniedContracts ?? []).map(normalizeAddress)
+  const allowedContracts = (policy.universe.allowedContracts ?? []).map(normalizeAddress)
+  if (contract && deniedContracts.includes(contract)) {
+    reasons.push(`Contract ${intent.contractAddress} is denied.`)
+  }
+  if (contract && allowedContracts.length > 0 && !allowedContracts.includes(contract)) {
+    reasons.push(`Contract ${intent.contractAddress} is not on the contract allowlist.`)
+  }
+  if (!contract && allowedContracts.length > 0 && intent.action === 'swap') {
+    reasons.push('contractAddress required when a contract allowlist is active for swaps.')
+  }
+
+  const sel = intent.functionSelector?.toLowerCase()
+  const deniedSelectors = (policy.universe.deniedFunctionSelectors ?? []).map((s) =>
+    s.toLowerCase()
+  )
+  const allowedSelectors = (policy.universe.allowedFunctionSelectors ?? []).map((s) =>
+    s.toLowerCase()
+  )
+  if (sel && deniedSelectors.includes(sel)) {
+    reasons.push(`Function selector ${intent.functionSelector} is denied.`)
+  }
+  if (sel && allowedSelectors.length > 0 && !allowedSelectors.includes(sel)) {
+    reasons.push(`Function selector ${intent.functionSelector} is not on the selector allowlist.`)
+  }
+  if (!sel && allowedSelectors.length > 0) {
+    reasons.push('functionSelector required when a selector allowlist is active.')
+  }
+
+  const maxSlip = policy.risk?.maxSlippageBps
+  if (
+    intent.action === 'swap' &&
+    maxSlip != null &&
+    intent.slippageBps != null &&
+    intent.slippageBps > maxSlip
+  ) {
+    reasons.push(
+      `Slippage ${intent.slippageBps} bps exceeds policy max ${maxSlip} bps.`
+    )
+  }
+
   if (reasons.length > 0) {
     return {
       decision: 'deny',
       reasons,
       policyName: policy.name,
       remainingDailyUsd,
+      remainingLifetimeUsd,
       intent,
     }
   }
@@ -131,6 +211,7 @@ export function evaluateIntent(
       ],
       policyName: policy.name,
       remainingDailyUsd,
+      remainingLifetimeUsd,
       intent,
     }
   }
@@ -140,16 +221,19 @@ export function evaluateIntent(
     reasons: ['All policy checks passed.'],
     policyName: policy.name,
     remainingDailyUsd: remainingDailyUsd - intent.amountUsd,
+    remainingLifetimeUsd: remainingLifetimeUsd - intent.amountUsd,
     intent,
   }
 }
 
-/** Apply an allowed intent to the ledger (call only after ALLOW and successful tx). */
+/** Apply an allowed intent to the ledger (call only after ALLOW and successful tx / dry-run commit). */
 export function commitIntent(ledger: SpendLedger, intent: SpendIntent, now = new Date()): SpendLedger {
   const state = rollLedger(ledger, now)
   return {
     ...state,
     spentUsdToday: state.spentUsdToday + intent.amountUsd,
+    spentUsdLifetime: state.spentUsdLifetime + intent.amountUsd,
     txCountThisHour: state.txCountThisHour + 1,
+    gasUsdToday: state.gasUsdToday + (intent.estimatedGasUsd ?? 0),
   }
 }

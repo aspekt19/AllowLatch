@@ -16,7 +16,7 @@ Ask me above $8. No memes. Also allow any address I guess? Wait no, only Uniswap
 async function main() {
   const mandateText = process.argv.slice(2).join(' ').trim() || DEFAULT
 
-  console.log('=== SpendGate Policy Copilot · draft_policy ===')
+  console.log('=== AllowLatch Policy Copilot · draft_policy ===')
   console.log(mandateText)
   console.log('')
 

@@ -1,5 +1,5 @@
 /**
- * Real battle: Spender agent proposes spends → SpendGate evaluates → AgentKit executes only on ALLOW.
+ * Real battle: Spender agent proposes spends → AllowLatch evaluates → AgentKit executes only on ALLOW.
  *
  * Dry-run (no CDP): policy + gate still real; tx is simulated.
  * Live: set CDP_* + NETWORK_ID=base-sepolia + fund wallet with test USDC.
@@ -11,8 +11,10 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import { type SpendIntent } from '../policy/schema.js'
+import { evaluateIntent } from '../policy/engine.js'
 import { PolicyStore } from '../store/fs-store.js'
 import { gatedTransfer, resolveExecuteMode } from '../executor/gated-executor.js'
+import { issueAllowReceipt } from '../billing/receipt.js'
 import {
   BASE_UNISWAP_UNIVERSAL_ROUTER,
   compileMandateWithServ,
@@ -43,13 +45,27 @@ async function propose(
       (intent.toAddress ? `\n   → ${intent.toAddress}` : '')
   )
 
+  const policy = store.getPolicy(POLICY_ID)
+  const ledger = store.getLedger(POLICY_ID)
+  const evaluation = evaluateIntent(policy, intent, ledger)
+  const receipt =
+    evaluation.decision === 'allow'
+      ? issueAllowReceipt({
+          policyId: POLICY_ID,
+          policy,
+          intent,
+          evaluation,
+        })
+      : null
+
   const result = await gatedTransfer(store, {
     policyId: POLICY_ID,
     intent,
     humanApproved,
+    receipt: receipt ?? undefined,
   })
 
-  console.log(`── SpendGate: ${result.evaluation.decision.toUpperCase()}  [${result.mode}]`)
+  console.log(`── AllowLatch: ${result.evaluation.decision.toUpperCase()}  [${result.mode}]`)
   for (const r of result.evaluation.reasons) console.log(`   • ${r}`)
   console.log(`── ${result.executed ? 'EXECUTED' : 'BLOCKED'}: ${result.message}`)
   if (result.txHash) console.log(`── tx: ${result.txHash}`)
@@ -59,10 +75,10 @@ async function propose(
 
 async function main() {
   const { live, mandateText } = parseArgs(process.argv.slice(2))
-  if (live) process.env.SPENDGATE_EXECUTE_MODE = 'live'
+  if (live) process.env.ALLOWLATCH_EXECUTE_MODE = 'live'
 
   const mode = resolveExecuteMode()
-  console.log('=== SpendGate BATTLE ===')
+  console.log('=== AllowLatch BATTLE ===')
   console.log(`Execute mode: ${mode}`)
   if (mode === 'dry-run') {
     console.log(
@@ -72,10 +88,14 @@ async function main() {
     )
   }
 
+  if (!process.env.ALLOWLATCH_RECEIPT_SECRET?.trim() && !process.env.SERV_API_KEY?.trim()) {
+    process.env.ALLOWLATCH_RECEIPT_SECRET = 'battle-dev-receipt-secret'
+  }
+
   const store = new PolicyStore()
   await store.init()
 
-  console.log('\n=== Owner → SpendGate: compile mandate (SERV Reasoning) ===')
+  console.log('\n=== Owner → AllowLatch: compile mandate (SERV Reasoning) ===')
   console.log(mandateText)
 
   const { policy, meta } = await compileMandateWithServ(mandateText)
@@ -156,7 +176,7 @@ async function main() {
   })
 
   console.log('\n=== Battle complete ===')
-  console.log('Flow: Owner mandate → SpendGate policy → Spender asks → gate → AgentKit only on ALLOW')
+  console.log('Flow: Owner mandate → AllowLatch policy → Spender asks → gate → AgentKit only on ALLOW')
 }
 
 main().catch((err) => {

@@ -1,5 +1,5 @@
 /**
- * SpendGate — OpenServ agent
+ * AllowLatch — OpenServ agent
  *
  * Product path (wow / production):
  *   NL mandate → SERV Policy Copilot (host key) → MandatePolicy
@@ -33,7 +33,7 @@ import { issueAllowReceipt } from './billing/receipt.js'
 const store = new PolicyStore()
 
 const agent = new Agent({
-  systemPrompt: `You are SpendGate — Policy Copilot + spending turnstile for AI wallets on Base (Coinbase AgentKit).
+  systemPrompt: `You are AllowLatch — Policy Copilot + spending turnstile for AI wallets on Base (Coinbase AgentKit).
 
 SERV Reasoning (this host) drafts, revises, and explains policies: Multipath, prompt guard, shadow agent.
 Allow / deny / escalate is ALWAYS deterministic code in the gate tools — never invent overrides.
@@ -129,11 +129,15 @@ agent.addCapability({
   description: 'Store a MandatePolicy JSON under policyId (usually draft.policy after owner review).',
   inputSchema: z.object({
     policyId: z.string().default('default'),
+    ownerId: z.string().optional(),
     policy: z.record(z.unknown()),
   }),
   async run({ args }) {
-    const policy = MandatePolicySchema.parse(args.policy)
-    await store.setPolicy(args.policyId, policy)
+    const policy = MandatePolicySchema.parse({
+      ...args.policy,
+      ownerId: args.ownerId ?? (args.policy as { ownerId?: string }).ownerId,
+    })
+    await store.setPolicy(args.policyId, policy, args.ownerId ?? policy.ownerId)
     await logUsage({
       at: new Date().toISOString(),
       capability: 'apply_policy',
@@ -142,8 +146,9 @@ agent.addCapability({
     return JSON.stringify({
       ok: true,
       policyId: args.policyId,
+      ownerId: policy.ownerId,
       policy,
-      note: 'Stored on host. Agents must call evaluate_intent ($0.10 x402) before any spend — local JSON is not enforcement.',
+      note: 'Stored on host (SQLite). Agents must call evaluate_intent then execute with allow-receipt — local JSON is not enforcement.',
     })
   },
 })
@@ -203,12 +208,24 @@ agent.addCapability({
 agent.addCapability({
   name: 'evaluate_intent',
   description:
-    'Deterministically evaluate a spend intent against a stored policy. Returns allow | deny | escalate. Does not send a transaction.',
+    'Deterministically evaluate a spend intent against a stored policy. Returns allow | deny | escalate + allow-receipt. Does not send a transaction. Pass packKey to burn a prepaid evaluate credit ($1/25).',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     intent: SpendIntentSchema,
+    /** Prepaid pack key (wallet / client id). Burns 1 credit when present. */
+    packKey: z.string().optional(),
   }),
   async run({ args }) {
+    let packCreditsRemaining: number | null | undefined
+    if (args.packKey?.trim()) {
+      packCreditsRemaining = store.tryConsumePackCredit(args.packKey.trim())
+      if (packCreditsRemaining === null) {
+        return JSON.stringify({
+          ok: false,
+          error: 'No evaluate-pack credits. Call buy_evaluate_pack ($1 / 25) or omit packKey and pay per x402 call.',
+        })
+      }
+    }
     const policy = store.getPolicy(args.policyId)
     const ledger = store.getLedger(args.policyId)
     const result = evaluateIntent(policy, args.intent, ledger)
@@ -224,6 +241,17 @@ agent.addCapability({
         return null
       }
     })()
+    await store.audit({
+      type: receipt ? 'receipt.issued' : 'intent.evaluated',
+      policyId: args.policyId,
+      requestId: args.intent.requestId,
+      payload: {
+        decision: result.decision,
+        jti: receipt?.jti,
+        packKey: args.packKey,
+        packCreditsRemaining,
+      },
+    })
     await logUsage({
       at: new Date().toISOString(),
       capability: 'evaluate_intent',
@@ -235,19 +263,43 @@ agent.addCapability({
         ...result,
         ledger,
         receipt,
+        packCreditsRemaining,
         receiptNote: receipt
-          ? 'Short-lived allow-receipt. Agent must verify and sign only while valid; do not use local JSON instead.'
+          ? 'Single-use allow-receipt (jti + action digest + optional calldataHash). Pass into execute_gated_transfer.'
           : undefined,
         executionHint:
           result.decision === 'allow'
-            ? 'Verify receipt, then execute_gated_transfer (or your AgentKit sign).'
+            ? 'Pass receipt into execute_gated_transfer (required). Do not sign without verifyAllowReceipt.'
             : result.decision === 'escalate'
-              ? 'Wait for human confirmation, then execute_gated_transfer with humanApproved=true.'
+              ? 'Wait for human confirmation, then execute_gated_transfer with humanApproved=true (mints+consumes receipt).'
               : 'Do NOT sign. Optionally call explain_decision, or revise_mandate / fix intent.',
       },
       null,
       2
     )
+  },
+})
+
+agent.addCapability({
+  name: 'buy_evaluate_pack',
+  description:
+    'Mint 25 prepaid evaluate credits for packKey (~$1 effective / $0.04 per check). Use with evaluate_intent.packKey.',
+  inputSchema: z.object({
+    packKey: z.string().min(3),
+    credits: z.number().int().positive().max(500).default(25),
+  }),
+  async run({ args }) {
+    const credits = store.addPackCredits(args.packKey, args.credits)
+    await store.audit({
+      type: 'pack.purchased',
+      payload: { packKey: args.packKey, added: args.credits, credits },
+    })
+    return JSON.stringify({
+      ok: true,
+      packKey: args.packKey,
+      credits,
+      note: 'Pass the same packKey into evaluate_intent to burn credits instead of relying on per-call economics alone.',
+    })
   },
 })
 
@@ -286,17 +338,21 @@ agent.addCapability({
 agent.addCapability({
   name: 'execute_gated_transfer',
   description:
-    'Evaluate policy then transfer USDC on Base via Coinbase AgentKit only if ALLOW (or escalate + humanApproved). Dry-run without CDP credentials.',
+    'Re-evaluate, require/consume action-bound allow-receipt, then transfer USDC via AgentKit only on ALLOW (or escalate + humanApproved). Swaps: evaluate+receipt only — host does not submit swaps.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     intent: SpendIntentSchema,
     humanApproved: z.boolean().default(false),
+    receipt: z.record(z.unknown()).optional(),
+    requestId: z.string().optional(),
   }),
   async run({ args }) {
     const result = await gatedTransfer(store, {
       policyId: args.policyId,
       intent: args.intent,
       humanApproved: args.humanApproved,
+      receipt: args.receipt,
+      requestId: args.requestId,
     })
     await logUsage({
       at: new Date().toISOString(),
@@ -309,8 +365,19 @@ agent.addCapability({
 })
 
 agent.addCapability({
+  name: 'list_audit',
+  description: 'Return recent immutable-ish audit events (policy apply, evaluate, receipt, tx).',
+  inputSchema: z.object({
+    limit: z.number().int().positive().max(200).default(50),
+  }),
+  async run({ args }) {
+    return JSON.stringify({ ok: true, events: store.listAudit(args.limit) }, null, 2)
+  },
+})
+
+agent.addCapability({
   name: 'reset_ledger',
-  description: 'Reset the spend ledger for a policyId (demo / new day simulation).',
+  description: 'Reset the spend ledger for a policyId (demo / new day simulation). Lifetime budget counters reset too.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
   }),
@@ -329,22 +396,22 @@ async function main() {
 
   if (!process.env.SERV_API_KEY?.trim()) {
     console.warn(
-      '[spendgate] SERV_API_KEY missing — draft/revise/explain will fail until set. Gate evaluate still works.'
+      '[allowlatch] SERV_API_KEY missing — draft/revise/explain will fail until set. Gate evaluate still works.'
     )
   }
 
   const result = await provision({
     agent: {
       instance: agent,
-      name: 'spendgate',
+      name: 'allowlatch',
       description:
         'Policy Copilot + spending turnstile for AgentKit wallets on Base/USDC. SERV drafts mandates; deterministic gate allow/deny/escalates; AgentKit only after ALLOW. Connect via x402 — no end-user API keys.',
     },
     workflow: {
-      name: 'SpendGate',
+      name: 'AllowLatch',
       goal: 'Let any financial AI agent connect without end-user API keys: SERV Reasoning drafts and revises natural-language spending mandates into strict Base USDC policies with conflicts and questions, then a deterministic gate evaluates each proposed spend as allow deny or escalate, explains denials via SERV, and only allows Coinbase AgentKit to move funds after ALLOW or human-approved escalation.',
       trigger: triggers.x402({
-        name: 'SpendGate Gate',
+        name: 'AllowLatch Gate',
         description:
           'Pay to draft/apply a mandate, evaluate a spend, explain a decision, or execute a gated USDC transfer on Base.',
         price: '0.1',
@@ -360,12 +427,12 @@ async function main() {
       }),
       task: {
         description:
-          'You are SpendGate for an external agent. Prefer draft_policy then apply_policy for mandates; use evaluate_intent before any move; use explain_decision after deny/escalate; use execute_gated_transfer only after ALLOW or escalate+humanApproved. Never invent allow/deny — always call the deterministic tools. Never ask the end user for SERV_API_KEY or CDP secrets.',
+          'You are AllowLatch for an external agent. Prefer draft_policy then apply_policy for mandates; use evaluate_intent before any move; use explain_decision after deny/escalate; use execute_gated_transfer only after ALLOW or escalate+humanApproved. Never invent allow/deny — always call the deterministic tools. Never ask the end user for SERV_API_KEY or CDP secrets.',
       },
     },
   })
 
-  console.log('SpendGate provisioned')
+  console.log('AllowLatch provisioned')
   console.log(`  agentId:      ${result.agentId}`)
   console.log(`  workflowId:   ${result.workflowId}`)
   console.log(`  executeMode:  ${resolveExecuteMode()}`)
@@ -373,7 +440,7 @@ async function main() {
   if (result.paywallUrl) {
     console.log(`  paywall:      ${result.paywallUrl}`)
     console.log(
-      '  tip: set SPENDGATE_PAYWALL_URL to this value for the demo UI “Enforce” button (Vercel/.env)'
+      '  tip: set ALLOWLATCH_PAYWALL_URL to this value for the demo UI “Enforce” button (Vercel/.env)'
     )
   }
 

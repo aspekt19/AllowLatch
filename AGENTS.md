@@ -9,14 +9,19 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | **Repo rules (stack, architecture, coding)** | [`.cursorrules`](./.cursorrules) |
 | Product overview & scripts | [README.md](./README.md) |
 | Product definition | [`docs/PRODUCT.md`](./docs/PRODUCT.md) |
+| Architecture hardening | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
+| Wallet-native roadmap | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) |
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
 | Embed / assertSpend SDK | [`docs/EMBED.md`](./docs/EMBED.md) |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
 | Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) |
-| Cursor skill | [`.cursor/skills/spendgate/SKILL.md`](./.cursor/skills/spendgate/SKILL.md) |
+| Cursor skill | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |
 | Deterministic gate | [`src/policy/engine.ts`](./src/policy/engine.ts) |
+| SQLite policy store | [`src/store/fs-store.ts`](./src/store/fs-store.ts) |
+| Allow-receipt | [`src/billing/receipt.ts`](./src/billing/receipt.ts) |
 | OpenServ agent | [`src/agent.ts`](./src/agent.ts) |
+| Generic HTTP gate | [`src/http/gate-server.ts`](./src/http/gate-server.ts) |
 | Owner-side Copilot | [`src/owner/copilot.ts`](./src/owner/copilot.ts) |
 | AgentKit gated executor | [`src/executor/gated-executor.ts`](./src/executor/gated-executor.ts) |
 | Battle Spender CLI | [`src/spender/battle.ts`](./src/spender/battle.ts) |
@@ -41,6 +46,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 | Surface | Role |
 |---------|------|
 | **OpenServ host** (`npm run dev`) | Full product: SERV Copilot + gate + optional execute |
+| **HTTP gate** (`npm run http:gate`) | Framework-agnostic evaluate/execute (no OpenServ) |
 | **WOW CLI** (`npm run wow`) | Theater: messy mandate → injection → gate → explain → AgentKit |
 | **Vite UI** (`npm run ui`) | Same story; `/api/copilot` → live SERV when key set |
 
@@ -49,13 +55,14 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 1. Never commit `.env` / `.openserv.json` / CDP secrets.
 2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
-4. AgentKit signs only after ALLOW (or escalate + humanApproved).
-5. Product name is **SpendGate** (not MandateGuard).
+4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
+5. Product name is **AllowLatch** (not SpendGate / MandateGuard).
 
 ## Verify
 
 ```bash
 npm run demo
+npm run test
 npm run wow
 npm run battle
 npm run typecheck

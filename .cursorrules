@@ -1,12 +1,12 @@
-# SpendGate — OpenServ spending turnstile for Base AgentKit wallets
+# AllowLatch — OpenServ spending turnstile for Base AgentKit wallets
 
 ## Project Overview
-SpendGate is an OpenServ agent that turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
+AllowLatch is an OpenServ agent that turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
 It does **not** custody user funds. Deterministic policy evaluation must never be replaced by LLM judgment.
 
 **Hackathon:** SERV Hackathon Edition 01 · track **Coinbase AgentKit**  
-**Repo:** https://github.com/aspekt19/SpendGate  
-**Product name:** SpendGate (do not rebrand back to MandateGuard — that name collides with unrelated projects).
+**Repo:** https://github.com/aspekt19/AllowLatch  
+**Product name:** AllowLatch (do not rebrand to SpendGate or MandateGuard — those names collide with unrelated projects).
 
 ## Tech Stack
 - Runtime: Node.js, TypeScript, ESM (`"type": "module"`)
@@ -23,13 +23,13 @@ It does **not** custody user funds. Deterministic policy evaluation must never b
 ## Architecture
 
 ```
-Human → SpendGate (SERV draft) → engine.ts gate → Spender (AgentKit) signs on Base
+Human → AllowLatch (SERV draft) → engine.ts gate → Spender (AgentKit) signs on Base
 ```
 
 | Role | Responsibility |
 |------|----------------|
 | Human | Sets mandate; confirms escalations — no API keys |
-| SpendGate | SERV Copilot + deterministic gate + optional gated transfer |
+| AllowLatch | SERV Copilot + deterministic gate + optional gated transfer |
 | Spender | Proposes spends; may execute **only** after ALLOW |
 
 ## Project Structure
@@ -50,7 +50,7 @@ src/
   demo/
     run-demo.ts            # CLI allow/deny/escalate scenarios
     wow.ts                 # Full SERV theater demo
-web/                       # Dialog UI (You / SpendGate / Spender)
+web/                       # Dialog UI (You / AllowLatch / Spender)
 api/                       # /api/copilot — live SERV for UI (Vite + Vercel)
 web-dist/                  # Vite production build (Vercel output)
 ```
@@ -71,7 +71,7 @@ web-dist/                  # Vite production build (Vercel output)
 - **Host:** `SERV_API_KEY` for Copilot; optional `CDP_*` for live execute
 - End users: no SERV/CDP — connect via x402
 - OpenServ: filled by `provision()` (`WALLET_PRIVATE_KEY`, `OPENSERV_API_KEY`, …)
-- Execute mode: `SPENDGATE_EXECUTE_MODE=dry-run|live`
+- Execute mode: `ALLOWLATCH_EXECUTE_MODE=dry-run|live`
 
 ## Scripts
 - `npm run ui` — dialog UI (Vite + `/api/copilot`)
@@ -87,7 +87,7 @@ web-dist/                  # Vite production build (Vercel output)
 - Do not add custody, private-key handling in the UI, or blind auto-approve paths
 - Keep components/files focused; match existing style; minimal diffs
 - Do not invent on-chain spend vaults unless explicitly requested (roadmap item)
-- Avoid renaming product to MandateGuard
+- Avoid renaming product to AllowLatch
 
 ## LLM workflow
 

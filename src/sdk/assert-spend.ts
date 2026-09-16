@@ -1,5 +1,5 @@
 /**
- * Production gate for agents: pay SpendGate, get evaluate + allow-receipt.
+ * Production gate for agents: pay AllowLatch, get evaluate + allow-receipt.
  * Do not use local JSON as the source of truth for live spends.
  */
 import { PlatformClient } from '@openserv-labs/client'
@@ -24,7 +24,7 @@ function buildEvaluatePrompt(policyId: string, intent: SpendIntent): string {
 }
 
 /**
- * Call SpendGate over x402 and refuse to proceed without ALLOW + valid receipt.
+ * Call AllowLatch over x402 and refuse to proceed without ALLOW + valid receipt.
  */
 export async function assertSpend(args: {
   intent: SpendIntent
@@ -60,7 +60,7 @@ export async function assertSpend(args: {
       ...payOpts,
     })
   } else {
-    throw new Error('assertSpend requires triggerUrl or workflowId (paid SpendGate host)')
+    throw new Error('assertSpend requires triggerUrl or workflowId (paid AllowLatch host)')
   }
 
   const paid = raw as { response?: unknown }
@@ -81,7 +81,7 @@ export async function assertSpend(args: {
 
   if (requireReceipt) {
     if (decision !== 'allow') {
-      throw new Error(`SpendGate ${decision || 'unknown'}: ${JSON.stringify(parsed.reasons ?? parsed)}`)
+      throw new Error(`AllowLatch ${decision || 'unknown'}: ${JSON.stringify(parsed.reasons ?? parsed)}`)
     }
     if (!receipt) throw new Error('ALLOW without receipt — refuse to sign')
     const v = verifyAllowReceipt(receipt, { intent })

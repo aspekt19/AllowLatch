@@ -1,17 +1,17 @@
 ---
-description: SpendGate core — architecture, naming, and policy-gate invariants
+description: AllowLatch core invariants
 alwaysApply: true
 ---
 
-# SpendGate
+# AllowLatch
 
 OpenServ spending turnstile for Base AgentKit wallets. Full detail: `.cursorrules` and `AGENTS.md`.
 
 ## Invariants
 
-- Product name is **SpendGate** (never rebrand to MandateGuard).
+- Product name is **AllowLatch** (never rebrand to SpendGate or MandateGuard — those collide with other projects).
 - Allow / deny / escalate decisions are **deterministic** in `src/policy/engine.ts` — do not let the LLM override them.
-- No fund custody; AgentKit executes only after ALLOW (or escalate + human approval).
+- No fund custody; AgentKit executes only after ALLOW and a consumed allow-receipt (or escalate + human approval).
 - Secrets stay in `.env`; never commit CDP keys or `.openserv.json`.
 
 ## Stack touchpoints

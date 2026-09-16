@@ -4,14 +4,23 @@ import { z } from 'zod'
 export const MandatePolicySchema = z.object({
   version: z.literal('1.0'),
   name: z.string().min(1).max(80),
-  chain: z.literal('base'),
+  /** Optional owner identity (wallet / OpenServ user / org id). */
+  ownerId: z.string().min(1).max(120).optional(),
+  /** Optional agent / spender identity this policy binds to. */
+  agentId: z.string().min(1).max(120).optional(),
+  chain: z.enum(['base', 'base-sepolia']).default('base'),
   currency: z.literal('USDC'),
   capital: z.object({
-    /** Soft ceiling for the agent wallet (informational). */
+    /**
+     * Hard lifetime ceiling for this policy ledger (enforced in engine.ts).
+     * Middleware-level — pair with wallet-native Spend Permissions for custody-grade caps.
+     */
     agentWalletBudgetUsd: z.number().nonnegative(),
     maxNotionalUsdPerDay: z.number().positive(),
     maxPerOrderUsd: z.number().positive(),
     maxTransactionsPerHour: z.number().int().positive().default(30),
+    /** Optional soft gas budget tracking (USD-equivalent estimate from intent.meta). */
+    maxGasUsdPerDay: z.number().nonnegative().optional(),
   }),
   universe: z.object({
     /** Empty = any token symbol allowed (still subject to address rules). */
@@ -20,12 +29,26 @@ export const MandatePolicySchema = z.object({
     /** If non-empty, destination must be on this list. */
     allowedAddresses: z.array(z.string()).default([]),
     deniedAddresses: z.array(z.string()).default([]),
+    /** Contract allow/deny for swaps / approvals (checked when intent.contractAddress set). */
+    allowedContracts: z.array(z.string()).default([]),
+    deniedContracts: z.array(z.string()).default([]),
+    /** If non-empty, intent.functionSelector must be on this list (4-byte selectors). */
+    allowedFunctionSelectors: z.array(z.string()).default([]),
+    deniedFunctionSelectors: z.array(z.string()).default([]),
   }),
   actions: z.object({
     allowSwap: z.boolean().default(true),
     allowTransfer: z.boolean().default(true),
     allowX402Pay: z.boolean().default(true),
   }),
+  risk: z
+    .object({
+      /** Max slippage in basis points for swap intents (deny if intent.slippageBps exceeds). */
+      maxSlippageBps: z.number().int().nonnegative().optional(),
+      /** When true, all spends deny immediately. */
+      emergencyStop: z.boolean().default(false),
+    })
+    .default({ emergencyStop: false }),
   escalation: z.object({
     requireHumanConfirmAboveUsd: z.number().nonnegative(),
   }),
@@ -40,8 +63,23 @@ export const SpendIntentSchema = z.object({
   symbol: z.string().optional(),
   /** Destination / router / payTo address when known. */
   toAddress: z.string().optional(),
+  /** Target contract (router, vault, etc.) when distinct from toAddress. */
+  contractAddress: z.string().optional(),
+  /** Requested slippage in bps for swaps. */
+  slippageBps: z.number().int().nonnegative().optional(),
+  /** Estimated gas cost in USD for daily gas cap checks. */
+  estimatedGasUsd: z.number().nonnegative().optional(),
+  /** 4-byte function selector, e.g. 0xa9059cbb (transfer). */
+  functionSelector: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{8}$/, 'functionSelector must be 0x + 8 hex chars')
+    .optional(),
+  /** keccak256 (or sha256) of intended calldata — binds allow-receipt to exact bytes. */
+  calldataHash: z.string().min(16).max(66).optional(),
   /** Free-text reason from the strategy agent. */
   reason: z.string().optional(),
+  /** Caller-supplied idempotency / correlation id. */
+  requestId: z.string().optional(),
 })
 
 export type SpendIntent = z.infer<typeof SpendIntentSchema>
@@ -51,6 +89,9 @@ export const SpendLedgerSchema = z.object({
   spentUsdToday: z.number().nonnegative().default(0),
   hourKey: z.string(), // YYYY-MM-DD-HH UTC
   txCountThisHour: z.number().int().nonnegative().default(0),
+  /** Cumulative spend under this policy (lifetime wallet budget). */
+  spentUsdLifetime: z.number().nonnegative().default(0),
+  gasUsdToday: z.number().nonnegative().default(0),
 })
 
 export type SpendLedger = z.infer<typeof SpendLedgerSchema>
@@ -60,6 +101,7 @@ export const EvaluationResultSchema = z.object({
   reasons: z.array(z.string()).min(1),
   policyName: z.string(),
   remainingDailyUsd: z.number(),
+  remainingLifetimeUsd: z.number().optional(),
   intent: SpendIntentSchema,
 })
 
@@ -97,6 +139,8 @@ export type DecisionExplanation = z.infer<typeof DecisionExplanationSchema>
 export const DEMO_POLICY: MandatePolicy = {
   version: '1.0',
   name: 'Base starter card',
+  ownerId: 'demo-owner',
+  agentId: 'demo-spender',
   chain: 'base',
   currency: 'USDC',
   capital: {
@@ -109,15 +153,21 @@ export const DEMO_POLICY: MandatePolicy = {
     allowedSymbols: ['USDC', 'ETH', 'WETH'],
     deniedSymbols: ['PEPE', 'RANDOM'],
     // Uniswap Universal Router on Base (example allowlist entry)
-    allowedAddresses: [
-      '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
-    ],
+    allowedAddresses: ['0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'],
     deniedAddresses: [],
+    allowedContracts: [],
+    deniedContracts: [],
+    allowedFunctionSelectors: [],
+    deniedFunctionSelectors: [],
   },
   actions: {
     allowSwap: true,
     allowTransfer: true,
     allowX402Pay: true,
+  },
+  risk: {
+    maxSlippageBps: 100,
+    emergencyStop: false,
   },
   escalation: {
     // Above this → escalate; still must be ≤ maxPerOrderUsd to not hard-deny

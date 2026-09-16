@@ -27,7 +27,7 @@ $40 a day but weekends can be higher. Only USDC and ETH, Uniswap ok.
 Ask me above $8. No memes. Also allow any address I guess? Wait no, only Uniswap.`
 
 async function main() {
-  console.log('=== SpendGate Policy Copilot ===\n')
+  console.log('=== AllowLatch Policy Copilot ===\n')
   console.log('1) draft_policy\n', MESSY_MANDATE, '\n')
 
   const { draft, meta: draftMeta } = await draftPolicyWithServ(MESSY_MANDATE)

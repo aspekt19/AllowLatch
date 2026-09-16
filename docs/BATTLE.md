@@ -1,12 +1,12 @@
-# SpendGate — real battle checklist
+# AllowLatch — real battle checklist
 
 ## What “real battle” means
 
 ```
 You (owner)
-  → SERV Reasoning compiles mandate into policy (SpendGate)
+  → SERV Reasoning compiles mandate into policy (AllowLatch)
 Spender (AgentKit wallet)
-  → before every spend calls SpendGate evaluate / gatedTransfer
+  → before every spend calls AllowLatch evaluate / gatedTransfer
   → only on ALLOW does AgentKit sign a Base USDC transfer
 ```
 
@@ -39,7 +39,7 @@ NETWORK_ID=base-sepolia
 # CDP_WALLET_ADDRESS=0x...
 # Your second wallet to receive test USDC (auto-allowlisted in battle)
 # BATTLE_DESTINATION_ADDRESS=0x...
-SPENDGATE_EXECUTE_MODE=live
+ALLOWLATCH_EXECUTE_MODE=live
 ```
 
 5. Fund the **spender** CDP wallet on **Base Sepolia** with:
@@ -62,7 +62,7 @@ Live (needs CDP + funds):
 npm run battle -- --live
 ```
 
-You should see Spender proposes → SpendGate ALLOW/DENY → EXECUTED or BLOCKED.
+You should see Spender proposes → AllowLatch ALLOW/DENY → EXECUTED or BLOCKED.
 
 ## 4. Safety
 

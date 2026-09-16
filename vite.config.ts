@@ -25,7 +25,7 @@ function readJson(req: Connect.IncomingMessage): Promise<unknown> {
 
 function copilotApiPlugin(): Plugin {
   return {
-    name: 'spendgate-copilot-api',
+    name: 'allowlatch-copilot-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.startsWith('/api/host-info') && req.method === 'GET') {

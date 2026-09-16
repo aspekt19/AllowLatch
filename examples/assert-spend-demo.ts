@@ -1,7 +1,7 @@
 /**
  * Paid remote gate demo.
  *
- *   SPENDGATE_TRIGGER_URL=... WALLET_PRIVATE_KEY=0x... npx tsx examples/assert-spend-demo.ts
+ *   ALLOWLATCH_TRIGGER_URL=... WALLET_PRIVATE_KEY=0x... npx tsx examples/assert-spend-demo.ts
  *
  * Discover triggerUrl via: npm run connect (prints webhook) or discoverServices().
  */
@@ -11,9 +11,9 @@ dotenv.config()
 import { assertSpend } from '../src/sdk/assert-spend.js'
 
 async function main() {
-  const triggerUrl = process.env.SPENDGATE_TRIGGER_URL?.trim()
+  const triggerUrl = process.env.ALLOWLATCH_TRIGGER_URL?.trim()
   if (!triggerUrl) {
-    console.error('Set SPENDGATE_TRIGGER_URL (discoverServices webhookUrl).')
+    console.error('Set ALLOWLATCH_TRIGGER_URL (discoverServices webhookUrl).')
     process.exit(1)
   }
   if (!process.env.WALLET_PRIVATE_KEY?.trim()) {

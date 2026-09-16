@@ -55,10 +55,19 @@ const scenarios: { title: string; intent: SpendIntent; commit?: boolean }[] = [
       reason: 'Oops wrong address',
     },
   },
+  {
+    title: 'Deny — would exceed lifetime wallet budget',
+    intent: {
+      action: 'transfer',
+      amountUsd: 15,
+      toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+      reason: 'Drain toward lifetime ceiling',
+    },
+  },
 ]
 
 function main() {
-  console.log('SpendGate offline demo')
+  console.log('AllowLatch offline demo')
   console.log('Policy:', DEMO_POLICY.name)
   console.log(JSON.stringify(DEMO_POLICY.capital, null, 2))
   console.log('---')
@@ -66,6 +75,10 @@ function main() {
   let ledger = freshLedger()
 
   for (const s of scenarios) {
+    if (s.title.includes('lifetime wallet budget')) {
+      // Simulate prior lifetime spend so $15 would breach the $200 ceiling.
+      ledger = { ...ledger, spentUsdLifetime: 190 }
+    }
     const result = evaluateIntent(DEMO_POLICY, s.intent, ledger)
     console.log(`\n▶ ${s.title}`)
     console.log(`  intent: ${s.intent.action} $${s.intent.amountUsd} ${s.intent.symbol ?? ''}`.trim())

@@ -1,6 +1,6 @@
 /**
  * Load an exported MandatePolicy JSON and gate a spend locally
- * (same engine as the SpendGate site / host).
+ * (same engine as the AllowLatch site / host).
  *
  *   npx tsx examples/gate-with-policy.ts path/to/mandate-policy.json
  *   npx tsx examples/gate-with-policy.ts path/to/mandate-policy.json 8 ETH

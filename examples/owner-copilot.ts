@@ -2,7 +2,7 @@
  * Owner-side Policy Copilot demo.
  *
  * Uses *your* SERV_API_KEY (one explicit OpenServ Reasoning console step).
- * Never sends that key to the SpendGate host.
+ * Never sends that key to the AllowLatch host.
  *
  *   npm run owner:copilot
  *   npm run owner:copilot -- "max $10/tx, $40/day, USDC+ETH, Uniswap, ask above $8"
@@ -28,7 +28,7 @@ async function main() {
     console.error(
       'Missing SERV_API_KEY.\n' +
         'One-time: create an OpenServ Reasoning key in the console and put it in this agent\'s .env.\n' +
-        'SpendGate host never stores your key.'
+        'AllowLatch host never stores your key.'
     )
     process.exit(1)
   }
@@ -57,7 +57,7 @@ async function main() {
   }
 
   console.log('Policy JSON:\n', JSON.stringify(draft.policy, null, 2), '\n')
-  console.log('--- Send this to SpendGate gate (x402), not your SERV key ---\n')
+  console.log('--- Send this to AllowLatch gate (x402), not your SERV key ---\n')
   console.log(gateApplyPrompt({ policy: draft.policy }))
   console.log(
     '\nThen: evaluate_intent / execute_gated_transfer on the host before any AgentKit spend.'

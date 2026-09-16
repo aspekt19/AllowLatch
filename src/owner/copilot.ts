@@ -2,7 +2,7 @@
  * Owner-side Policy Copilot.
  *
  * Runs on the *owner's* agent with the owner's SERV_API_KEY.
- * SpendGate host never stores or receives that key.
+ * AllowLatch host never stores or receives that key.
  *
  * Flow:
  *   1) draft / revise / explain here (SERV)
@@ -50,7 +50,7 @@ export async function ownerExplainDecision(args: {
   return explainDecisionWithServ(args)
 }
 
-/** Prompt for the keyless SpendGate gate: persist an accepted policy. */
+/** Prompt for the keyless AllowLatch gate: persist an accepted policy. */
 export function gateApplyPrompt(args: {
   policyId?: string
   policy: MandatePolicy

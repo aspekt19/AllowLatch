@@ -1,16 +1,16 @@
 {
-  "name": "SpendGate",
+  "name": "AllowLatch",
   "version": "0.1.0",
   "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Natural-language mandates → strict policy → ALLOW/DENY/ESCALATE before AgentKit. Non-custodial. End users need no API keys.",
-  "homepage": "https://spendgate.vercel.app",
-  "repository": "https://github.com/aspekt19/SpendGate",
-  "documentation": "https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md",
-  "product": "https://github.com/aspekt19/SpendGate/blob/main/docs/PRODUCT.md",
+  "homepage": "https://allowlatch.vercel.app",
+  "repository": "https://github.com/aspekt19/AllowLatch",
+  "documentation": "https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md",
+  "product": "https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md",
   "protocol": {
     "openserv": {
-      "agentName": "spendgate",
-      "workflowName": "SpendGate",
-      "discover": "PlatformClient.payments.discoverServices() — filter name SpendGate",
+      "agentName": "allowlatch",
+      "workflowName": "AllowLatch",
+      "discover": "PlatformClient.payments.discoverServices() — filter name AllowLatch",
       "invoke": "x402 payWorkflow with { prompt } — no end-user API keys"
     }
   },
@@ -42,7 +42,7 @@
   ],
   "invariants": [
     "Allow/deny/escalate is deterministic code — never LLM judgment",
-    "SpendGate does not custody user funds or private keys",
+    "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP — the host does; x402 pays the call"
   ],
   "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"]

@@ -1,5 +1,5 @@
 {
-  "name": "spendgate",
+  "name": "allowlatch",
   "version": "0.1.0",
   "description": "OpenServ agent: NL mandates → enforceable spend policy for Base AgentKit wallets",
   "main": "index.js",
@@ -10,6 +10,7 @@
     "ui:build": "vite build",
     "ui:preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/policy/engine.test.ts",
     "reasoning:ping": "tsx src/demo/reasoning-ping.ts",
     "reasoning:compile": "tsx src/demo/reasoning-compile.ts",
     "reasoning:cycle": "tsx src/demo/reasoning-cycle.ts",
@@ -20,7 +21,8 @@
     "gate:policy": "tsx examples/gate-with-policy.ts",
     "assert:spend": "tsx examples/assert-spend-demo.ts",
     "connect": "tsx examples/connect-as-agent.ts",
-    "owner:copilot": "tsx examples/owner-copilot.ts"
+    "owner:copilot": "tsx examples/owner-copilot.ts",
+    "http:gate": "tsx src/http/gate-server.ts"
   },
   "keywords": [],
   "author": "",
