@@ -13,6 +13,7 @@
     "reasoning:ping": "tsx src/demo/reasoning-ping.ts",
     "reasoning:compile": "tsx src/demo/reasoning-compile.ts",
     "reasoning:cycle": "tsx src/demo/reasoning-cycle.ts",
+    "reasoning:draft": "tsx src/demo/reasoning-draft.ts",
     "battle": "tsx src/spender/battle.ts"
   },
   "keywords": [],

@@ -65,6 +65,22 @@ export const EvaluationResultSchema = z.object({
 
 export type EvaluationResult = z.infer<typeof EvaluationResultSchema>
 
+/** Policy Copilot draft — policy plus judgment metadata (SERV). */
+export const PolicyDraftSchema = z.object({
+  policy: MandatePolicySchema,
+  /** Internal tensions or contradictions found in the mandate. */
+  conflicts: z.array(z.string()).default([]),
+  /** Defaults or interpretations applied where the mandate was silent/ambiguous. */
+  assumptions: z.array(z.string()).default([]),
+  /** Clarifying questions for the owner before applying the policy. */
+  questions: z.array(z.string()).default([]),
+  /** true when safe to apply without answering questions (conflicts may still warn). */
+  readyToApply: z.boolean(),
+  summary: z.string().min(1).max(400),
+})
+
+export type PolicyDraft = z.infer<typeof PolicyDraftSchema>
+
 /** Example starter policy for demos. */
 export const DEMO_POLICY: MandatePolicy = {
   version: '1.0',

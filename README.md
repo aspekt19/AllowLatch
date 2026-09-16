@@ -33,6 +33,7 @@ SpendGate does **not** custody user funds.
 ```bash
 npm install
 npm run reasoning:ping      # SERV Reasoning smoke test
+npm run reasoning:draft     # Policy Copilot: draft + conflicts/questions
 npm run reasoning:cycle     # Reasoning compile → allow/deny/escalate
 npm run battle              # Spender → SpendGate → AgentKit (dry-run without CDP)
 npm run ui                  # local dialog UI
@@ -40,6 +41,7 @@ npm run demo                # offline engine-only scenarios
 ```
 
 **Live UI:** https://spendgate.vercel.app  
+**Product definition:** [docs/PRODUCT.md](./docs/PRODUCT.md)  
 **Real battle (Spender + gate + AgentKit):** [docs/BATTLE.md](./docs/BATTLE.md)
 
 ### Dialog UI

@@ -12,33 +12,126 @@ dotenv.config()
 import { Agent, run } from '@openserv-labs/sdk'
 import { provision, triggers } from '@openserv-labs/client'
 import { z } from 'zod'
-import { SpendIntentSchema } from './policy/schema.js'
+import { MandatePolicySchema, SpendIntentSchema } from './policy/schema.js'
 import { evaluateIntent } from './policy/engine.js'
 import { PolicyStore } from './store/fs-store.js'
 import { gatedTransfer, resolveExecuteMode } from './executor/gated-executor.js'
-import { compileMandateWithServ } from './llm/compile-mandate.js'
+import {
+  compileMandateWithServ,
+  draftPolicyWithServ,
+  revisePolicyWithServ,
+} from './llm/compile-mandate.js'
 
 const store = new PolicyStore()
 
 const agent = new Agent({
-  systemPrompt: `You are SpendGate, a spending-policy agent for AI wallets on Base (Coinbase AgentKit).
+  systemPrompt: `You are SpendGate, Policy Copilot + spending turnstile for AI wallets on Base (Coinbase AgentKit).
 
-LLM brain: SERV Reasoning (console.openserv.ai / inference-api.openserv.ai).
+LLM brain: SERV Reasoning — draft/revise mandates, surface conflicts, explain policies.
 Policy decisions (allow/deny/escalate) are deterministic code — never invent overrides.
 
 Your job:
-1) Turn human risk mandates into strict JSON policies (USDC on Base) via SERV Reasoning.
-2) Evaluate proposed spends (swap / transfer / x402_pay) against that policy.
-3) Optionally execute USDC transfers via AgentKit ONLY after ALLOW.
-4) Explain allow / deny / escalate clearly.
+1) draft_policy / revise_mandate — help the owner shape a MandatePolicy (conflicts, assumptions, questions).
+2) apply_policy / compile_mandate — store a policy once the owner accepts it.
+3) evaluate_intent / execute_gated_transfer — gate spends; AgentKit only after ALLOW.
+4) Prefer draft_policy over silent compile when the mandate is ambiguous.
 
 You are the turnstile. Be conservative: when ambiguous, prefer deny or escalate.`,
 })
 
 agent.addCapability({
+  name: 'draft_policy',
+  description:
+    'Policy Copilot: draft a MandatePolicy from NL with conflicts, assumptions, and clarifying questions. Does NOT store until apply_policy.',
+  inputSchema: z.object({
+    mandateText: z.string().min(10),
+  }),
+  async run({ args }) {
+    const { draft, meta } = await draftPolicyWithServ(args.mandateText)
+    return JSON.stringify(
+      {
+        ok: true,
+        draft,
+        brain: 'SERV Reasoning (inference-api.openserv.ai)',
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          reasoningEffort: meta.reasoningEffort,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
+        note: draft.readyToApply
+          ? 'Ready to apply_policy if the owner accepts.'
+          : 'Answer questions / revise before apply_policy.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
+  name: 'revise_mandate',
+  description:
+    'Policy Copilot: revise a stored MandatePolicy from NL feedback; returns a new draft (conflicts/assumptions/questions). Does NOT store until apply_policy.',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    revisionText: z.string().min(3),
+  }),
+  async run({ args }) {
+    let current
+    try {
+      current = store.getPolicy(args.policyId)
+    } catch {
+      return JSON.stringify({ ok: false, error: `No policy stored for ${args.policyId}` })
+    }
+    const { draft, meta } = await revisePolicyWithServ({
+      currentPolicy: current,
+      revisionText: args.revisionText,
+    })
+    return JSON.stringify(
+      {
+        ok: true,
+        policyId: args.policyId,
+        draft,
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
+        note: 'Call apply_policy with draft.policy to persist.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
+  name: 'apply_policy',
+  description:
+    'Store a MandatePolicy JSON under policyId (usually draft.policy after owner review).',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    policy: z.record(z.unknown()),
+  }),
+  async run({ args }) {
+    const policy = MandatePolicySchema.parse(args.policy)
+    await store.setPolicy(args.policyId, policy)
+    return JSON.stringify({
+      ok: true,
+      policyId: args.policyId,
+      policy,
+      note: 'Stored. Call evaluate_intent or execute_gated_transfer before any Base spend.',
+    })
+  },
+})
+
+agent.addCapability({
   name: 'compile_mandate',
   description:
-    'Compile a natural-language spending mandate into a MandatePolicy JSON for Base/USDC and store it under policyId.',
+    'Compile NL mandate → MandatePolicy and store immediately (skips review). Prefer draft_policy + apply_policy for ambiguous mandates.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     mandateText: z.string().min(10),
