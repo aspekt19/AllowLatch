@@ -26,7 +26,8 @@ They must **never** be asked for `SERV_API_KEY`, `CDP_*`, or to edit `.env`.
 
 Reference: `examples/connect-as-agent.ts` · `docs/CONNECT.md`  
 Theater demo: `npm run wow`  
-Demo UI: https://spendgate.vercel.app
+Demo UI: https://spendgate.vercel.app  
+Embed exported policy in an agent: `docs/EMBED.md` · `examples/gate-with-policy.ts`
 
 ## Prompt recipes
 

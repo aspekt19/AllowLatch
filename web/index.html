@@ -98,9 +98,22 @@
               <p class="policy-name" id="policy-name"></p>
               <dl class="policy-grid" id="policy-grid"></dl>
             </div>
-            <button type="button" class="btn-clear-rules is-hidden" id="btn-clear-rules">
-              Clear rules
-            </button>
+            <div class="policy-actions is-hidden" id="policy-actions">
+              <button type="button" class="btn-policy-action" id="btn-download-policy">
+                Download JSON
+              </button>
+              <button type="button" class="btn-policy-action" id="btn-copy-policy">
+                Copy JSON
+              </button>
+              <button type="button" class="btn-clear-rules" id="btn-clear-rules">
+                Clear rules
+              </button>
+            </div>
+            <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
+              Export puts MandatePolicy JSON on your machine. Embed it in your agent and gate
+              every spend before signing —
+              <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">docs/EMBED.md</a>.
+            </p>
           </div>
 
           <div class="rail-block">

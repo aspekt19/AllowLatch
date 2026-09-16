@@ -47,7 +47,8 @@ await client.payments.payWorkflow({
 })
 ```
 
-See `examples/connect-as-agent.ts`. Full theater: `npm run wow`.
+See `examples/connect-as-agent.ts`. Full theater: `npm run wow`.  
+To run the same policy **inside** your agent (exported JSON): [EMBED.md](./EMBED.md).
 
 ## Demo UI
 

@@ -40,7 +40,11 @@ const form = document.querySelector<HTMLFormElement>('#composer')!
 const input = document.querySelector<HTMLTextAreaElement>('#input')!
 const btnExample = document.querySelector<HTMLButtonElement>('#btn-example')!
 const btnSend = document.querySelector<HTMLButtonElement>('#btn-send')!
+const policyActions = document.querySelector<HTMLDivElement>('#policy-actions')!
 const btnClearRules = document.querySelector<HTMLButtonElement>('#btn-clear-rules')!
+const btnDownloadPolicy = document.querySelector<HTMLButtonElement>('#btn-download-policy')!
+const btnCopyPolicy = document.querySelector<HTMLButtonElement>('#btn-copy-policy')!
+const policyExportHint = document.querySelector<HTMLParagraphElement>('#policy-export-hint')!
 const brainBadge = document.querySelector<HTMLSpanElement>('#brain-badge')
 
 let phase: Phase = 'mandate'
@@ -176,9 +180,15 @@ function addDecision(result: EvaluationResult) {
   addMessage('guard', lines.join('\n'), `decision ${result.decision}`)
 }
 
+function activePolicyJson(): MandatePolicy | null {
+  return policy ?? pendingDraft?.policy ?? null
+}
+
 function renderPolicy() {
-  const hasRules = Boolean(policy || pendingDraft)
-  btnClearRules.classList.toggle('is-hidden', !hasRules)
+  const exportable = activePolicyJson()
+  const hasRules = Boolean(exportable)
+  policyActions.classList.toggle('is-hidden', !hasRules)
+  policyExportHint.classList.toggle('is-hidden', !hasRules)
 
   if (!policy) {
     policyEmpty.classList.remove('is-hidden')
@@ -200,6 +210,37 @@ function renderPolicy() {
   policyStatus.classList.add('is-live')
   policyName.textContent = policy.name
   fillPolicyGrid(policy)
+}
+
+function downloadPolicyJson() {
+  const p = activePolicyJson()
+  if (!p) return
+  const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `spendgate-policy-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  addMessage(
+    'guard',
+    'Downloaded MandatePolicy JSON.\n\nPut it in your agent and run evaluateIntent before every sign. Guide: docs/EMBED.md — or examples/gate-with-policy.ts'
+  )
+}
+
+async function copyPolicyJson() {
+  const p = activePolicyJson()
+  if (!p) return
+  const text = JSON.stringify(p, null, 2)
+  try {
+    await navigator.clipboard.writeText(text)
+    addMessage(
+      'guard',
+      'MandatePolicy JSON copied.\n\nPaste into mandate-policy.json for your agent, then gate every spend before signing (docs/EMBED.md).'
+    )
+  } catch {
+    addMessage('guard', 'Clipboard blocked — use Download JSON instead.')
+  }
 }
 
 function clearRules() {
@@ -334,7 +375,7 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy applied. Gate is live — decisions are deterministic code, not the LLM.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nSpender may propose spends. AgentKit moves USDC only after ALLOW.`
+    `Policy applied. Gate is live — decisions are deterministic code, not the LLM.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nSpender may propose spends. AgentKit moves USDC only after ALLOW.\n\nTo use this on your own agent: Download JSON / Copy JSON → embed + evaluateIntent before every sign (docs/EMBED.md).`
   )
   setPhase('spend')
   addSpendChips()
@@ -595,6 +636,10 @@ btnExample.addEventListener('click', () => {
 })
 
 btnClearRules.addEventListener('click', () => clearRules())
+btnDownloadPolicy.addEventListener('click', () => downloadPolicyJson())
+btnCopyPolicy.addEventListener('click', () => {
+  void copyPolicyJson()
+})
 
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {

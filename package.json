@@ -17,6 +17,7 @@
     "reasoning:copilot": "tsx src/demo/reasoning-copilot.ts",
     "battle": "tsx src/spender/battle.ts",
     "wow": "tsx src/demo/wow.ts",
+    "gate:policy": "tsx examples/gate-with-policy.ts",
     "connect": "tsx examples/connect-as-agent.ts",
     "owner:copilot": "tsx examples/owner-copilot.ts"
   },
