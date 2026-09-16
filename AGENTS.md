@@ -49,6 +49,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 ```bash
 npm run demo
 npm run battle
+npm run reasoning:copilot
 npm run typecheck
 npm run ui:build
 ```
