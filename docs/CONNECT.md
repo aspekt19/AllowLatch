@@ -20,7 +20,7 @@ You → your agent → OpenServ x402 → SpendGate host
 ```
 
 - **You** never see `SERV_API_KEY` or `CDP_*`.
-- **Your agent** discovers SpendGate (`discoverServices` → name `SpendGate`) and pays a tiny x402 fee (~$0.01 demo) — that payment is how we attribute / bill usage.
+- **Your agent** discovers SpendGate (`discoverServices` → name `SpendGate`) and pays an x402 fee (~$0.10 per call) — that payment is how we attribute / bill usage.
 - **SpendGate host** runs with SERV (Policy Copilot) + optional CDP.
 
 ## Why SERV is on the host

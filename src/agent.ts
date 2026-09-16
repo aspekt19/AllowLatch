@@ -307,7 +307,7 @@ async function main() {
         name: 'SpendGate Gate',
         description:
           'Pay to draft/apply a mandate, evaluate a spend, explain a decision, or execute a gated USDC transfer on Base.',
-        price: '0.01',
+        price: '0.1',
         timeout: 600,
         input: {
           prompt: {
