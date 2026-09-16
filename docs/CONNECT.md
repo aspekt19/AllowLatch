@@ -20,7 +20,7 @@ You → your agent → OpenServ x402 → AllowLatch host
 ```
 
 - **You** never see `SERV_API_KEY` or `CDP_*`.
-- **Your agent** discovers AllowLatch (`discoverServices` → name `AllowLatch`) and pays an x402 fee (~$0.10 per call) — that payment is how we attribute / bill usage.
+- **Your agent** discovers AllowLatch (`discoverServices` → name `AllowLatch`) and pays an x402 fee (~$0.025 per call) — that payment is how we attribute / bill usage.
 - **AllowLatch host** runs with SERV (Policy Copilot) + optional CDP.
 - Execution requires an **allow-receipt** (`jti`); see [ARCHITECTURE.md](./ARCHITECTURE.md).
 - Framework-agnostic alternative: `npm run http:gate`.
@@ -50,7 +50,7 @@ await client.payments.payWorkflow({
 ```
 
 See `examples/connect-as-agent.ts`. Full theater: `npm run wow`.  
-**Monetization:** [MONETIZE.md](./MONETIZE.md) — enforcement is paid remote gate ($0.10), not free JSON.  
+**Monetization:** [MONETIZE.md](./MONETIZE.md) — enforcement is paid remote gate ($0.025), not free JSON.  
 Agent SDK: [EMBED.md](./EMBED.md) (`assertSpend` + allow-receipt).
 
 ## Demo UI

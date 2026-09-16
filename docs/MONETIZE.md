@@ -8,8 +8,8 @@
 |---------|-------|----------------|
 | Demo UI draft / local gate | Free | Try SERV (host key) + see ALLOW/DENY in-browser. Not bound to your agent. |
 | Demo JSON snapshot | Free, watermarked | `enforcement: "demo-only"` — **not** production. |
-| **x402 call** (draft / apply / evaluate / explain / execute) | **$0.10** | Hosted policy, SERV Copilot, deterministic gate, audit, allow-receipt. |
-| **Evaluate pack** (same x402 workflow, prepaid credits) | **$1.00 / 25 evaluates** | Operator sets `ALLOWLATCH_PACK_CREDITS`; each `evaluate_intent` burns 1 credit after the pack purchase prompt. Cuts per-check cost to **$0.04**. |
+| **x402 call** (draft / apply / evaluate / explain / execute) | **$0.025** | Hosted policy, SERV Copilot, deterministic gate, audit, allow-receipt. |
+| **Evaluate pack** (same x402 workflow, prepaid credits) | **$1.00 / 100 evaluates** | Operator sets `ALLOWLATCH_PACK_CREDITS`; each `evaluate_intent` burns 1 credit after the pack purchase prompt. Cuts per-check cost to **$0.01**. |
 
 ## Why agents pay
 
@@ -22,8 +22,8 @@ Free local `engine.ts` + JSON is a **teaser**. Production path: discover AllowLa
 
 ## Pricing notes
 
-- Flat **$0.10** per OpenServ x402 request remains the default MVP meter (simple for judges + agents).
-- For high-frequency micro-checks, use an **evaluate pack** ($1 / 25) so effective cost is ~$0.04 — see `ALLOWLATCH_PACK_CREDITS` / `buy_evaluate_pack` on the host.
+- Flat **$0.025** per OpenServ x402 request remains the default MVP meter (simple for judges + agents).
+- For high-frequency micro-checks, use an **evaluate pack** ($1 / 100) so effective cost is ~$0.01 — see `ALLOWLATCH_PACK_CREDITS` / `buy_evaluate_pack` on the host.
 - Later: monthly unlimited evaluate for a fixed USDC subscription.
 
 ## Payer identity

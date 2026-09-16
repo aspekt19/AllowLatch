@@ -218,7 +218,7 @@ function downloadPolicyJson() {
   const demoOnly = {
     enforcement: 'demo-only',
     warning:
-      'Not production. Pay AllowLatch ($0.10) to apply on the host; agents must evaluate_intent remotely before signing.',
+      'Not production. Pay AllowLatch ($0.025) to apply on the host; agents must evaluate_intent remotely before signing.',
     exportedAt: new Date().toISOString(),
     policy: p,
   }
@@ -231,7 +231,7 @@ function downloadPolicyJson() {
   URL.revokeObjectURL(url)
   addMessage(
     'guard',
-    'Downloaded a watermarked demo snapshot (not enforced).\n\nFor production: Enforce on AllowLatch ($0.10), then your agent must call evaluate_intent remotely — see docs/MONETIZE.md'
+    'Downloaded a watermarked demo snapshot (not enforced).\n\nFor production: Enforce on AllowLatch ($0.025), then your agent must call evaluate_intent remotely — see docs/MONETIZE.md'
   )
 }
 
@@ -275,7 +275,7 @@ async function enforceOnHost() {
   window.open(paywall, '_blank', 'noopener,noreferrer')
   addMessage(
     'guard',
-    'Opened AllowLatch paywall ($0.10). Paste the apply prompt (copied if clipboard allowed) and pay to host the policy.\n\nAfter that, agents must call evaluate_intent on AllowLatch before every spend — not a local JSON file.'
+    'Opened AllowLatch paywall ($0.025). Paste the apply prompt (copied if clipboard allowed) and pay to host the policy.\n\nAfter that, agents must call evaluate_intent on AllowLatch before every spend — not a local JSON file.'
   )
 }
 
@@ -411,7 +411,7 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click “Enforce on AllowLatch · $0.10”. Local demo snapshot is watermarked and not production.`
+    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click “Enforce on AllowLatch · $0.025”. Local demo snapshot is watermarked and not production.`
   )
   setPhase('spend')
   addSpendChips()

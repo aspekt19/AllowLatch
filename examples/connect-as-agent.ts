@@ -74,7 +74,7 @@ async function main() {
   } catch (err) {
     console.error('\nProgrammatic pay failed:', err instanceof Error ? err.message : err)
     console.error(
-      'Open the paywall in a browser (human pays ~$0.10), paste the same prompt, then retry.\n' +
+      'Open the paywall in a browser (human pays ~$0.025), paste the same prompt, then retry.\n' +
         (paywall ? `Paywall: ${paywall}\n` : '') +
         (triggerUrl ? `Trigger: ${triggerUrl}\n` : '') +
         'Host must stay running (`npm run dev`). No end-user SERV_API_KEY required.'

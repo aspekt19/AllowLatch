@@ -2,7 +2,7 @@
 
 Local JSON is **not** the product. Production path:
 
-1. Host must be running (`npm run dev`) with x402 price **$0.10** — or `npm run http:gate` for a framework-agnostic HTTP API
+1. Host must be running (`npm run dev`) with x402 price **$0.025** — or `npm run http:gate` for a framework-agnostic HTTP API
 2. Apply policy on the host (paywall / `payWorkflow` / `POST /v1/policies/:id`)
 3. Before **every** spend: `assertSpend` / `evaluate` → ALLOW + single-use **receipt** (`jti`) → pass receipt into `execute_gated_transfer` / `POST /v1/execute` → only then sign
 

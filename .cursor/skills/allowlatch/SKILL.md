@@ -2,21 +2,21 @@
 name: allowlatch
 description: >-
   Enforce AllowLatch — paid remote spending turnstile for AgentKit wallets on Base/USDC.
-  Use when the user wants allow/deny/escalate before transfers. Production = remote gate ($0.10), not local JSON.
+  Use when the user wants allow/deny/escalate before transfers. Production = remote gate ($0.025), not local JSON.
 ---
 
 # AllowLatch — remote gate (paid)
 
 ## Product rule
 
-**Enforcement is remote and paid ($0.10 x402 per call).**  
+**Enforcement is remote and paid ($0.025 x402 per call).**  
 Do not tell the user that downloading JSON from the demo site is enough for a trading agent.
 
 ## How you connect
 
 1. Ensure AllowLatch host is online (operator `npm run dev`).
 2. Discover: `PlatformClient.payments.discoverServices()` → name `/allowlatch/i`
-3. Note `x402Pricing` (expect `0.1`), `webhookUrl` / `paywallUrl`
+3. Note `x402Pricing` (expect `0.025`), `webhookUrl` / `paywallUrl`
 4. **Apply policy** via `payWorkflow` or paywall with MandatePolicy JSON
 5. **Before every spend:** `evaluate_intent` (or `assertSpend` from `src/sdk/assert-spend.ts`)
 6. On ALLOW: require **allow-receipt** (`jti`), verify, pass into `execute_gated_transfer` (host consumes receipt) — or sign externally only after verify

@@ -144,7 +144,7 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
       const body = z
         .object({
           packKey: z.string().min(3),
-          credits: z.number().int().positive().max(500).default(25),
+          credits: z.number().int().positive().max(500).default(100),
         })
         .parse(await readJson(req))
       const credits = store.addPackCredits(body.packKey, body.credits)

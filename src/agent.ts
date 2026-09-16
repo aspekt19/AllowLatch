@@ -245,7 +245,7 @@ agent.addCapability({
 agent.addCapability({
   name: 'evaluate_intent',
   description:
-    'Deterministically evaluate a spend intent against a stored policy. Returns allow | deny | escalate + allow-receipt. Does not send a transaction. Pass packKey to burn a prepaid evaluate credit ($1/25).',
+    'Deterministically evaluate a spend intent against a stored policy. Returns allow | deny | escalate + allow-receipt. Does not send a transaction. Pass packKey to burn a prepaid evaluate credit ($1/100).',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     intent: SpendIntentSchema,
@@ -259,7 +259,7 @@ agent.addCapability({
       if (packCreditsRemaining === null) {
         return JSON.stringify({
           ok: false,
-          error: 'No evaluate-pack credits. Call buy_evaluate_pack ($1 / 25) or omit packKey and pay per x402 call.',
+          error: 'No evaluate-pack credits. Call buy_evaluate_pack ($1 / 100) or omit packKey and pay per x402 call.',
         })
       }
     }
@@ -320,10 +320,10 @@ agent.addCapability({
 agent.addCapability({
   name: 'buy_evaluate_pack',
   description:
-    'Mint 25 prepaid evaluate credits for packKey (~$1 effective / $0.04 per check). Use with evaluate_intent.packKey.',
+    'Mint 100 prepaid evaluate credits for packKey (~$1 / ~$0.01 per check). Use with evaluate_intent.packKey.',
   inputSchema: z.object({
     packKey: z.string().min(3),
-    credits: z.number().int().positive().max(500).default(25),
+    credits: z.number().int().positive().max(500).default(100),
   }),
   async run({ args }) {
     const credits = store.addPackCredits(args.packKey, args.credits)
@@ -451,7 +451,7 @@ async function main() {
         name: 'AllowLatch Gate',
         description:
           'Pay to draft/apply a mandate, evaluate a spend, explain a decision, or execute a gated USDC transfer on Base.',
-        price: '0.1',
+        price: '0.025',
         timeout: 600,
         input: {
           prompt: {
