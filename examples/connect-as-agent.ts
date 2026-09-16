@@ -6,8 +6,19 @@
  *
  * Discovery is public. Paying the x402 call needs a funded OpenServ/client wallet
  * on the *caller* agent (the owner's agent), not SpendGate host secrets.
+ *
+ * discoverServices() may omit numeric workflowId — then we pay via webhookUrl / paywall.
  */
 import { PlatformClient } from '@openserv-labs/client'
+
+type Discovered = {
+  id?: string
+  name?: string
+  x402Pricing?: string
+  workflowId?: number
+  paywallUrl?: string
+  webhookUrl?: string
+}
 
 async function main() {
   const prompt =
@@ -16,10 +27,8 @@ async function main() {
 
   const client = new PlatformClient()
   console.log('Discovering OpenServ x402 services…')
-  const services = await client.payments.discoverServices()
-  const spendgate = services.find((s: { name?: string }) =>
-    /spendgate/i.test(String(s.name ?? ''))
-  )
+  const services = (await client.payments.discoverServices()) as Discovered[]
+  const spendgate = services.find((s) => /spendgate/i.test(String(s.name ?? '')))
 
   if (!spendgate) {
     console.error(
@@ -30,7 +39,7 @@ async function main() {
     )
     console.log(
       '\nKnown services (sample):',
-      services.slice(0, 8).map((s: { name?: string; x402Pricing?: string }) => ({
+      services.slice(0, 8).map((s) => ({
         name: s.name,
         price: s.x402Pricing,
       }))
@@ -38,29 +47,37 @@ async function main() {
     process.exit(1)
   }
 
-  console.log('Found:', spendgate.name, 'workflowId=', (spendgate as { workflowId?: number }).workflowId)
+  console.log('Found:', spendgate.name)
+  console.log('Price: $' + (spendgate.x402Pricing ?? '?'))
   console.log('Prompt:', prompt)
 
-  // payWorkflow requires caller credentials / wallet for x402 settlement.
-  // If this throws auth errors, the owner's agent should open the paywall URL instead.
-  try {
-    const workflowId = (spendgate as { workflowId?: number }).workflowId
-    if (!workflowId) throw new Error('Service has no workflowId')
+  const triggerUrl = spendgate.webhookUrl
+  const paywall = spendgate.paywallUrl
+  const workflowId = spendgate.workflowId
 
-    const result = await client.payments.payWorkflow({
-      workflowId,
-      input: { prompt },
-    })
+  try {
+    let result: unknown
+    if (workflowId) {
+      result = await client.payments.payWorkflow({
+        workflowId,
+        input: { prompt },
+      })
+    } else if (triggerUrl) {
+      result = await client.payments.payWorkflow({
+        triggerUrl,
+        input: { prompt },
+      })
+    } else {
+      throw new Error('Service has neither workflowId nor webhookUrl')
+    }
     console.log('\nSpendGate response:\n', JSON.stringify(result, null, 2))
   } catch (err) {
-    const paywall =
-      (spendgate as { paywallUrl?: string; webhookUrl?: string }).paywallUrl ||
-      (spendgate as { webhookUrl?: string }).webhookUrl
     console.error('\nProgrammatic pay failed:', err instanceof Error ? err.message : err)
     console.error(
-      'Have the human complete the OpenServ paywall, then retry.\n' +
-        (paywall ? `Paywall / trigger: ${paywall}\n` : '') +
-        'Still no end-user SERV_API_KEY required — host holds SERV.'
+      'Open the paywall in a browser (human pays ~$0.10), paste the same prompt, then retry.\n' +
+        (paywall ? `Paywall: ${paywall}\n` : '') +
+        (triggerUrl ? `Trigger: ${triggerUrl}\n` : '') +
+        'Host must stay running (`npm run dev`). No end-user SERV_API_KEY required.'
     )
     process.exit(1)
   }
