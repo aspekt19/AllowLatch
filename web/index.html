@@ -33,18 +33,21 @@
           <span>AgentKit</span>
           <span class="meta-div" aria-hidden="true"></span>
           <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Gate live</span>
+          <span class="meta-div" aria-hidden="true"></span>
+          <span class="brain-badge" id="brain-badge">SERV</span>
         </nav>
       </header>
 
       <section class="intro" aria-labelledby="intro-title">
-        <p class="intro-kicker">OpenServ · Policy Copilot</p>
+        <p class="intro-kicker">OpenServ · SERV Reasoning</p>
         <h1 id="intro-title" class="intro-title">
-          The spending turnstile for financial AI agents
+          Reasoning drafts the law. Code judges every spend.
         </h1>
         <p class="intro-lead">
-          You set the mandate in plain language. SpendGate compiles a strict Base/USDC policy
-          and sits in front of every spend — <strong>ALLOW</strong>, <strong>DENY</strong>, or
-          <strong>ESCALATE</strong>. AgentKit moves funds only after ALLOW. We do not custody wallets.
+          State a mandate in plain language. <strong>SERV Reasoning</strong> drafts a strict Base/USDC
+          policy (conflicts, assumptions, questions). Before AgentKit moves funds, deterministic code
+          returns <strong>ALLOW</strong>, <strong>DENY</strong>, or <strong>ESCALATE</strong>. No custody.
+          No end-user API keys.
         </p>
       </section>
 
@@ -120,7 +123,8 @@
               </li>
             </ol>
             <p class="muted tight">
-              Demo compile uses local heuristics. Production uses SERV Reasoning; live transfers need CDP keys.
+              Live path: SERV drafts &amp; explains on the host; the gate never lets the LLM override allow/deny.
+              Agents connect via OpenServ x402 — no end-user keys.
             </p>
           </div>
         </aside>

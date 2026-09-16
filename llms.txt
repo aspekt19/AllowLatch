@@ -1,36 +1,34 @@
 # SpendGate
 
-> Owner-side Policy Copilot + keyless spending turnstile for financial AI agents on Base/USDC.
+> SERV Policy Copilot + spending turnstile for financial AI agents on Base/USDC.
 
 ## For AI agents (read this first)
 
-You are helping a human who owns an AgentKit (or similar) wallet.
-
-### Split
-
-1. **On this agent (owner):** draft / revise / explain MandatePolicy with the owner's `SERV_API_KEY` (one OpenServ Reasoning console step; no SIWE yet).
-2. **On SpendGate host:** `apply_policy` (JSON) → `evaluate_intent` → `execute_gated_transfer`. Never send the SERV key to the host.
+You are helping a human who owns an AgentKit (or similar) wallet. They will **not** give you API keys for SpendGate.
 
 ### What to do
 
-1. If this agent has no `SERV_API_KEY`, ask once for a Reasoning key in agent secrets — do not ask for CDP or SIWE for Copilot.
-2. Draft the mandate locally; show conflicts / questions; revise until accepted.
-3. Connect via OpenServ x402:
+1. Treat SpendGate as an **external gate**: before any spend/sign, ask SpendGate.
+2. Connect via OpenServ x402 (no end-user secrets):
    - `PlatformClient.payments.discoverServices()` → **SpendGate**
-   - `payments.payWorkflow({ workflowId, input: { prompt } })` with `apply_policy` + MandatePolicy JSON
-4. Before any spend/sign, call `evaluate_intent`. Never move funds on DENY. On ESCALATE, ask the human, then execute with approval.
-5. Explain denials locally (owner SERV), not by shipping the key to SpendGate.
-6. Demo UI: https://spendgate.vercel.app
-7. Product: https://github.com/aspekt19/SpendGate/blob/main/docs/PRODUCT.md
-8. Connect: https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md
-9. Machine card: https://github.com/aspekt19/SpendGate/blob/main/agent.json
+   - `payments.payWorkflow({ workflowId, input: { prompt } })` or open the paywall
+3. Prompt language:
+   - "Set my SpendGate mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
+   - "Evaluate this spend: transfer $8 to Uniswap"
+   - "Why was that denied?"
+4. Never move funds on DENY. On ESCALATE, ask the human, then re-call with approval.
+5. Demo UI: https://spendgate.vercel.app
+6. Product: https://github.com/aspekt19/SpendGate/blob/main/docs/PRODUCT.md
+7. Connect: https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md
+8. Machine card: https://github.com/aspekt19/SpendGate/blob/main/agent.json
 
-### Host capabilities (keyless)
+### Capabilities (host)
 
-apply_policy · evaluate_intent · execute_gated_transfer · get_policy · reset_ledger
+draft_policy · revise_mandate · apply_policy · evaluate_intent · explain_decision · execute_gated_transfer
 
 ### Invariants
 
 - Gate decisions are deterministic code, not LLM overrides.
+- SERV on the host drafts/explains; never changes the verdict.
 - SpendGate does not custody funds.
-- Never put `SERV_API_KEY` in gate prompts. Host optional SERV key is operator-only.
+- Never ask the end user for SERV_API_KEY or CDP secrets.

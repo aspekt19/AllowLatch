@@ -138,6 +138,21 @@ body {
   display: inline-block;
 }
 
+.brain-badge {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brain-badge.is-live {
+  color: var(--ink);
+}
+
 .dot {
   width: 3px;
   height: 3px;

@@ -1,71 +1,65 @@
 # Connect to SpendGate (for humans & their agents)
 
-## Two sides
-
-| Side | What runs | Secrets |
-|------|-----------|---------|
-| **Owner agent** (yours) | Policy Copilot: draft / revise / explain | Your `SERV_API_KEY` — one explicit OpenServ Reasoning console step (no SIWE yet) |
-| **SpendGate host** (gate) | `apply_policy` · `evaluate_intent` · `execute_gated_transfer` | Host CDP only if live execute; **never** your SERV key |
-
-SpendGate does **not** store end-user Reasoning keys.
+You do **not** need API keys, `.env`, or CDP secrets.
 
 ## What you say to your agent
 
-> Connect to SpendGate. First draft my spending mandate with my Reasoning key, then enforce it on SpendGate:  
+> Connect to SpendGate on OpenServ. Set my spending mandate:  
 > Agent wallet $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap allowed. Ask me above $8. No meme coins.  
 > Before any spend, ask SpendGate. If it denies, stop. If it escalates, ask me.
+
+That’s the product.
 
 ## What happens behind the scenes
 
 ```
-You → your agent
-         ├─ SERV (your key) → draft / revise / explain MandatePolicy
-         └─ OpenServ x402 → SpendGate host
-                              ├─ apply_policy (JSON only)
-                              ├─ engine.ts allow/deny/escalate
-                              └─ AgentKit only after ALLOW (host CDP, if live)
+You → your agent → OpenServ x402 → SpendGate host
+                                      ├─ SERV drafts / revises / explains (host key)
+                                      ├─ engine.ts allow/deny/escalate (never LLM)
+                                      └─ AgentKit only after ALLOW (host CDP, if live)
 ```
 
-- **One explicit step:** create an OpenServ Reasoning key and give it to *your* agent (env / agent secrets). Not SIWE for now.
-- **SpendGate host** never sees that key. Our host `SERV_API_KEY` is only for our own / operator use.
-- **x402** (~$0.01 demo) pays the gate call; discovery needs no key.
+- **You** never see `SERV_API_KEY` or `CDP_*`.
+- **Your agent** discovers SpendGate (`discoverServices` → name `SpendGate`) and pays a tiny x402 fee (~$0.01 demo) — that payment is how we attribute / bill usage.
+- **SpendGate host** runs with SERV (Policy Copilot) + optional CDP.
+
+## Why SERV is on the host
+
+So the wow path is complete: messy mandate → conflicts → injection resisted → gate DENY/ALLOW → SERV explain. End users don’t configure Reasoning. Host credits are covered by x402 pricing (fixed fee MVP; metered later).
+
+Optional advanced: BYO Reasoning via `src/owner/copilot.ts` if an owner insists on their own key — not required.
 
 ## For agent builders
 
 ```ts
 import { PlatformClient } from '@openserv-labs/client'
-import { ownerDraftPolicy, gateApplyPrompt } from './src/owner/copilot.js'
 
-// 1) Owner-side Copilot (requires SERV_API_KEY in *this* process)
-const { draft } = await ownerDraftPolicy(
-  'max $10/tx, $40/day, USDC+ETH, Uniswap only, ask above $8'
-)
-// show draft.conflicts / questions to the human; revise if needed
-
-// 2) Keyless gate — send policy JSON only
 const client = new PlatformClient()
 const services = await client.payments.discoverServices()
 const spendgate = services.find((s) => /spendgate/i.test(s.name))
 
 await client.payments.payWorkflow({
   workflowId: spendgate.workflowId,
-  input: { prompt: gateApplyPrompt({ policy: draft.policy }) },
+  input: {
+    prompt:
+      'draft and apply mandate: max $10/tx, $40/day, USDC+ETH, Uniswap only, ask above $8',
+  },
 })
 ```
 
-See `examples/owner-copilot.ts` and `examples/connect-as-agent.ts`.
+See `examples/connect-as-agent.ts`. Full theater: `npm run wow`.
 
-## Demo without OpenServ
+## Demo UI
 
-Open https://spendgate.vercel.app — local Policy Copilot review UI (offline draft). Same gate idea; not the live skill path.
+https://spendgate.vercel.app — same story; live SERV when the host key is configured on the deploy.
 
-## Operators (SpendGate host)
+## Operators
 
 ```bash
-# Gate only — no SERV required for consumer traffic
+# Host .env — never give to end users
+SERV_API_KEY=...
 # optional live execute:
 # CDP_API_KEY_ID=...
 npm run dev
-
-# optional: SERV_API_KEY on the host unlocks operator Copilot for *our* use only
+npm run wow
 ```

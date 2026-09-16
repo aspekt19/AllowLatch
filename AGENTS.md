@@ -28,25 +28,24 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 
 Docs: https://docs.openserv.ai/serv-reasoning/
 
-- **Owner agent** — draft / revise / explain with the **owner’s** `SERV_API_KEY` via [`src/owner/copilot.ts`](./src/owner/copilot.ts). One console key step; no SIWE yet. Never send that key to the host.
-- **Host** — keyless gate: `apply_policy` / `evaluate_intent` / `execute_gated_transfer`. Optional host `SERV_API_KEY` only for operator self/dev Copilot.
-- **Deterministic gate** — allow/deny/escalate stays in `engine.ts` (never LLM)
-- Day-one defaults: small model, versioned system prompt, structured JSON + Zod, `reasoning_effort`, no tight `max_tokens`
-- Copilot extras: Multipath (`*-serv-multipath`), `serv_prompt_guard`, `serv_shadow_agent`
-- Env (owner or operator): `SERV_API_KEY`, optional `SERV_MODEL` / `SERV_COMPILE_MODEL` / `SERV_REASONING_EFFORT`
+- **Host Copilot** — draft / revise / explain with host `SERV_API_KEY` (product path). Multipath + `serv_prompt_guard` + `serv_shadow_agent`.
+- **Deterministic gate** — allow/deny/escalate stays in `engine.ts` (never LLM).
+- **Connect** — end users need no keys; x402 pays the call.
+- Optional BYO: [`src/owner/copilot.ts`](./src/owner/copilot.ts) if an owner wants their own Reasoning key.
+- Env: `SERV_API_KEY`, optional `SERV_MODEL` / `SERV_COMPILE_MODEL` / `SERV_REASONING_EFFORT`
 
-## Surfaces (do not conflate)
+## Surfaces
 
 | Surface | Role |
 |---------|------|
-| **Owner Copilot** (`npm run owner:copilot`) | SERV draft → gate `apply_policy` prompt |
-| **OpenServ host** (`npm run dev`) | Keyless gate (+ optional operator SERV) |
-| **Vite dialog UI** (`npm run ui`) | Demo UX; offline draft + same `engine.ts` |
+| **OpenServ host** (`npm run dev`) | Full product: SERV Copilot + gate + optional execute |
+| **WOW CLI** (`npm run wow`) | Theater: messy mandate → injection → gate → explain → AgentKit |
+| **Vite UI** (`npm run ui`) | Same story; `/api/copilot` → live SERV when key set |
 
 ## Runtime checklist
 
 1. Never commit `.env` / `.openserv.json` / CDP secrets.
-2. Never store end-user `SERV_API_KEY` on the SpendGate host.
+2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
 4. AgentKit signs only after ALLOW (or escalate + humanApproved).
 5. Product name is **SpendGate** (not MandateGuard).
@@ -55,8 +54,8 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 ```bash
 npm run demo
+npm run wow
 npm run battle
-npm run owner:copilot
 npm run typecheck
 npm run ui:build
 ```

@@ -1,5 +1,5 @@
 /**
- * Vercel UI-only install: skip AgentKit / OpenServ / CDP (heavy, unused by Vite UI).
+ * Vercel install for UI + /api/copilot (SERV). Skip heavy AgentKit / OpenServ SDK.
  */
 import { writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -12,6 +12,9 @@ writeFileSync(
       private: true,
       type: 'module',
       dependencies: {
+        '@vercel/node': '^5.3.26',
+        dotenv: '^17.4.2',
+        openai: '^7.15.0',
         vite: '^8.3.0',
         zod: '^3.25.67',
       },

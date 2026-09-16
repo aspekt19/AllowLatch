@@ -7,9 +7,11 @@ It is **not** a bank, not a custodian, and not an LLM that decides whether money
 It is a **Policy Copilot + hard turnstile**:
 
 1. The owner states and revises spending rules in natural language.
-2. **Owner-side** SERV Reasoning drafts the policy, surfaces conflicts, and explains denials (owner’s Reasoning key — one console step; no SIWE yet).
-3. **SpendGate host** stores MandatePolicy JSON and, before every spend, **deterministic code** returns allow / deny / escalate. Host never stores end-user SERV keys.
+2. **SERV Reasoning on the SpendGate host** drafts the policy, surfaces conflicts, resists prompt injection, and explains denials (Multipath · prompt_guard · shadow).
+3. Before every spend, **deterministic code** returns allow / deny / escalate — the LLM never overrides the verdict.
 4. AgentKit moves funds **only after ALLOW** (or escalate + explicit human approval).
+
+End users need **no API keys**. Agents connect via OpenServ x402; the host holds SERV (+ optional CDP).
 
 Live demo: https://spendgate.vercel.app  
 Repo: https://github.com/aspekt19/SpendGate
@@ -47,11 +49,9 @@ Out of scope: retail banking UX, and “any rules for any agents” outside fina
 ```
 Owner
   → describes / revises mandate (NL)
-Owner agent + SERV (owner’s key)
-  → draft policy, conflicts, assumptions, clarifying questions
-  → accepted MandatePolicy JSON
-SpendGate host (keyless gate)
-  → apply_policy → store JSON
+SpendGate Copilot (SERV on host)
+  → draft policy, conflicts, assumptions, questions (Multipath / guard / shadow)
+  → apply → MandatePolicy (JSON)
 Financial agent (Spender)
   → before spend: evaluate / execute_gated_transfer (x402)
 SpendGate Gate (code, no LLM)
@@ -62,13 +62,14 @@ AgentKit / CDP (host, if live)
 
 | Layer | Tech | Role |
 |-------|------|------|
-| Copilot | SERV on **owner agent** | Mandate, conflicts, explain, revise |
-| Gate | `src/policy/engine.ts` on host | Caps, symbols, addresses, velocity, escalate |
-| Execute | AgentKit / CDP on host | Transaction only after green light |
+| Copilot | SERV Reasoning (host) | Mandate, conflicts, injection resistance, explain |
+| Gate | `src/policy/engine.ts` | Caps, symbols, addresses, velocity, escalate |
+| Execute | AgentKit / CDP | Transaction only after green light |
+| Connect | OpenServ x402 | Discovery + payment (no end-user keys) |
 
-SpendGate does **not** hold user funds or end-user Reasoning keys. Host `SERV_API_KEY` is only for our operator/dev Copilot.
+SpendGate does **not** hold user funds. Host SERV credits are covered by x402 pricing.
 
-**Target UX:** skills on the user’s existing agent — one explicit Reasoning key step; not SIWE yet. The dialog UI is a demo surface.
+**Target UX:** skills on the user’s existing agent — zero secrets for the human. Dialog UI + `npm run wow` show the full story.
 
 ---
 
@@ -95,7 +96,7 @@ Chain focus: **Base**. Policy currency: **USDC**.
 
 ## One-line pitch
 
-> For a financial agent on Base: state rules in words → your agent drafts with your Reasoning key → SpendGate’s gate enforces them → without ALLOW, AgentKit does not move money.
+> For a financial agent on Base: state rules in words → SERV drafts and explains → without ALLOW, AgentKit does not move money.
 
 ---
 
@@ -104,17 +105,17 @@ Chain focus: **Base**. Policy currency: **USDC**.
 | Layer | Status |
 |-------|--------|
 | Deterministic gate | Done (`engine.ts`) |
-| Owner-side SERV draft / revise / explain | Done (`src/owner/copilot.ts`) |
-| Keyless host gate | Done (`apply_policy` / evaluate / execute) |
-| Operator host Copilot (optional SERV) | Done — self/dev only |
-| Demo UI Policy Copilot review | Done (offline draft) |
+| SERV draft / revise / explain on host | Done |
+| Live UI `/api/copilot` + injection chips | Done |
+| WOW theater CLI | Done (`npm run wow`) |
+| OpenServ x402 connect | Done |
 | Live CDP battle | Optional — see [BATTLE.md](./BATTLE.md) |
 
 Verify:
 
 ```bash
-npm run owner:copilot       # owner SERV draft → gate apply prompt
-npm run reasoning:copilot   # operator cycle when host SERV_API_KEY set
-npm run battle              # Spender → gate → AgentKit dry-run
-npm run ui                  # review flow in the browser
+npm run wow                 # SERV → injection → gate → explain → AgentKit
+npm run battle
+npm run ui
+npm run typecheck
 ```

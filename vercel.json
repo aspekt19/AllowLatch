@@ -3,5 +3,14 @@
   "framework": null,
   "installCommand": "node scripts/vercel-ui-install.mjs",
   "buildCommand": "npx vite build",
-  "outputDirectory": "web-dist"
+  "outputDirectory": "web-dist",
+  "functions": {
+    "api/copilot.ts": {
+      "maxDuration": 60,
+      "includeFiles": "src/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ]
 }

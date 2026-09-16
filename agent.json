@@ -1,7 +1,7 @@
 {
   "name": "SpendGate",
   "version": "0.1.0",
-  "description": "Keyless spending turnstile for financial AI agents on Base (USDC). Owners draft MandatePolicy with their own SERV key; SpendGate stores policy and gates every spend — ALLOW / DENY / ESCALATE. AgentKit signs only after ALLOW. Non-custodial; does not store end-user Reasoning keys.",
+  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Natural-language mandates → strict policy → ALLOW/DENY/ESCALATE before AgentKit. Non-custodial. End users need no API keys.",
   "homepage": "https://spendgate.vercel.app",
   "repository": "https://github.com/aspekt19/SpendGate",
   "documentation": "https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md",
@@ -11,41 +11,39 @@
       "agentName": "spendgate",
       "workflowName": "SpendGate",
       "discover": "PlatformClient.payments.discoverServices() — filter name SpendGate",
-      "invoke": "x402 payWorkflow with { prompt } — send MandatePolicy JSON; never SERV_API_KEY"
+      "invoke": "x402 payWorkflow with { prompt } — no end-user API keys"
     }
-  },
-  "ownerSide": {
-    "copilot": "src/owner/copilot.ts",
-    "requires": "Owner SERV_API_KEY (one OpenServ Reasoning console step; no SIWE yet)",
-    "skills": ["ownerDraftPolicy", "ownerRevisePolicy", "ownerExplainDecision"]
   },
   "skills": [
     {
+      "id": "draft_policy",
+      "description": "SERV: draft MandatePolicy with conflicts, assumptions, questions (Multipath, prompt_guard, shadow)."
+    },
+    {
+      "id": "revise_mandate",
+      "description": "SERV: revise policy from owner feedback."
+    },
+    {
       "id": "apply_policy",
-      "description": "Persist an accepted MandatePolicy JSON under a policyId. Keyless."
+      "description": "Persist an accepted MandatePolicy under a policyId."
     },
     {
       "id": "evaluate_intent",
-      "description": "Deterministic allow | deny | escalate for a proposed spend. No transaction."
+      "description": "Deterministic allow | deny | escalate. No transaction."
+    },
+    {
+      "id": "explain_decision",
+      "description": "SERV: explain a gate result; never overrides the verdict."
     },
     {
       "id": "execute_gated_transfer",
       "description": "Evaluate then AgentKit USDC transfer only on ALLOW (or escalate + humanApproved)."
-    },
-    {
-      "id": "get_policy",
-      "description": "Inspect stored policy + ledger."
-    },
-    {
-      "id": "draft_policy",
-      "description": "OPERATOR ONLY when host SERV_API_KEY is set — not the end-user path."
     }
   ],
   "invariants": [
     "Allow/deny/escalate is deterministic code — never LLM judgment",
     "SpendGate does not custody user funds or private keys",
-    "End-user SERV_API_KEY stays on the owner agent — host never stores it",
-    "Host SERV_API_KEY is optional and only for operator self/dev Copilot"
+    "End users do not configure SERV_API_KEY or CDP — the host does; x402 pays the call"
   ],
   "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"]
 }

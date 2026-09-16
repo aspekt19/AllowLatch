@@ -1,7 +1,7 @@
 {
   "name": "SpendGate",
   "version": "0.1.0",
-  "description": "Policy Copilot and spending turnstile for financial AI agents on Base (USDC). Owner states rules in natural language; SpendGate drafts policy and gates every spend — ALLOW / DENY / ESCALATE. AgentKit signs only after ALLOW. Non-custodial.",
+  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Natural-language mandates → strict policy → ALLOW/DENY/ESCALATE before AgentKit. Non-custodial. End users need no API keys.",
   "homepage": "https://spendgate.vercel.app",
   "repository": "https://github.com/aspekt19/SpendGate",
   "documentation": "https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md",
@@ -17,11 +17,11 @@
   "skills": [
     {
       "id": "draft_policy",
-      "description": "Draft a MandatePolicy from natural language with conflicts, assumptions, and questions. Does not store until apply."
+      "description": "SERV: draft MandatePolicy with conflicts, assumptions, questions (Multipath, prompt_guard, shadow)."
     },
     {
       "id": "revise_mandate",
-      "description": "Revise a stored policy from owner feedback; returns a new draft."
+      "description": "SERV: revise policy from owner feedback."
     },
     {
       "id": "apply_policy",
@@ -29,11 +29,11 @@
     },
     {
       "id": "evaluate_intent",
-      "description": "Deterministic allow | deny | escalate for a proposed spend. No transaction."
+      "description": "Deterministic allow | deny | escalate. No transaction."
     },
     {
       "id": "explain_decision",
-      "description": "Explain a gate result and suggest mandate edits. Never overrides the verdict."
+      "description": "SERV: explain a gate result; never overrides the verdict."
     },
     {
       "id": "execute_gated_transfer",
@@ -43,7 +43,7 @@
   "invariants": [
     "Allow/deny/escalate is deterministic code — never LLM judgment",
     "SpendGate does not custody user funds or private keys",
-    "End users do not configure SERV_API_KEY or CDP secrets — the host does"
+    "End users do not configure SERV_API_KEY or CDP — the host does; x402 pays the call"
   ],
   "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"]
 }

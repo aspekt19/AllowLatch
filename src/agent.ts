@@ -1,13 +1,14 @@
 /**
- * SpendGate — OpenServ agent (keyless gate host)
+ * SpendGate — OpenServ agent
  *
- * Consumer path: apply_policy + evaluate / execute. No SERV key required.
- * Owner-side agents draft/revise/explain with *their* SERV_API_KEY
- * (see src/owner/copilot.ts) and only send MandatePolicy JSON here.
+ * Product path (wow / production):
+ *   NL mandate → SERV Policy Copilot (host key) → MandatePolicy
+ *   → deterministic allow/deny/escalate → AgentKit only after ALLOW
  *
- * Operator path: if SERV_API_KEY is set on this host, optional Copilot
- * capabilities are registered for our own / dev use only — never for
- * storing end-user keys.
+ * End users and their agents never configure SERV_API_KEY or CDP.
+ * Host holds SERV (and optional CDP). Bill via x402 per call.
+ *
+ * Optional advanced: src/owner/copilot.ts if an owner wants BYO Reasoning.
  */
 
 import dotenv from 'dotenv'
@@ -28,32 +29,97 @@ import {
 import { explainDecisionWithServ } from './llm/explain-decision.js'
 
 const store = new PolicyStore()
-const operatorServEnabled = Boolean(process.env.SERV_API_KEY?.trim())
 
 const agent = new Agent({
-  systemPrompt: `You are SpendGate, the spending turnstile for AI wallets on Base (Coinbase AgentKit).
+  systemPrompt: `You are SpendGate — Policy Copilot + spending turnstile for AI wallets on Base (Coinbase AgentKit).
 
-Primary job (keyless gate):
-1) apply_policy — store MandatePolicy JSON the owner already drafted on their side.
-2) evaluate_intent — deterministic allow | deny | escalate (never invent overrides).
-3) execute_gated_transfer — AgentKit USDC only after ALLOW (or escalate + humanApproved).
-4) get_policy / reset_ledger — inspect / demo helpers.
+SERV Reasoning (this host) drafts, revises, and explains policies: Multipath, prompt guard, shadow agent.
+Allow / deny / escalate is ALWAYS deterministic code in the gate tools — never invent overrides.
 
-Do NOT ask callers for SERV_API_KEY or CDP secrets.
-If an external agent sends a raw NL mandate without policy JSON, tell them to draft on the owner agent (owner SERV key) and call apply_policy with the resulting MandatePolicy.
-${
-  operatorServEnabled
-    ? `\nOperator mode (host SERV_API_KEY present): draft_policy / revise_mandate / compile_mandate / explain_decision are available for the host operator only.`
-    : `\nCopilot (draft/revise/explain) is not on this host — owners run it with their own SERV key.`
-}
+Flow:
+1) draft_policy / revise_mandate — show conflicts, assumptions, questions.
+2) apply_policy — store when the owner accepts.
+3) evaluate_intent / execute_gated_transfer — gate spends; AgentKit only after ALLOW.
+4) explain_decision — after deny/escalate, explain without changing the verdict.
 
+Never ask callers for SERV_API_KEY or CDP secrets — this host holds them.
+Prefer draft_policy over silent compile when the mandate is ambiguous.
 Be conservative: when ambiguous, prefer deny or escalate.`,
 })
 
 agent.addCapability({
-  name: 'apply_policy',
+  name: 'draft_policy',
   description:
-    'Store a MandatePolicy JSON under policyId (owner-side draft after review). Keyless — no SERV.',
+    'Policy Copilot (SERV): draft a MandatePolicy from NL with conflicts, assumptions, and clarifying questions. Does NOT store until apply_policy.',
+  inputSchema: z.object({
+    mandateText: z.string().min(10),
+  }),
+  async run({ args }) {
+    const { draft, meta } = await draftPolicyWithServ(args.mandateText)
+    return JSON.stringify(
+      {
+        ok: true,
+        draft,
+        brain: 'SERV Reasoning',
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          reasoningEffort: meta.reasoningEffort,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+          features: ['multipath', 'serv_prompt_guard', 'serv_shadow_agent'],
+        },
+        note: draft.readyToApply
+          ? 'Ready to apply_policy if the owner accepts.'
+          : 'Answer questions / revise before apply_policy.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
+  name: 'revise_mandate',
+  description:
+    'Policy Copilot (SERV): revise a stored MandatePolicy from NL feedback. Does NOT store until apply_policy.',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    revisionText: z.string().min(3),
+  }),
+  async run({ args }) {
+    let current
+    try {
+      current = store.getPolicy(args.policyId)
+    } catch {
+      return JSON.stringify({ ok: false, error: `No policy stored for ${args.policyId}` })
+    }
+    const { draft, meta } = await revisePolicyWithServ({
+      currentPolicy: current,
+      revisionText: args.revisionText,
+    })
+    return JSON.stringify(
+      {
+        ok: true,
+        policyId: args.policyId,
+        draft,
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
+        note: 'Call apply_policy with draft.policy to persist.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
+  name: 'apply_policy',
+  description: 'Store a MandatePolicy JSON under policyId (usually draft.policy after owner review).',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     policy: z.record(z.unknown()),
@@ -71,6 +137,38 @@ agent.addCapability({
 })
 
 agent.addCapability({
+  name: 'compile_mandate',
+  description:
+    'Compile NL mandate → MandatePolicy and store immediately (skips review). Prefer draft_policy + apply_policy when ambiguous.',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    mandateText: z.string().min(10),
+  }),
+  async run({ args }) {
+    const { policy, meta } = await compileMandateWithServ(args.mandateText)
+    await store.setPolicy(args.policyId, policy)
+    return JSON.stringify(
+      {
+        ok: true,
+        policyId: args.policyId,
+        policy,
+        brain: 'SERV Reasoning',
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          reasoningEffort: meta.reasoningEffort,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
+        note: 'Policy stored. Call evaluate_intent or execute_gated_transfer before any Base spend.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
   name: 'get_policy',
   description: 'Return the stored MandatePolicy for a policyId.',
   inputSchema: z.object({
@@ -83,7 +181,6 @@ agent.addCapability({
         policy: store.getPolicy(args.policyId),
         ledger: store.getLedger(args.policyId),
         executeMode: resolveExecuteMode(),
-        operatorServ: operatorServEnabled,
       },
       null,
       2
@@ -103,7 +200,6 @@ agent.addCapability({
     const policy = store.getPolicy(args.policyId)
     const ledger = store.getLedger(args.policyId)
     const result = evaluateIntent(policy, args.intent, ledger)
-
     return JSON.stringify(
       {
         ...result,
@@ -113,7 +209,39 @@ agent.addCapability({
             ? 'Call execute_gated_transfer to move USDC via AgentKit (or dry-run).'
             : result.decision === 'escalate'
               ? 'Wait for human confirmation, then execute_gated_transfer with humanApproved=true.'
-              : 'Do NOT sign. Explain on the owner agent (owner SERV key), or revise policy and apply_policy again.',
+              : 'Do NOT sign. Optionally call explain_decision, or revise_mandate / fix intent.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
+  name: 'explain_decision',
+  description:
+    'Policy Copilot (SERV): explain a gate result and suggest mandate edits. Never overrides the verdict.',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    intent: SpendIntentSchema,
+  }),
+  async run({ args }) {
+    const policy = store.getPolicy(args.policyId)
+    const ledger = store.getLedger(args.policyId)
+    const evaluation = evaluateIntent(policy, args.intent, ledger)
+    const { explanation, meta } = await explainDecisionWithServ({ policy, evaluation })
+    return JSON.stringify(
+      {
+        ok: true,
+        evaluation,
+        explanation,
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
+        note: 'Verdict unchanged. Use revise_mandate + apply_policy if the owner wants different rules.',
       },
       null,
       2
@@ -156,159 +284,29 @@ agent.addCapability({
   },
 })
 
-if (operatorServEnabled) {
-  agent.addCapability({
-    name: 'draft_policy',
-    description:
-      'OPERATOR ONLY: draft MandatePolicy via host SERV_API_KEY. End-user agents should draft on their side.',
-    inputSchema: z.object({
-      mandateText: z.string().min(10),
-    }),
-    async run({ args }) {
-      const { draft, meta } = await draftPolicyWithServ(args.mandateText)
-      return JSON.stringify(
-        {
-          ok: true,
-          draft,
-          brain: 'SERV Reasoning (host operator key)',
-          serv: {
-            model: meta.model,
-            promptVersion: meta.promptVersion,
-            reasoningEffort: meta.reasoningEffort,
-            latencyMs: meta.latencyMs,
-            usage: meta.usage,
-          },
-          note: draft.readyToApply
-            ? 'Ready to apply_policy if the operator accepts.'
-            : 'Answer questions / revise before apply_policy.',
-        },
-        null,
-        2
-      )
-    },
-  })
-
-  agent.addCapability({
-    name: 'revise_mandate',
-    description:
-      'OPERATOR ONLY: revise stored policy via host SERV. End users revise on their agent.',
-    inputSchema: z.object({
-      policyId: z.string().default('default'),
-      revisionText: z.string().min(3),
-    }),
-    async run({ args }) {
-      let current
-      try {
-        current = store.getPolicy(args.policyId)
-      } catch {
-        return JSON.stringify({ ok: false, error: `No policy stored for ${args.policyId}` })
-      }
-      const { draft, meta } = await revisePolicyWithServ({
-        currentPolicy: current,
-        revisionText: args.revisionText,
-      })
-      return JSON.stringify(
-        {
-          ok: true,
-          policyId: args.policyId,
-          draft,
-          serv: {
-            model: meta.model,
-            promptVersion: meta.promptVersion,
-            latencyMs: meta.latencyMs,
-            usage: meta.usage,
-          },
-          note: 'Call apply_policy with draft.policy to persist.',
-        },
-        null,
-        2
-      )
-    },
-  })
-
-  agent.addCapability({
-    name: 'compile_mandate',
-    description:
-      'OPERATOR ONLY: NL → MandatePolicy and store immediately (skips review). Prefer owner-side draft for end users.',
-    inputSchema: z.object({
-      policyId: z.string().default('default'),
-      mandateText: z.string().min(10),
-    }),
-    async run({ args }) {
-      const { policy, meta } = await compileMandateWithServ(args.mandateText)
-      await store.setPolicy(args.policyId, policy)
-
-      return JSON.stringify(
-        {
-          ok: true,
-          policyId: args.policyId,
-          policy,
-          brain: 'SERV Reasoning (host operator key)',
-          serv: {
-            model: meta.model,
-            promptVersion: meta.promptVersion,
-            reasoningEffort: meta.reasoningEffort,
-            latencyMs: meta.latencyMs,
-            usage: meta.usage,
-          },
-          note: 'Policy stored. Call evaluate_intent or execute_gated_transfer before any Base spend.',
-        },
-        null,
-        2
-      )
-    },
-  })
-
-  agent.addCapability({
-    name: 'explain_decision',
-    description:
-      'OPERATOR ONLY: explain a gate result via host SERV. End users explain on their agent.',
-    inputSchema: z.object({
-      policyId: z.string().default('default'),
-      intent: SpendIntentSchema,
-    }),
-    async run({ args }) {
-      const policy = store.getPolicy(args.policyId)
-      const ledger = store.getLedger(args.policyId)
-      const evaluation = evaluateIntent(policy, args.intent, ledger)
-      const { explanation, meta } = await explainDecisionWithServ({ policy, evaluation })
-      return JSON.stringify(
-        {
-          ok: true,
-          evaluation,
-          explanation,
-          serv: {
-            model: meta.model,
-            promptVersion: meta.promptVersion,
-            latencyMs: meta.latencyMs,
-            usage: meta.usage,
-          },
-          note: 'Verdict unchanged. Owner revises on their agent, then apply_policy.',
-        },
-        null,
-        2
-      )
-    },
-  })
-}
-
 async function main() {
   await store.init()
+
+  if (!process.env.SERV_API_KEY?.trim()) {
+    console.warn(
+      '[spendgate] SERV_API_KEY missing — draft/revise/explain will fail until set. Gate evaluate still works.'
+    )
+  }
 
   const result = await provision({
     agent: {
       instance: agent,
       name: 'spendgate',
       description:
-        'Keyless spending turnstile for AgentKit wallets on Base/USDC. Owners draft policy with their own SERV key; this host only stores MandatePolicy JSON and allow/deny/escalates. Optional AgentKit execute after ALLOW.',
+        'Policy Copilot + spending turnstile for AgentKit wallets on Base/USDC. SERV drafts mandates; deterministic gate allow/deny/escalates; AgentKit only after ALLOW. Connect via x402 — no end-user API keys.',
     },
     workflow: {
       name: 'SpendGate',
-      goal: 'Let any financial AI agent connect without giving SpendGate their SERV key: receive an owner-drafted MandatePolicy via apply_policy, deterministically evaluate each proposed spend as allow deny or escalate, and only allow Coinbase AgentKit to move funds after ALLOW or human-approved escalation. Host CDP secrets stay with the operator; owner SERV keys stay on the owner agent.',
+      goal: 'Let any financial AI agent connect without end-user API keys: SERV Reasoning drafts and revises natural-language spending mandates into strict Base USDC policies with conflicts and questions, then a deterministic gate evaluates each proposed spend as allow deny or escalate, explains denials via SERV, and only allows Coinbase AgentKit to move funds after ALLOW or human-approved escalation.',
       trigger: triggers.x402({
         name: 'SpendGate Gate',
         description:
-          'Pay to apply a MandatePolicy JSON, evaluate a spend, or execute a gated USDC transfer on Base.',
+          'Pay to draft/apply a mandate, evaluate a spend, explain a decision, or execute a gated USDC transfer on Base.',
         price: '0.01',
         timeout: 600,
         input: {
@@ -316,24 +314,22 @@ async function main() {
             type: 'string',
             title: 'Request',
             description:
-              'Prefer: apply_policy with MandatePolicy JSON; evaluate_intent; or execute_gated_transfer after ALLOW. Include policyId if not default. Do not send SERV_API_KEY.',
+              'Natural language: set/revise a mandate, evaluate a spend, explain a deny, or execute after ALLOW. Include policyId if not default. No API keys required.',
           },
         },
       }),
       task: {
         description:
-          'You are the SpendGate gate for an external agent. Expect apply_policy with MandatePolicy JSON (drafted on the owner agent with the owner SERV key). Use evaluate_intent before any move; execute_gated_transfer only after ALLOW or escalate+humanApproved. Never invent allow/deny — always call the deterministic tools. Never ask for or accept SERV_API_KEY. If they only send NL without policy JSON, tell them to draft on their side first.',
+          'You are SpendGate for an external agent. Prefer draft_policy then apply_policy for mandates; use evaluate_intent before any move; use explain_decision after deny/escalate; use execute_gated_transfer only after ALLOW or escalate+humanApproved. Never invent allow/deny — always call the deterministic tools. Never ask the end user for SERV_API_KEY or CDP secrets.',
       },
     },
   })
 
-  console.log('SpendGate provisioned (keyless gate)')
+  console.log('SpendGate provisioned')
   console.log(`  agentId:      ${result.agentId}`)
   console.log(`  workflowId:   ${result.workflowId}`)
   console.log(`  executeMode:  ${resolveExecuteMode()}`)
-  console.log(
-    `  operatorServ: ${operatorServEnabled ? 'on (host key for self/dev)' : 'off (gate only)'}`
-  )
+  console.log(`  serv:         ${process.env.SERV_API_KEY?.trim() ? 'ready' : 'MISSING'}`)
   if (result.paywallUrl) console.log(`  paywall:      ${result.paywallUrl}`)
 
   await run(agent)
