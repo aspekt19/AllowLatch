@@ -18,6 +18,10 @@ writeFileSync(
         vite: '^8.3.0',
         zod: '^3.25.67',
       },
+      devDependencies: {
+        '@types/node': '^22.15.0',
+        typescript: '^5.9.3',
+      },
     },
     null,
     2
