@@ -29,6 +29,7 @@ import {
 import { explainDecisionWithServ } from './llm/explain-decision.js'
 import { logUsage } from './billing/usage-log.js'
 import { issueAllowReceipt } from './billing/receipt.js'
+import { syncSpendPermission, resolveEnforcementMode } from './wallet/spend-permissions.js'
 
 const store = new PolicyStore()
 
@@ -138,6 +139,13 @@ agent.addCapability({
       ownerId: args.ownerId ?? (args.policy as { ownerId?: string }).ownerId,
     })
     await store.setPolicy(args.policyId, policy, args.ownerId ?? policy.ownerId)
+    const walletNative = await syncSpendPermission({ policy })
+    store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
+    await store.audit({
+      type: 'wallet.binding',
+      policyId: args.policyId,
+      payload: { status: walletNative.status, mode: walletNative.mode },
+    })
     await logUsage({
       at: new Date().toISOString(),
       capability: 'apply_policy',
@@ -148,7 +156,9 @@ agent.addCapability({
       policyId: args.policyId,
       ownerId: policy.ownerId,
       policy,
-      note: 'Stored on host (SQLite). Agents must call evaluate_intent then execute with allow-receipt — local JSON is not enforcement.',
+      walletNative,
+      enforcement: resolveEnforcementMode(),
+      note: 'Stored on host (SQLite). Agents must call evaluate_intent then execute with allow-receipt. Wallet-native Spend Permission mirrored when ALLOWLATCH_SMART_ACCOUNT + CDP are set.',
     })
   },
 })
@@ -164,11 +174,15 @@ agent.addCapability({
   async run({ args }) {
     const { policy, meta } = await compileMandateWithServ(args.mandateText)
     await store.setPolicy(args.policyId, policy)
+    const walletNative = await syncSpendPermission({ policy })
+    store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
     return JSON.stringify(
       {
         ok: true,
         policyId: args.policyId,
         policy,
+        walletNative,
+        enforcement: resolveEnforcementMode(),
         brain: 'SERV Reasoning',
         serv: {
           model: meta.model,
@@ -197,11 +211,34 @@ agent.addCapability({
         policyId: args.policyId,
         policy: store.getPolicy(args.policyId),
         ledger: store.getLedger(args.policyId),
+        walletNative: store.getWalletBinding(args.policyId),
+        enforcement: resolveEnforcementMode(),
         executeMode: resolveExecuteMode(),
       },
       null,
       2
     )
+  },
+})
+
+agent.addCapability({
+  name: 'sync_wallet_permissions',
+  description:
+    'Mirror MandatePolicy daily USDC cap into a Coinbase Spend Permission on ALLOWLATCH_SMART_ACCOUNT (wallet-native enforcement).',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    dryRun: z.boolean().default(false),
+  }),
+  async run({ args }) {
+    const policy = store.getPolicy(args.policyId)
+    const walletNative = await syncSpendPermission({ policy, dryRun: args.dryRun })
+    store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
+    await store.audit({
+      type: 'wallet.binding',
+      policyId: args.policyId,
+      payload: { status: walletNative.status, mode: walletNative.mode, dryRun: args.dryRun },
+    })
+    return JSON.stringify({ ok: true, policyId: args.policyId, walletNative }, null, 2)
   },
 })
 

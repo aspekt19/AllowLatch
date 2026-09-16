@@ -6,6 +6,7 @@
 import {
   AgentKit,
   CdpEvmWalletProvider,
+  cdpEvmWalletActionProvider,
   erc20ActionProvider,
   walletActionProvider,
 } from '@coinbase/agentkit'
@@ -18,6 +19,10 @@ import {
   verifyAllowReceipt,
   type AllowReceipt,
 } from '../billing/receipt.js'
+import {
+  requiresSyncedPermission,
+  resolveEnforcementMode,
+} from '../wallet/spend-permissions.js'
 
 /** USDC on Base mainnet */
 export const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const
@@ -35,10 +40,7 @@ type KitBundle = {
 let kitBundle: Promise<KitBundle> | null = null
 
 export function resolveExecuteMode(): ExecuteMode {
-  const forced =
-    process.env.ALLOWLATCH_EXECUTE_MODE ||
-    process.env.SPENDGATE_EXECUTE_MODE || // deprecated env
-    process.env.MANDATEGUARD_EXECUTE_MODE // deprecated env
+  const forced = process.env.ALLOWLATCH_EXECUTE_MODE
   if (forced === 'dry-run' || forced === 'live') return forced
   const hasCdp =
     !!process.env.CDP_API_KEY_ID &&
@@ -65,7 +67,11 @@ async function getKitBundle(): Promise<KitBundle> {
       })
       const kit = await AgentKit.from({
         walletProvider,
-        actionProviders: [walletActionProvider(), erc20ActionProvider()],
+        actionProviders: [
+          walletActionProvider(),
+          erc20ActionProvider(),
+          cdpEvmWalletActionProvider(),
+        ],
       })
       return { kit, walletAddress: walletProvider.getAddress(), networkId }
     })()
@@ -268,8 +274,55 @@ export async function gatedTransfer(
       return dry
     }
 
+    const enforcement = resolveEnforcementMode()
+    const binding = store.getWalletBinding(input.policyId)
+    if (requiresSyncedPermission() && binding?.status !== 'synced') {
+      return {
+        mode,
+        evaluation,
+        executed: false,
+        receiptConsumed: true,
+        message:
+          'wallet_native enforcement requires a synced Spend Permission. Call sync_wallet_permissions / apply_policy with ALLOWLATCH_SMART_ACCOUNT + CDP credentials.',
+        requestId,
+      }
+    }
+
     const { kit, walletAddress, networkId } = await getKitBundle()
     const tokenAddress = usdcAddressForNetwork(networkId)
+    const smartAccount = process.env.ALLOWLATCH_SMART_ACCOUNT?.trim()
+
+    // Hybrid / wallet_native: pull USDC via Spend Permission into the AgentKit wallet, then transfer.
+    if (
+      (enforcement === 'hybrid' || enforcement === 'wallet_native') &&
+      smartAccount &&
+      binding?.status === 'synced'
+    ) {
+      const usePerm = kit.getActions().find((a) => a.name === 'use_spend_permission')
+      if (usePerm) {
+        await usePerm.invoke({
+          smartAccountAddress: smartAccount,
+          value: String(input.intent.amountUsd),
+          network: networkId.includes('sepolia') ? 'base-sepolia' : 'base',
+        })
+        await store.audit({
+          type: 'wallet.spend_permission_used',
+          policyId: input.policyId,
+          requestId,
+          payload: { smartAccount, amountUsd: input.intent.amountUsd },
+        })
+      } else if (enforcement === 'wallet_native') {
+        return {
+          mode,
+          evaluation,
+          executed: false,
+          receiptConsumed: true,
+          message: 'use_spend_permission action unavailable on this AgentKit wallet provider.',
+          requestId,
+        }
+      }
+    }
+
     const transfer = kit.getActions().find((a) => a.name === 'transfer')
     if (!transfer) {
       throw new Error('AgentKit transfer action not available')
@@ -279,7 +332,12 @@ export async function gatedTransfer(
       type: 'tx.submitted',
       policyId: input.policyId,
       requestId,
-      payload: { amountUsd: input.intent.amountUsd, to: input.intent.toAddress, walletAddress },
+      payload: {
+        amountUsd: input.intent.amountUsd,
+        to: input.intent.toAddress,
+        walletAddress,
+        enforcement,
+      },
     })
 
     const result = await transfer.invoke({
@@ -295,7 +353,7 @@ export async function gatedTransfer(
       type: 'tx.confirmed',
       policyId: input.policyId,
       requestId,
-      payload: { txHash, walletAddress, amountUsd: input.intent.amountUsd },
+      payload: { txHash, walletAddress, amountUsd: input.intent.amountUsd, enforcement },
     })
 
     const live: GatedTransferResult = {

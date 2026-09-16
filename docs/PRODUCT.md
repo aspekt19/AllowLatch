@@ -83,7 +83,7 @@ AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 p
 
 Chain focus: **Base**. Policy currency: **USDC**.
 
-Honest scope: AllowLatch is middleware authorization (+ receipt). Wallet-native Spend Permissions are roadmap — see [WALLET_NATIVE.md](./WALLET_NATIVE.md) and [ARCHITECTURE.md](./ARCHITECTURE.md).
+Honest scope: AllowLatch is middleware authorization (+ receipt) **and** can mirror daily USDC caps into Coinbase Spend Permissions (`ALLOWLATCH_ENFORCEMENT=hybrid|wallet_native`). See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 
 ---
 
@@ -114,7 +114,7 @@ Honest scope: AllowLatch is middleware authorization (+ receipt). Wallet-native 
 | Live UI `/api/copilot` + injection chips | Done |
 | WOW theater CLI | Done (`npm run wow`) |
 | OpenServ x402 connect | Done |
-| Wallet-native Spend Permissions | Roadmap — [WALLET_NATIVE.md](./WALLET_NATIVE.md) |
+| Wallet-native Spend Permissions | Done (hybrid/wallet_native via CDP) — [WALLET_NATIVE.md](./WALLET_NATIVE.md) |
 | Live CDP battle | Optional — see [BATTLE.md](./BATTLE.md) |
 
 Verify:

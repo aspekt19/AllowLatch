@@ -143,3 +143,16 @@ describe('allow-receipt', () => {
     assert.equal(hashAction(a), hashAction(b))
   })
 })
+
+describe('wallet-native plan', () => {
+  it('plans a daily USDC spend permission from policy caps', async () => {
+    process.env.ALLOWLATCH_ENFORCEMENT = 'hybrid'
+    process.env.ALLOWLATCH_SMART_ACCOUNT = '0x1111111111111111111111111111111111111111'
+    process.env.CDP_WALLET_ADDRESS = '0x2222222222222222222222222222222222222222'
+    const { planSpendPermission } = await import('../wallet/spend-permissions.js')
+    const plan = planSpendPermission({ policy: DEMO_POLICY })
+    assert.equal(plan.status, 'planned')
+    assert.equal(plan.periodSeconds, 86_400)
+    assert.ok(BigInt(plan.allowanceAtomic) > 0n)
+  })
+})

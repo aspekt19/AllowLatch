@@ -17,10 +17,16 @@ import { freshLedger } from '../policy/engine.js'
 const DATA_DIR = path.resolve(process.cwd(), 'data')
 const DB_PATH = (() => {
   const preferred = path.join(DATA_DIR, 'allowlatch.sqlite')
-  const legacy = path.join(DATA_DIR, 'spendgate.sqlite')
-  if (!existsSync(preferred) && existsSync(legacy)) return legacy
+  const legacyNames = ['legacy-store.sqlite', 'spendgate.sqlite']
+  if (!existsSync(preferred)) {
+    for (const name of legacyNames) {
+      const candidate = path.join(DATA_DIR, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
   return preferred
 })()
+
 
 export type AuditEvent = {
   id: string
@@ -69,6 +75,11 @@ function openDb(): DatabaseSync {
     CREATE TABLE IF NOT EXISTS evaluate_packs (
       pack_key TEXT PRIMARY KEY,
       credits INTEGER NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS wallet_bindings (
+      policy_id TEXT PRIMARY KEY,
+      json TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
   `)
@@ -286,6 +297,24 @@ export class PolicyStore {
       )
       .run(packKey, next, new Date().toISOString())
     return next
+  }
+
+  setWalletBinding(policyId: string, binding: Record<string, unknown>) {
+    this.assertReady()
+    this.db
+      .prepare(
+        'INSERT OR REPLACE INTO wallet_bindings (policy_id, json, updated_at) VALUES (?, ?, ?)'
+      )
+      .run(policyId, JSON.stringify(binding), new Date().toISOString())
+  }
+
+  getWalletBinding(policyId: string): Record<string, unknown> | null {
+    this.assertReady()
+    const row = this.db
+      .prepare('SELECT json FROM wallet_bindings WHERE policy_id = ?')
+      .get(policyId) as { json: string } | undefined
+    if (!row) return null
+    return JSON.parse(row.json) as Record<string, unknown>
   }
 
   async audit(event: Omit<AuditEvent, 'id' | 'at'> & { id?: string; at?: string }) {

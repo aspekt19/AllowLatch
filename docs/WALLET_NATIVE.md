@@ -1,31 +1,45 @@
-# Wallet-native enforcement (roadmap)
+# Wallet-native enforcement
 
-AllowLatch today is **middleware authorization**:
+AllowLatch combines two layers:
 
 ```text
-Agent → AllowLatch → AgentKit → wallet
+NL mandate → engine.ts (ALLOW + receipt) → AgentKit
+                    ↕ mirrored
+         Coinbase Spend Permission (on-chain daily USDC cap)
 ```
 
-If the same wallet can sign through another path, the middleware ledger cannot see it.
+## Modes (`ALLOWLATCH_ENFORCEMENT`)
 
-## Target pairing
+| Mode | Behavior |
+|------|----------|
+| `middleware` | Receipt gate only (default if no smart account). |
+| `hybrid` | Receipt gate **and** mirror daily cap via CDP Spend Permission when `ALLOWLATCH_SMART_ACCOUNT` is set (default if smart account env present). |
+| `wallet_native` | Live execute **refuses** unless Spend Permission status is `synced`; pulls via `use_spend_permission` then transfers. |
 
-Keep AllowLatch for NL → policy → receipt → audit, and **mirror critical caps** into wallet-native controls:
+## Setup
 
-| Cap | Middleware (now) | Wallet-native (next) |
-|-----|------------------|----------------------|
-| Per-tx / daily USDC | `engine.ts` + SQLite ledger | Coinbase [Spend Permissions](https://docs.cdp.coinbase.com/wallets/using-wallets/spend-permissions) / Circle agent policies |
-| Recipient allowlist | address lists | permission `spender` / allowlist on smart account |
-| Emergency stop | `risk.emergencyStop` | revoke permission / pause account |
+```bash
+# Owner smart account that holds USDC and grants the permission
+ALLOWLATCH_SMART_ACCOUNT=0x...
+# Spender = AgentKit / CDP wallet (CDP_WALLET_ADDRESS)
+CDP_API_KEY_ID=...
+CDP_API_KEY_SECRET=...
+CDP_WALLET_SECRET=...
+CDP_WALLET_ADDRESS=0x...   # spender
+ALLOWLATCH_ENFORCEMENT=hybrid   # or wallet_native
+NETWORK_ID=base-sepolia
+```
 
-## Integration sketch (not wired in v1)
+On `apply_policy` / `compile_mandate` / `sync_wallet_permissions`, AllowLatch calls CDP `createSpendPermission` with:
 
-1. On `apply_policy`, optionally call CDP to create/update a Spend Permission that matches `maxPerOrderUsd` / period / token.
-2. On `execute_gated_transfer`, AgentKit uses a session key that can only spend under that permission.
-3. Reconciliation job compares on-chain transfers vs SQLite ledger.
+- token: USDC  
+- allowance: `maxNotionalUsdPerDay`  
+- period: 1 day  
+- spender: CDP wallet  
 
-Until that lands, pitch AllowLatch honestly as:
+## What this does / does not
 
-> transaction authorization + allow-receipt layer for AgentKit / HTTP agents on Base
+- **Does:** hard on-chain ceiling so even a bypass of the HTTP/OpenServ gate cannot pull more than the daily USDC allowance through that spender permission.
+- **Does not:** replace recipient allowlists / escalate on-chain (those stay in `engine.ts` + receipt). Pair both.
 
-—not as a cryptographically sealed wallet vault.
+Capability: `sync_wallet_permissions` · stored under `wallet_bindings` in SQLite.
