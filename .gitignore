@@ -6,6 +6,7 @@ web-dist/
 *.log
 .DS_Store
 data/*.json
+data/*.jsonl
 .vercel
 .env*
 .env.local

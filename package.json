@@ -18,6 +18,7 @@
     "battle": "tsx src/spender/battle.ts",
     "wow": "tsx src/demo/wow.ts",
     "gate:policy": "tsx examples/gate-with-policy.ts",
+    "assert:spend": "tsx examples/assert-spend-demo.ts",
     "connect": "tsx examples/connect-as-agent.ts",
     "owner:copilot": "tsx examples/owner-copilot.ts"
   },

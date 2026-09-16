@@ -27,6 +27,8 @@ import {
   revisePolicyWithServ,
 } from './llm/compile-mandate.js'
 import { explainDecisionWithServ } from './llm/explain-decision.js'
+import { logUsage } from './billing/usage-log.js'
+import { issueAllowReceipt } from './billing/receipt.js'
 
 const store = new PolicyStore()
 
@@ -56,6 +58,11 @@ agent.addCapability({
   }),
   async run({ args }) {
     const { draft, meta } = await draftPolicyWithServ(args.mandateText)
+    await logUsage({
+      at: new Date().toISOString(),
+      capability: 'draft_policy',
+      meta: { model: meta.model, tokens: meta.usage?.totalTokens },
+    })
     return JSON.stringify(
       {
         ok: true,
@@ -127,11 +134,16 @@ agent.addCapability({
   async run({ args }) {
     const policy = MandatePolicySchema.parse(args.policy)
     await store.setPolicy(args.policyId, policy)
+    await logUsage({
+      at: new Date().toISOString(),
+      capability: 'apply_policy',
+      policyId: args.policyId,
+    })
     return JSON.stringify({
       ok: true,
       policyId: args.policyId,
       policy,
-      note: 'Stored. Call evaluate_intent or execute_gated_transfer before any Base spend.',
+      note: 'Stored on host. Agents must call evaluate_intent ($0.10 x402) before any spend — local JSON is not enforcement.',
     })
   },
 })
@@ -200,13 +212,35 @@ agent.addCapability({
     const policy = store.getPolicy(args.policyId)
     const ledger = store.getLedger(args.policyId)
     const result = evaluateIntent(policy, args.intent, ledger)
+    const receipt = (() => {
+      try {
+        return issueAllowReceipt({
+          policyId: args.policyId,
+          policy,
+          intent: args.intent,
+          evaluation: result,
+        })
+      } catch {
+        return null
+      }
+    })()
+    await logUsage({
+      at: new Date().toISOString(),
+      capability: 'evaluate_intent',
+      policyId: args.policyId,
+      decision: result.decision,
+    })
     return JSON.stringify(
       {
         ...result,
         ledger,
+        receipt,
+        receiptNote: receipt
+          ? 'Short-lived allow-receipt. Agent must verify and sign only while valid; do not use local JSON instead.'
+          : undefined,
         executionHint:
           result.decision === 'allow'
-            ? 'Call execute_gated_transfer to move USDC via AgentKit (or dry-run).'
+            ? 'Verify receipt, then execute_gated_transfer (or your AgentKit sign).'
             : result.decision === 'escalate'
               ? 'Wait for human confirmation, then execute_gated_transfer with humanApproved=true.'
               : 'Do NOT sign. Optionally call explain_decision, or revise_mandate / fix intent.',
@@ -263,6 +297,12 @@ agent.addCapability({
       policyId: args.policyId,
       intent: args.intent,
       humanApproved: args.humanApproved,
+    })
+    await logUsage({
+      at: new Date().toISOString(),
+      capability: 'execute_gated_transfer',
+      policyId: args.policyId,
+      decision: (result as { evaluation?: { decision?: string } }).evaluation?.decision,
     })
     return JSON.stringify(result, null, 2)
   },
@@ -330,7 +370,12 @@ async function main() {
   console.log(`  workflowId:   ${result.workflowId}`)
   console.log(`  executeMode:  ${resolveExecuteMode()}`)
   console.log(`  serv:         ${process.env.SERV_API_KEY?.trim() ? 'ready' : 'MISSING'}`)
-  if (result.paywallUrl) console.log(`  paywall:      ${result.paywallUrl}`)
+  if (result.paywallUrl) {
+    console.log(`  paywall:      ${result.paywallUrl}`)
+    console.log(
+      '  tip: set SPENDGATE_PAYWALL_URL to this value for the demo UI “Enforce” button (Vercel/.env)'
+    )
+  }
 
   await run(agent)
 }

@@ -41,9 +41,9 @@ const input = document.querySelector<HTMLTextAreaElement>('#input')!
 const btnExample = document.querySelector<HTMLButtonElement>('#btn-example')!
 const btnSend = document.querySelector<HTMLButtonElement>('#btn-send')!
 const policyActions = document.querySelector<HTMLDivElement>('#policy-actions')!
-const btnClearRules = document.querySelector<HTMLButtonElement>('#btn-clear-rules')!
 const btnDownloadPolicy = document.querySelector<HTMLButtonElement>('#btn-download-policy')!
-const btnCopyPolicy = document.querySelector<HTMLButtonElement>('#btn-copy-policy')!
+const btnEnforceHost = document.querySelector<HTMLButtonElement>('#btn-enforce-host')!
+const btnClearRules = document.querySelector<HTMLButtonElement>('#btn-clear-rules')!
 const policyExportHint = document.querySelector<HTMLParagraphElement>('#policy-export-hint')!
 const brainBadge = document.querySelector<HTMLSpanElement>('#brain-badge')
 
@@ -215,32 +215,68 @@ function renderPolicy() {
 function downloadPolicyJson() {
   const p = activePolicyJson()
   if (!p) return
-  const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' })
+  const demoOnly = {
+    enforcement: 'demo-only',
+    warning:
+      'Not production. Pay SpendGate ($0.10) to apply on the host; agents must evaluate_intent remotely before signing.',
+    exportedAt: new Date().toISOString(),
+    policy: p,
+  }
+  const blob = new Blob([JSON.stringify(demoOnly, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `spendgate-policy-${Date.now()}.json`
+  a.download = `spendgate-demo-only-${Date.now()}.json`
   a.click()
   URL.revokeObjectURL(url)
   addMessage(
     'guard',
-    'Downloaded MandatePolicy JSON.\n\nPut it in your agent and run evaluateIntent before every sign. Guide: docs/EMBED.md — or examples/gate-with-policy.ts'
+    'Downloaded a watermarked demo snapshot (not enforced).\n\nFor production: Enforce on SpendGate ($0.10), then your agent must call evaluate_intent remotely — see docs/MONETIZE.md'
   )
 }
 
-async function copyPolicyJson() {
+async function enforceOnHost() {
   const p = activePolicyJson()
   if (!p) return
-  const text = JSON.stringify(p, null, 2)
+  const prompt = [
+    'apply_policy for policyId=default',
+    'Store this MandatePolicy JSON exactly, then confirm it is hosted:',
+    JSON.stringify(p),
+  ].join('\n')
+
+  let paywall: string | null = null
   try {
-    await navigator.clipboard.writeText(text)
+    const info = await fetch('/api/host-info').then((r) => r.json())
+    paywall = info.paywallUrl || null
+  } catch {
+    /* ignore */
+  }
+
+  if (!paywall) {
     addMessage(
       'guard',
-      'MandatePolicy JSON copied.\n\nPaste into mandate-policy.json for your agent, then gate every spend before signing (docs/EMBED.md).'
+      'Set SPENDGATE_PAYWALL_URL on the deploy (OpenServ paywall from `npm run dev` logs), then retry Enforce.\n\nMeanwhile copy this prompt into the paywall manually:\n\n' +
+        prompt
     )
-  } catch {
-    addMessage('guard', 'Clipboard blocked — use Download JSON instead.')
+    try {
+      await navigator.clipboard.writeText(prompt)
+      addMessage('guard', 'Apply prompt copied to clipboard.')
+    } catch {
+      /* ignore */
+    }
+    return
   }
+
+  try {
+    await navigator.clipboard.writeText(prompt)
+  } catch {
+    /* ignore */
+  }
+  window.open(paywall, '_blank', 'noopener,noreferrer')
+  addMessage(
+    'guard',
+    'Opened SpendGate paywall ($0.10). Paste the apply prompt (copied if clipboard allowed) and pay to host the policy.\n\nAfter that, agents must call evaluate_intent on SpendGate before every spend — not a local JSON file.'
+  )
 }
 
 function clearRules() {
@@ -375,7 +411,7 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy applied. Gate is live — decisions are deterministic code, not the LLM.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nSpender may propose spends. AgentKit moves USDC only after ALLOW.\n\nTo use this on your own agent: Download JSON / Copy JSON → embed + evaluateIntent before every sign (docs/EMBED.md).`
+    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click “Enforce on SpendGate · $0.10”. Local demo snapshot is watermarked and not production.`
   )
   setPhase('spend')
   addSpendChips()
@@ -637,8 +673,8 @@ btnExample.addEventListener('click', () => {
 
 btnClearRules.addEventListener('click', () => clearRules())
 btnDownloadPolicy.addEventListener('click', () => downloadPolicyJson())
-btnCopyPolicy.addEventListener('click', () => {
-  void copyPolicyJson()
+btnEnforceHost.addEventListener('click', () => {
+  void enforceOnHost()
 })
 
 input.addEventListener('keydown', (e) => {

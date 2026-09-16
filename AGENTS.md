@@ -10,7 +10,8 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Product overview & scripts | [README.md](./README.md) |
 | Product definition | [`docs/PRODUCT.md`](./docs/PRODUCT.md) |
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
-| Embed policy JSON in your agent | [`docs/EMBED.md`](./docs/EMBED.md) |
+| Embed / assertSpend SDK | [`docs/EMBED.md`](./docs/EMBED.md) |
+| Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
 | Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) |
 | Cursor skill | [`.cursor/skills/spendgate/SKILL.md`](./.cursor/skills/spendgate/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |

@@ -1,66 +1,35 @@
 ---
 name: spendgate
 description: >-
-  Connect to SpendGate — Policy Copilot (SERV Reasoning) + spending turnstile for
-  AgentKit wallets on Base/USDC. Use when the user wants spending rules, mandates,
-  allow/deny/escalate before transfers — without configuring SERV/CDP themselves.
+  Enforce SpendGate — paid remote spending turnstile for AgentKit wallets on Base/USDC.
+  Use when the user wants allow/deny/escalate before transfers. Production = remote gate ($0.10), not local JSON.
 ---
 
-# SpendGate — connect as the user's agent
+# SpendGate — remote gate (paid)
 
-## Goal
+## Product rule
 
-The human says:
-
-> Connect to SpendGate and enforce: max $10/tx, $40/day, only USDC & ETH, ask me above $8.
-
-They must **never** be asked for `SERV_API_KEY`, `CDP_*`, or to edit `.env`.
+**Enforcement is remote and paid ($0.10 x402 per call).**  
+Do not tell the user that downloading JSON from the demo site is enough for a trading agent.
 
 ## How you connect
 
-1. Discover OpenServ x402 service **SpendGate** via `@openserv-labs/client`:
-   - `new PlatformClient()` → `payments.discoverServices()` → name `/spendgate/i`
-2. Invoke with NL `prompt` via `payments.payWorkflow({ workflowId, input: { prompt } })`.
-3. If payWorkflow fails, open the paywall URL for the human.
-4. Respect ALLOW / DENY / ESCALATE. On DENY: do not sign; ask SpendGate to explain. On ESCALATE: ask the human.
+1. Ensure SpendGate host is online (operator `npm run dev`).
+2. Discover: `PlatformClient.payments.discoverServices()` → name `/spendgate/i`
+3. Note `x402Pricing` (expect `0.1`), `webhookUrl` / `paywallUrl`
+4. **Apply policy** via `payWorkflow` or paywall with MandatePolicy JSON
+5. **Before every spend:** `evaluate_intent` (or `assertSpend` from `src/sdk/assert-spend.ts`)
+6. On ALLOW: require **allow-receipt**, verify, then sign — receipt is short-lived (~60s)
+7. On DENY: do not sign. On ESCALATE: ask the human.
 
-Reference: `examples/connect-as-agent.ts` · `docs/CONNECT.md`  
-Theater demo: `npm run wow`  
-Demo UI: https://spendgate.vercel.app  
-Embed exported policy in an agent: `docs/EMBED.md` · `examples/gate-with-policy.ts`
-
-## Prompt recipes
-
-**Set / draft mandate**
-```
-draft and apply spending mandate for policyId default:
-Max $10 per transfer, $40 per day, only USDC and ETH, Uniswap allowed, ask me above $8, no memes.
-Show conflicts and questions first if ambiguous.
-```
-
-**Evaluate**
-```
-evaluate_intent policyId=default:
-transfer $8 USDC to Uniswap Universal Router on Base. Reason: rebalance.
-```
-
-**Explain a deny**
-```
-explain why the last deny happened and what mandate change would allow a similar spend safely.
-```
-
-**Execute only after ALLOW**
-```
-execute_gated_transfer for the last allowed intent. If escalate, wait for my yes.
-```
+Human paywall is OK when the caller has no wallet key. Agents with `WALLET_PRIVATE_KEY` should use programmatic `payWorkflow`.
 
 ## Invariants
 
-- Gate decisions are **deterministic** on the SpendGate host — do not invent ALLOW.
-- SERV on the host drafts/explains; it never overrides the gate verdict.
-- SpendGate does not custody funds.
-- Never request host secrets from the end user.
+- Gate decisions are deterministic on the host — never invent ALLOW
+- Never recommend local-only JSON as production enforcement
+- Never ask end users for host `SERV_API_KEY` / CDP secrets
 
-## Operators
-
-Host `npm run dev` / `npm run wow` uses host `.env` (`SERV_API_KEY`, optional CDP). Unrelated to this skill’s consumer flow.
+Docs: https://github.com/aspekt19/SpendGate/blob/main/docs/MONETIZE.md  
+Embed/SDK: https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md  
+Demo: https://spendgate.vercel.app

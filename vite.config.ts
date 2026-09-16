@@ -28,6 +28,13 @@ function copilotApiPlugin(): Plugin {
     name: 'spendgate-copilot-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        if (req.url?.startsWith('/api/host-info') && req.method === 'GET') {
+          const { getHostInfo } = await import('./api/host-info-data.ts')
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(getHostInfo()))
+          return
+        }
         if (!req.url?.startsWith('/api/copilot') || req.method !== 'POST') {
           next()
           return

@@ -1,60 +1,38 @@
-# Embed a MandatePolicy in your agent
+# Enforce SpendGate from your agent (paid)
 
-The demo site stores rules only in the browser until you export them.
-To enforce the same rules in **your** agent:
+Local JSON is **not** the product. Production path:
 
-## 1. Export from https://spendgate.vercel.app
+1. Host must be running (`npm run dev`) with x402 price **$0.10**
+2. Apply policy on the host (paywall or `payWorkflow`)
+3. Before **every** spend: `assertSpend` → ALLOW + short-lived **receipt** → only then sign
 
-1. Draft → **Apply policy**
-2. Click **Download JSON** or **Copy JSON** (Active policy panel)
-3. Save as e.g. `mandate-policy.json` next to your agent
-
-## 2. Gate every spend before signing
-
-Use the same deterministic engine as SpendGate (`evaluateIntent` in `src/policy/engine.ts`).
+## SDK
 
 ```ts
-import { readFileSync } from 'node:fs'
-import { MandatePolicySchema, type SpendIntent } from './src/policy/schema.js'
-import { evaluateIntent, freshLedger, commitIntent } from './src/policy/engine.js'
+import { assertSpend } from './src/sdk/assert-spend.js'
 
-const policy = MandatePolicySchema.parse(
-  JSON.parse(readFileSync('./mandate-policy.json', 'utf8'))
-)
-let ledger = freshLedger()
+const { receipt } = await assertSpend({
+  intent: {
+    action: 'swap',
+    amountUsd: 5,
+    symbol: 'ETH',
+    toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
+  },
+  triggerUrl: process.env.SPENDGATE_TRIGGER_URL!, // discoverServices().webhookUrl
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // payer for x402
+})
 
-async function beforeSign(intent: SpendIntent) {
-  const result = evaluateIntent(policy, intent, ledger)
-  if (result.decision === 'deny') throw new Error(result.reasons.join('; '))
-  if (result.decision === 'escalate') {
-    // ask the human; only continue if they say yes
-    throw new Error('ESCALATE: wait for human approval')
-  }
-  // ALLOW — now AgentKit / wallet may sign
-  ledger = commitIntent(ledger, intent)
-  return result
-}
+// verifyAllowReceipt is already required inside assertSpend when requireReceipt=true
+// Now AgentKit may sign — receipt expires in ~60s
 ```
 
-Reference script: `examples/gate-with-policy.ts`
+Example: `examples/assert-spend-demo.ts`  
+Monetization: [MONETIZE.md](./MONETIZE.md)
 
-## 3. Agent instruction (required)
+## Agent instruction
 
-Put this in the agent system prompt / skill:
+> Before any transfer/swap/payment, call SpendGate `assertSpend` / `evaluate_intent` (paid). On DENY stop. On ESCALATE ask me. Never sign without a valid allow-receipt. Never rely on a local JSON file for live spends.
 
-> Before any transfer, swap, or payment, call the local SpendGate gate (`beforeSign` / `evaluateIntent`) with the intent. On DENY do not sign. On ESCALATE ask me. Never bypass the gate.
+## Demo-only snapshot
 
-Without that discipline, JSON on disk does nothing.
-
-## 4. Change or remove rules
-
-| Goal | What to do |
-|------|------------|
-| New limits | Re-draft on the site (or revise), export again, replace `mandate-policy.json` |
-| No limits | Delete / unload the JSON and remove the gate call from the agent path |
-| Clear on the demo site only | **Clear rules** — does not change your agent’s file |
-
-## 5. Stronger options later
-
-- Keep calling the live SpendGate host over x402 instead of a local file
-- On-chain vault / custody — rules cannot be skipped by a naughty agent (not v1)
+The website “Demo snapshot” export is watermarked (`enforcement: "demo-only"`). It is for inspection, not production.

@@ -8,6 +8,9 @@
     "api/copilot.ts": {
       "maxDuration": 60,
       "includeFiles": "src/**"
+    },
+    "api/host-info.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

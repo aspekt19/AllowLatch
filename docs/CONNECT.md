@@ -48,7 +48,8 @@ await client.payments.payWorkflow({
 ```
 
 See `examples/connect-as-agent.ts`. Full theater: `npm run wow`.  
-To run the same policy **inside** your agent (exported JSON): [EMBED.md](./EMBED.md).
+**Monetization:** [MONETIZE.md](./MONETIZE.md) — enforcement is paid remote gate ($0.10), not free JSON.  
+Agent SDK: [EMBED.md](./EMBED.md) (`assertSpend` + allow-receipt).
 
 ## Demo UI
 

@@ -107,21 +107,24 @@
                 <p class="policy-name" id="policy-name"></p>
                 <dl class="policy-grid" id="policy-grid"></dl>
               </div>
-              <div class="policy-actions is-hidden" id="policy-actions">
-                <button type="button" class="btn-policy-action" id="btn-download-policy">
-                  Download JSON
-                </button>
-                <button type="button" class="btn-policy-action" id="btn-copy-policy">
-                  Copy JSON
-                </button>
-                <button type="button" class="btn-clear-rules" id="btn-clear-rules">
-                  Clear rules
-                </button>
-              </div>
-              <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
-                Embed the JSON in your agent and gate every spend before signing —
-                <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">docs/EMBED.md</a>.
-              </p>
+            <div class="policy-actions is-hidden" id="policy-actions">
+              <button type="button" class="btn-policy-action" id="btn-enforce-host">
+                Enforce on SpendGate · $0.10
+              </button>
+              <button type="button" class="btn-policy-action" id="btn-download-policy">
+                Demo snapshot (not enforced)
+              </button>
+              <button type="button" class="btn-clear-rules" id="btn-clear-rules">
+                Clear rules
+              </button>
+            </div>
+            <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
+              Production = pay SpendGate ($0.10) so the host stores the policy and your agent
+              calls <code>evaluate_intent</code> before every spend.
+              <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE.md</a>
+              ·
+              <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED.md</a>
+            </p>
             </div>
 
             <div class="rail-block">
