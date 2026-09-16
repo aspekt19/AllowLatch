@@ -9,6 +9,9 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | **Repo rules (stack, architecture, coding)** | [`.cursorrules`](./.cursorrules) |
 | Product overview & scripts | [README.md](./README.md) |
 | Product definition | [`docs/PRODUCT.md`](./docs/PRODUCT.md) |
+| Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
+| Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) |
+| Cursor skill | [`.cursor/skills/spendgate/SKILL.md`](./.cursor/skills/spendgate/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |
 | Deterministic gate | [`src/policy/engine.ts`](./src/policy/engine.ts) |
 | OpenServ agent | [`src/agent.ts`](./src/agent.ts) |
