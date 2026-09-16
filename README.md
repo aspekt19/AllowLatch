@@ -8,7 +8,7 @@
 
 > Reasoning drafts the law. Code judges every spend. AgentKit only after ALLOW + allow-receipt.
 
-No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pay x402 ($0.10) or an evaluate pack ($1 / 25).
+No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pay x402 ($0.10) or an evaluate pack ($1 / 25). Optional on-chain Spend Permissions: `ALLOWLATCH_ENFORCEMENT=hybrid`.
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
