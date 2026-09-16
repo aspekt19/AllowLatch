@@ -10,12 +10,18 @@ const EXAMPLE_MANDATE =
   'Agent wallet budget $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap router allowed. Ask me above $8. No meme coins.'
 
 const messagesEl = document.querySelector<HTMLDivElement>('#messages')!
-const policyView = document.querySelector<HTMLPreElement>('#policy-view')!
+const policyEmpty = document.querySelector<HTMLDivElement>('#policy-empty')!
+const policyLive = document.querySelector<HTMLDivElement>('#policy-live')!
+const policyName = document.querySelector<HTMLParagraphElement>('#policy-name')!
+const policyGrid = document.querySelector<HTMLDListElement>('#policy-grid')!
 const ledgerView = document.querySelector<HTMLParagraphElement>('#ledger-view')!
+const ledgerSub = document.querySelector<HTMLParagraphElement>('#ledger-sub')!
 const phaseLabel = document.querySelector<HTMLDivElement>('#phase-label')!
+const consoleHint = document.querySelector<HTMLParagraphElement>('#console-hint')!
 const form = document.querySelector<HTMLFormElement>('#composer')!
 const input = document.querySelector<HTMLTextAreaElement>('#input')!
 const btnExample = document.querySelector<HTMLButtonElement>('#btn-example')!
+const btnSend = document.querySelector<HTMLButtonElement>('#btn-send')!
 
 let phase: Phase = 'mandate'
 let policy: MandatePolicy | null = null
@@ -24,18 +30,40 @@ let pendingEscalate: SpendIntent | null = null
 
 function setPhase(next: Phase) {
   phase = next
-  const labels: Record<Phase, string> = {
-    mandate: 'Phase 1 · Set mandate',
-    spend: 'Phase 2 · Spender proposes',
-    escalate: 'Phase 3 · Human confirm',
+  const hints: Record<Phase, string> = {
+    mandate: 'Describe how your agent may spend',
+    spend: 'Propose a spend or use a scenario below',
+    escalate: 'Approve or reject this spend',
   }
-  phaseLabel.textContent = labels[next]
+  consoleHint.textContent = hints[next]
+
+  const steps = phaseLabel.querySelectorAll<HTMLElement>('.step')
+  steps.forEach((el) => {
+    el.classList.remove('is-active', 'is-done')
+    const n = Number(el.dataset.step)
+    if (next === 'mandate' && n === 1) el.classList.add('is-active')
+    if (next === 'spend') {
+      if (n === 1) el.classList.add('is-done')
+      if (n === 2) el.classList.add('is-active')
+    }
+    if (next === 'escalate') {
+      if (n <= 2) el.classList.add('is-done')
+      if (n === 3) el.classList.add('is-active')
+    }
+  })
+
   input.placeholder =
     next === 'mandate'
-      ? 'Describe spending rules for your agent…'
+      ? 'e.g. Max $10 per transfer, $40/day, only USDC & ETH, ask me above $8…'
       : next === 'escalate'
         ? 'Type yes to approve, or no to deny…'
-        : 'Describe a spend, or tap a quick scenario…'
+        : 'e.g. transfer $8 to Uniswap — or tap a scenario'
+
+  const sendLabel = btnSend.querySelector('span:first-child')
+  if (sendLabel) {
+    sendLabel.textContent =
+      next === 'mandate' ? 'Compile policy' : next === 'escalate' ? 'Reply' : 'Send'
+  }
 }
 
 function addMessage(role: Role, body: string, extraClass = '') {
@@ -43,8 +71,22 @@ function addMessage(role: Role, body: string, extraClass = '') {
   el.className = `msg ${role} ${extraClass}`.trim()
   const who =
     role === 'you' ? 'You · owner' : role === 'guard' ? 'SpendGate' : 'Spender · AgentKit'
-  el.innerHTML = `<p class="who">${who}</p><p class="body"></p>`
-  el.querySelector('.body')!.textContent = body
+  el.innerHTML = `<p class="who">${who}</p><div class="body"></div>`
+  const bodyEl = el.querySelector('.body')!
+
+  if (extraClass.includes('decision')) {
+    const [head, ...rest] = body.split('\n')
+    bodyEl.appendChild(document.createTextNode(head))
+    if (rest.length) {
+      const restEl = document.createElement('span')
+      restEl.className = 'decision-rest'
+      restEl.textContent = rest.join('\n')
+      bodyEl.appendChild(restEl)
+    }
+  } else {
+    bodyEl.textContent = body
+  }
+
   messagesEl.appendChild(el)
   messagesEl.scrollTop = messagesEl.scrollHeight
   return el
@@ -52,42 +94,71 @@ function addMessage(role: Role, body: string, extraClass = '') {
 
 function addDecision(result: EvaluationResult) {
   const lines = [
-    `${result.decision.toUpperCase()}`,
+    result.decision.toUpperCase(),
     ...result.reasons.map((r) => `• ${r}`),
-    `Remaining daily: $${result.remainingDailyUsd.toFixed(2)}`,
+    `Remaining daily · $${result.remainingDailyUsd.toFixed(2)}`,
   ]
   addMessage('guard', lines.join('\n'), `decision ${result.decision}`)
 }
 
 function renderPolicy() {
   if (!policy) {
-    policyView.textContent = 'No policy yet.'
+    policyEmpty.classList.remove('is-hidden')
+    policyLive.classList.add('is-hidden')
     return
   }
-  policyView.textContent = JSON.stringify(
-    {
-      name: policy.name,
-      capital: policy.capital,
-      escalation: policy.escalation,
-      allowedSymbols: policy.universe.allowedSymbols,
-      allowedAddresses: policy.universe.allowedAddresses,
-      actions: policy.actions,
-    },
-    null,
-    2
-  )
+
+  policyEmpty.classList.add('is-hidden')
+  policyLive.classList.remove('is-hidden')
+  policyName.textContent = policy.name
+
+  const rows: [string, string][] = [
+    ['Per order', `$${policy.capital.maxPerOrderUsd}`],
+    ['Daily cap', `$${policy.capital.maxNotionalUsdPerDay}`],
+    ['Confirm above', `$${policy.escalation.requireHumanConfirmAboveUsd}`],
+    [
+      'Symbols',
+      policy.universe.allowedSymbols.length
+        ? policy.universe.allowedSymbols.join(', ')
+        : 'any',
+    ],
+    [
+      'Addresses',
+      policy.universe.allowedAddresses.length
+        ? `${policy.universe.allowedAddresses.length} allowlisted`
+        : 'open',
+    ],
+    [
+      'Actions',
+      [
+        policy.actions.allowTransfer && 'transfer',
+        policy.actions.allowSwap && 'swap',
+        policy.actions.allowX402Pay && 'x402',
+      ]
+        .filter(Boolean)
+        .join(' · ') || 'none',
+    ],
+  ]
+
+  policyGrid.innerHTML = rows
+    .map(
+      ([k, v]) =>
+        `<div><dt>${k}</dt><dd>${v.replace(/</g, '&lt;')}</dd></div>`
+    )
+    .join('')
 }
 
 function renderLedger() {
-  ledgerView.textContent = `$${ledger.spentUsdToday.toFixed(2)} spent · ${ledger.txCountThisHour} tx this hour`
+  ledgerView.textContent = `$${ledger.spentUsdToday.toFixed(2)}`
+  ledgerSub.textContent = `${ledger.txCountThisHour} tx this hour`
 }
 
 function addSpendChips() {
   const wrap = document.createElement('div')
   wrap.className = 'chips'
-  const scenarios: { label: string; intent: SpendIntent; asSpender?: boolean }[] = [
+  const scenarios: { label: string; intent: SpendIntent }[] = [
     {
-      label: 'OK · $8 ETH via Uniswap',
+      label: 'ALLOW · $8 ETH',
       intent: {
         action: 'swap',
         amountUsd: 8,
@@ -95,10 +166,9 @@ function addSpendChips() {
         toAddress: UNISWAP,
         reason: 'Rebalance idle USDC',
       },
-      asSpender: true,
     },
     {
-      label: 'Deny · $5 PEPE',
+      label: 'DENY · PEPE',
       intent: {
         action: 'swap',
         amountUsd: 5,
@@ -106,37 +176,33 @@ function addSpendChips() {
         toAddress: UNISWAP,
         reason: 'YOLO',
       },
-      asSpender: true,
     },
     {
-      label: 'Deny · $50 transfer',
+      label: 'DENY · $50',
       intent: {
         action: 'transfer',
         amountUsd: 50,
         toAddress: UNISWAP,
         reason: 'Large payout',
       },
-      asSpender: true,
     },
     {
-      label: 'Escalate · $9 x402',
+      label: 'ESCALATE · $9',
       intent: {
         action: 'x402_pay',
         amountUsd: 9,
         toAddress: UNISWAP,
         reason: 'Pay research API',
       },
-      asSpender: true,
     },
     {
-      label: 'Deny · unknown address',
+      label: 'DENY · unknown addr',
       intent: {
         action: 'transfer',
         amountUsd: 3,
         toAddress: '0x000000000000000000000000000000000000dEaD',
         reason: 'Wrong paste',
       },
-      asSpender: true,
     },
   ]
 
@@ -151,7 +217,7 @@ function addSpendChips() {
 
   const host = addMessage(
     'guard',
-    'Policy is live. The Spender agent will propose actions. Tap a scenario or type something like: “transfer $8 to Uniswap”.'
+    'Policy is live. The Spender will propose actions — I allow, deny, or escalate. AgentKit would sign only on ALLOW.\n\nTry a scenario:'
   )
   host.appendChild(wrap)
 }
@@ -174,7 +240,7 @@ function parseSpend(text: string): SpendIntent | null {
     action,
     amountUsd,
     symbol,
-    toAddress: addr ?? ( /uniswap/i.test(text) ? UNISWAP : undefined),
+    toAddress: addr ?? (/uniswap/i.test(text) ? UNISWAP : undefined),
     reason: text,
   }
 }
@@ -194,13 +260,16 @@ function runSpend(intent: SpendIntent, fromChip = false) {
   if (result.decision === 'allow') {
     ledger = commitIntent(ledger, intent)
     renderLedger()
-    addMessage('guard', 'ALLOW recorded. In production, AgentKit would sign on Base only now.')
+    addMessage(
+      'guard',
+      'ALLOW recorded on the ledger. In production, AgentKit signs on Base only at this point.'
+    )
   } else if (result.decision === 'escalate') {
     pendingEscalate = intent
     setPhase('escalate')
     addMessage(
       'guard',
-      'This needs your confirmation. Reply “yes” to approve for AgentKit, or “no” to block.'
+      'Above your confirm threshold. Reply yes to treat as ALLOW for AgentKit, or no to block.'
     )
   } else if (!fromChip) {
     // keep phase
@@ -215,7 +284,7 @@ function handleMandate(text: string) {
   renderLedger()
   addMessage(
     'guard',
-    `Mandate compiled into a Base/USDC policy.\n\nLimits: $${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day\nConfirm above: $${policy.escalation.requireHumanConfirmAboveUsd}\nSymbols: ${policy.universe.allowedSymbols.join(', ') || 'any'}\n\nI am the turnstile. The Spender agent cannot move funds unless I allow it.`
+    `Mandate compiled into a Base/USDC policy.\n\n${policy.name}\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day\nHuman confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\nSymbols: ${policy.universe.allowedSymbols.join(', ') || 'any'}\n\nI am the turnstile. The Spender cannot move funds unless I allow it.`
   )
   setPhase('spend')
   addSpendChips()
@@ -262,17 +331,15 @@ function onSubmit(text: string) {
     return
   }
 
-  addMessage('you', trimmed)
+  addMessage('you', text)
   const intent = parseSpend(trimmed)
   if (!intent) {
     addMessage(
       'guard',
-      'Could not parse a spend. Try: “transfer $8 to Uniswap” or use the chips above.'
+      'Could not parse a spend. Try: “transfer $8 to Uniswap” or use the scenarios above.'
     )
     return
   }
-  // User typed a spend — show as if spender proposed it (skip duplicate you as spender)
-  // Remove the "you" framing for evaluation path: already added you; run evaluate without re-adding you
   messagesEl.lastElementChild?.remove()
   runSpend(intent, false)
 }
@@ -296,10 +363,9 @@ input.addEventListener('keydown', (e) => {
   }
 })
 
-// Boot dialog
 addMessage(
   'guard',
-  'I am SpendGate — the spending turnstile for an AgentKit wallet on Base.\n\nFirst, tell me the rules for your agent (limits, allowed tokens/addresses, when to ask you).\n\nThen a Spender agent will try to move USDC. I will allow, deny, or escalate.'
+  'I am SpendGate — Policy Copilot and spending turnstile for an AgentKit wallet on Base.\n\n1. You state the mandate (limits, tokens, addresses, when to ask you).\n2. I compile a strict policy.\n3. A Spender proposes spends; I allow, deny, or escalate. AgentKit moves USDC only after ALLOW.\n\nStart with your rules, or load the example.'
 )
 setPhase('mandate')
 renderPolicy()

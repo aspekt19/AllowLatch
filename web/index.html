@@ -3,30 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SpendGate</title>
+    <title>SpendGate — Policy Copilot & spending turnstile</title>
+    <meta
+      name="description"
+      content="State spending rules in plain language. SpendGate drafts the policy and blocks AgentKit from moving Base USDC unless the gate allows it."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="shell">
-      <header class="top">
-        <div class="brand">
-          <span class="mark" aria-hidden="true"></span>
-          <div>
-            <p class="brand-name">SpendGate</p>
-            <p class="brand-sub">Base · USDC · AgentKit turnstile</p>
+    <div class="app">
+      <header class="masthead">
+        <div class="masthead-inner">
+          <div class="identity">
+            <p class="eyebrow">OpenServ · Coinbase AgentKit</p>
+            <p class="wordmark">SpendGate</p>
+            <p class="tagline">
+              Policy Copilot for financial agents.
+              <span class="tagline-em">Rules in words. Money only after ALLOW.</span>
+            </p>
+          </div>
+          <div class="masthead-meta">
+            <span class="rail-item">Base</span>
+            <span class="rail-dot" aria-hidden="true"></span>
+            <span class="rail-item">USDC</span>
+            <span class="rail-dot" aria-hidden="true"></span>
+            <span class="rail-item">AgentKit</span>
           </div>
         </div>
-        <div class="meta" id="phase-label">Phase 1 · Set mandate</div>
+        <p class="masthead-explain">
+          You set the mandate. SpendGate compiles a strict policy and sits in front of every spend.
+          The Spender agent proposes; the gate allows, denies, or escalates to you — AgentKit signs only on ALLOW.
+        </p>
       </header>
 
-      <main class="layout">
-        <section class="chat-panel" aria-label="Dialog">
+      <div class="workspace">
+        <section class="console" aria-label="Mandate and gate console">
+          <div class="console-bar">
+            <div class="stepper" id="phase-label" aria-live="polite">
+              <span class="step is-active" data-step="1">1 Mandate</span>
+              <span class="step-sep" aria-hidden="true"></span>
+              <span class="step" data-step="2">2 Gate</span>
+              <span class="step-sep" aria-hidden="true"></span>
+              <span class="step" data-step="3">3 Confirm</span>
+            </div>
+            <p class="console-hint" id="console-hint">Describe how your agent may spend</p>
+          </div>
+
           <div class="messages" id="messages"></div>
 
           <form class="composer" id="composer">
@@ -34,35 +62,59 @@
             <textarea
               id="input"
               rows="2"
-              placeholder="Describe spending rules for your agent…"
+              placeholder="e.g. Max $10 per transfer, $40/day, only USDC & ETH, ask me above $8…"
               autocomplete="off"
             ></textarea>
             <div class="composer-actions">
-              <button type="button" class="ghost" id="btn-example">Example mandate</button>
-              <button type="submit" class="primary" id="btn-send">Send</button>
+              <button type="button" class="btn-ghost" id="btn-example">Load example mandate</button>
+              <button type="submit" class="btn-primary" id="btn-send">
+                <span>Continue</span>
+                <span class="btn-key" aria-hidden="true">↵</span>
+              </button>
             </div>
           </form>
         </section>
 
-        <aside class="side" aria-label="Policy and spend status">
-          <div class="card">
-            <h2>Active policy</h2>
-            <pre id="policy-view" class="code">No policy yet.</pre>
+        <aside class="rail" aria-label="Policy status">
+          <div class="rail-block">
+            <h2 class="rail-title">Active policy</h2>
+            <div class="policy-empty" id="policy-empty">
+              <p>No policy compiled yet.</p>
+              <p class="muted">Send a mandate in the console to generate limits, allowlists, and escalation.</p>
+            </div>
+            <div class="policy-live is-hidden" id="policy-live">
+              <p class="policy-name" id="policy-name"></p>
+              <dl class="policy-grid" id="policy-grid"></dl>
+            </div>
           </div>
-          <div class="card">
-            <h2>Today’s ledger</h2>
-            <p id="ledger-view" class="ledger">$0.00 spent</p>
+
+          <div class="rail-block">
+            <h2 class="rail-title">Ledger · today</h2>
+            <p class="ledger-figure" id="ledger-view">$0.00</p>
+            <p class="ledger-sub" id="ledger-sub">0 transactions this hour</p>
           </div>
-          <div class="card hints">
-            <h2>Dialog roles</h2>
-            <ul>
-              <li><strong>You</strong> — owner, set rules / confirm</li>
-              <li><strong>SpendGate</strong> — compiles & gates</li>
-              <li><strong>Spender</strong> — AgentKit agent proposing spends</li>
-            </ul>
+
+          <div class="rail-block rail-flow">
+            <h2 class="rail-title">How this demo works</h2>
+            <ol class="flow-list">
+              <li><span>You</span> — owner mandate &amp; escalations</li>
+              <li><span>SpendGate</span> — compile &amp; gate (deterministic)</li>
+              <li><span>Spender</span> — AgentKit proposing spends</li>
+            </ol>
+            <p class="muted tight">
+              Demo compile is local heuristics. Production compile uses SERV Reasoning; live txs need CDP.
+            </p>
           </div>
         </aside>
-      </main>
+      </div>
+
+      <footer class="foot">
+        <a href="https://github.com/aspekt19/SpendGate" target="_blank" rel="noreferrer">GitHub</a>
+        <span class="rail-dot" aria-hidden="true"></span>
+        <a href="https://docs.openserv.ai/serv-reasoning/" target="_blank" rel="noreferrer">SERV Reasoning</a>
+        <span class="rail-dot" aria-hidden="true"></span>
+        <span>Does not custody funds</span>
+      </footer>
     </div>
     <script type="module" src="/main.ts"></script>
   </body>
