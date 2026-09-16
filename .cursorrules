@@ -4,7 +4,6 @@
 AllowLatch is an OpenServ agent that turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
 It does **not** custody user funds. Deterministic policy evaluation must never be replaced by LLM judgment.
 
-**Hackathon:** SERV Hackathon Edition 01 · track **Coinbase AgentKit**  
 **Repo:** https://github.com/aspekt19/AllowLatch  
 **Product name:** AllowLatch (do not rebrand to SpendGate or MandateGuard — those names collide with unrelated projects).
 

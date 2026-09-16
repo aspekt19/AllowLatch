@@ -12,8 +12,6 @@ No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pa
 
 > Product name is **AllowLatch** (not SpendGate / MandateGuard — those collide with other projects). Unrelated: commercial spendgate.ai.
 
-> SERV Hackathon Edition 01 · track: **Coinbase AgentKit**
-
 ## For end users
 
 Tell your agent:
@@ -51,12 +49,6 @@ Host `.env`: `SERV_API_KEY` (required for Copilot), optional `CDP_*` for live ex
 ## Pitch
 
 Say the rules in words. SERV turns them into a policy you can review. Without ALLOW, AgentKit cannot spend.
-
-## Hackathon notes
-
-- Enable data collection: `console.openserv.ai/settings/organization`
-- Submit with a public X post tagging **@openservai** + the official form
-- Deadline: 28 September 2026 00:00 UTC
 
 ## License
 
