@@ -14,6 +14,7 @@ const policyEmpty = document.querySelector<HTMLDivElement>('#policy-empty')!
 const policyLive = document.querySelector<HTMLDivElement>('#policy-live')!
 const policyName = document.querySelector<HTMLParagraphElement>('#policy-name')!
 const policyGrid = document.querySelector<HTMLDListElement>('#policy-grid')!
+const policyStatus = document.querySelector<HTMLSpanElement>('#policy-status')!
 const ledgerView = document.querySelector<HTMLParagraphElement>('#ledger-view')!
 const ledgerSub = document.querySelector<HTMLParagraphElement>('#ledger-sub')!
 const phaseLabel = document.querySelector<HTMLDivElement>('#phase-label')!
@@ -105,11 +106,15 @@ function renderPolicy() {
   if (!policy) {
     policyEmpty.classList.remove('is-hidden')
     policyLive.classList.add('is-hidden')
+    policyStatus.textContent = 'Idle'
+    policyStatus.classList.remove('is-live')
     return
   }
 
   policyEmpty.classList.add('is-hidden')
   policyLive.classList.remove('is-hidden')
+  policyStatus.textContent = 'Live'
+  policyStatus.classList.add('is-live')
   policyName.textContent = policy.name
 
   const rows: [string, string][] = [

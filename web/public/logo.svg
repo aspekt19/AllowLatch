@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" fill="none" role="img" aria-label="SpendGate">
+  <!-- Turnstile aperture: closing blades + narrow pass-through -->
+  <rect x="0.75" y="0.75" width="26.5" height="26.5" stroke="#070B14" stroke-width="1.5" fill="#FFFFFF"/>
+  <path d="M4 4 L12.2 14 L4 24 Z" fill="#070B14"/>
+  <path d="M24 4 L15.8 14 L24 24 Z" fill="#070B14"/>
+  <rect x="13.1" y="4" width="1.8" height="20" fill="#0052FF"/>
+</svg>
