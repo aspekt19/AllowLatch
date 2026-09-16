@@ -96,11 +96,14 @@ export function buildServTools(opts: ServToolsOptions = {}): OpenAI.Chat.ChatCom
 }
 
 export function getServClient() {
-  const apiKey = process.env.SERV_API_KEY
+  const apiKey = process.env.SERV_API_KEY?.trim()
   if (!apiKey) {
     throw new Error(
       'SERV_API_KEY is missing. Create a key at https://console.openserv.ai and set it in .env (Reasoning — not Platform).'
     )
+  }
+  if ([...apiKey].some((c) => c.charCodeAt(0) > 127)) {
+    throw new Error('SERV_API_KEY contains non-ASCII characters — check Vercel/env value for corruption.')
   }
   return new OpenAI({
     baseURL: SERV_BASE_URL,
