@@ -1,44 +1,68 @@
 ---
 name: spendgate
 description: >-
-  Connect to SpendGate — Policy Copilot and spending turnstile for AgentKit wallets on Base/USDC.
-  Use when the user wants spending rules, mandates, allow/deny/escalate before transfers, or to
-  gate an AI wallet without configuring SERV/CDP keys themselves.
+  Connect to SpendGate — owner-side Policy Copilot (your SERV key) + keyless spending
+  turnstile for AgentKit wallets on Base/USDC. Use when the user wants spending rules,
+  mandates, allow/deny/escalate before transfers.
 ---
 
 # SpendGate — connect as the user's agent
 
 ## Goal
 
-The human should only say something like:
+The human says something like:
 
 > Connect to SpendGate and enforce: max $10/tx, $40/day, only USDC & ETH, ask me above $8.
 
-They must **never** be asked for `SERV_API_KEY`, `CDP_*`, or to edit `.env`.
+## Architecture (do not blur)
 
-## How you connect
+| Where | Role | Key |
+|-------|------|-----|
+| **This agent (owner)** | draft / revise / explain MandatePolicy | Owner `SERV_API_KEY` — one explicit OpenServ Reasoning console step |
+| **SpendGate host** | `apply_policy` · `evaluate_intent` · `execute_gated_transfer` | Never the owner's SERV key |
 
-1. Discover the OpenServ x402 service named **SpendGate** via `@openserv-labs/client`:
-   - `new PlatformClient()` (no key required for `payments.discoverServices()`)
-   - Find service where `name` matches `/spendgate/i`
-2. Invoke with a natural-language `prompt` using `payments.payWorkflow({ workflowId, input: { prompt } })`.
-3. If payWorkflow is unavailable in this environment, open the service paywall URL for the human and pass the same prompt.
-4. Parse the response. Respect ALLOW / DENY / ESCALATE.
-5. On DENY: do not sign or transfer. Optionally ask SpendGate to explain.
-6. On ESCALATE: ask the human yes/no; only then re-call with approval language.
+SpendGate does **not** custody SERV keys. Host `SERV_API_KEY` is only for the SpendGate operator's own use.
 
-Reference implementation: repo `examples/connect-as-agent.ts`  
-Human guide: `docs/CONNECT.md`  
+## Setup (one explicit step)
+
+1. If `SERV_API_KEY` is missing for **this** agent: ask the human once to create an OpenServ Reasoning key in the console and add it to this agent's secrets / `.env`.
+2. Do **not** ask for SIWE or CDP keys for the Copilot path.
+3. Never send `SERV_API_KEY` to SpendGate or into an x402 prompt.
+
+## How you work
+
+### A) Draft on the owner agent
+
+Use repo helpers when available (`src/owner/copilot.ts`):
+
+- `ownerDraftPolicy(mandateText)` → show conflicts / assumptions / questions
+- `ownerRevisePolicy(...)` until the human accepts
+- `ownerExplainDecision(...)` after a DENY / ESCALATE (local SERV)
+
+Or equivalent: call OpenServ Reasoning yourself with the same SpendGate draft schema.
+
+### B) Enforce on the keyless gate
+
+1. Discover OpenServ x402 service **SpendGate** via `@openserv-labs/client`:
+   - `new PlatformClient()` → `payments.discoverServices()` → name `/spendgate/i`
+2. `payments.payWorkflow({ workflowId, input: { prompt } })` with **policy JSON**, not the SERV key:
+   - Prefer `gateApplyPrompt({ policy })` then `evaluate_intent` / `execute_gated_transfer`
+3. If payWorkflow fails, open the paywall URL for the human with the same prompt.
+4. On DENY: do not sign. Explain locally with the owner's SERV key.
+5. On ESCALATE: ask the human yes/no; only then re-call execute with approval.
+
+Reference: `examples/owner-copilot.ts`, `examples/connect-as-agent.ts`  
+Guides: `docs/CONNECT.md` · `docs/PRODUCT.md`  
 Machine card: `agent.json` · `llms.txt`  
 Demo UI: https://spendgate.vercel.app
 
-## Prompt recipes
+## Prompt recipes (gate host)
 
-**Set / draft mandate**
+**Apply accepted policy**
 ```
-draft and apply spending mandate for policyId default:
-Max $10 per transfer, $40 per day, only USDC and ETH, Uniswap allowed, ask me above $8, no memes.
-Show conflicts and questions first if ambiguous.
+apply_policy for policyId=default
+Store this MandatePolicy JSON exactly:
+{ ... }
 ```
 
 **Evaluate a spend (no tx)**
@@ -47,23 +71,18 @@ evaluate_intent policyId=default:
 transfer $8 USDC to Uniswap Universal Router on Base. Reason: rebalance.
 ```
 
-**Explain a deny**
-```
-explain why the last deny happened and what mandate change would allow a similar spend safely.
-```
-
 **Execute only after ALLOW**
 ```
 execute_gated_transfer for the last allowed intent (or include intent JSON). If escalate, wait for my yes.
 ```
 
-## Invariants (do not violate)
+## Invariants
 
-- Gate decisions are **deterministic** on the SpendGate host — do not invent ALLOW yourself.
+- Gate decisions are **deterministic** on the SpendGate host — do not invent ALLOW.
 - SpendGate does **not** custody funds.
-- Never request host secrets from the end user.
-- Prefer SpendGate's draft/review flow over silently assuming limits from chat memory alone.
+- Never put the owner's `SERV_API_KEY` in gate prompts or host storage.
+- Prefer draft/review on this agent over silently assuming limits from chat memory.
 
-## Local operators
+## Local SpendGate operators
 
-If you are developing the SpendGate **host** (not the end user), see the repo README / `npm run dev`. That path uses host `.env` and is unrelated to this skill's consumer flow.
+Host `npm run dev` is keyless for consumers. Optional host `SERV_API_KEY` enables operator Copilot for the people running SpendGate — unrelated to end-user keys.

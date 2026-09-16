@@ -7,8 +7,8 @@ It is **not** a bank, not a custodian, and not an LLM that decides whether money
 It is a **Policy Copilot + hard turnstile**:
 
 1. The owner states and revises spending rules in natural language.
-2. SERV Reasoning helps draft the policy, surface conflicts, and explain denials.
-3. Before every spend, **deterministic code** returns allow / deny / escalate.
+2. **Owner-side** SERV Reasoning drafts the policy, surfaces conflicts, and explains denials (owner’s Reasoning key — one console step; no SIWE yet).
+3. **SpendGate host** stores MandatePolicy JSON and, before every spend, **deterministic code** returns allow / deny / escalate. Host never stores end-user SERV keys.
 4. AgentKit moves funds **only after ALLOW** (or escalate + explicit human approval).
 
 Live demo: https://spendgate.vercel.app  
@@ -47,26 +47,28 @@ Out of scope: retail banking UX, and “any rules for any agents” outside fina
 ```
 Owner
   → describes / revises mandate (NL)
-SpendGate Copilot (SERV Reasoning)
+Owner agent + SERV (owner’s key)
   → draft policy, conflicts, assumptions, clarifying questions
-  → apply → MandatePolicy (JSON)
+  → accepted MandatePolicy JSON
+SpendGate host (keyless gate)
+  → apply_policy → store JSON
 Financial agent (Spender)
-  → before spend: evaluate / execute_gated_transfer
+  → before spend: evaluate / execute_gated_transfer (x402)
 SpendGate Gate (code, no LLM)
   → ALLOW | DENY | ESCALATE
-AgentKit / CDP
+AgentKit / CDP (host, if live)
   → sign Base USDC only on ALLOW (+ humanApproved on escalate)
 ```
 
 | Layer | Tech | Role |
 |-------|------|------|
-| Copilot | SERV Reasoning | Understand mandate, conflicts, explain, revise |
-| Gate | `src/policy/engine.ts` | Caps, symbols, addresses, velocity, escalate |
-| Execute | AgentKit / CDP | Transaction only after green light |
+| Copilot | SERV on **owner agent** | Mandate, conflicts, explain, revise |
+| Gate | `src/policy/engine.ts` on host | Caps, symbols, addresses, velocity, escalate |
+| Execute | AgentKit / CDP on host | Transaction only after green light |
 
-SpendGate does **not** hold user funds. Keys stay with CDP / the owner.
+SpendGate does **not** hold user funds or end-user Reasoning keys. Host `SERV_API_KEY` is only for our operator/dev Copilot.
 
-**Target UX:** skills / capabilities on the user’s existing agent — not a mandatory second chat. The dialog UI is a demo surface.
+**Target UX:** skills on the user’s existing agent — one explicit Reasoning key step; not SIWE yet. The dialog UI is a demo surface.
 
 ---
 
@@ -93,7 +95,7 @@ Chain focus: **Base**. Policy currency: **USDC**.
 
 ## One-line pitch
 
-> For a financial agent on Base: state rules in words → SpendGate drafts and explains the policy → without ALLOW, AgentKit does not move money.
+> For a financial agent on Base: state rules in words → your agent drafts with your Reasoning key → SpendGate’s gate enforces them → without ALLOW, AgentKit does not move money.
 
 ---
 
@@ -102,16 +104,17 @@ Chain focus: **Base**. Policy currency: **USDC**.
 | Layer | Status |
 |-------|--------|
 | Deterministic gate | Done (`engine.ts`) |
-| SERV draft / revise / compile | Done |
-| `explain_decision` | Done |
-| Agent capabilities (skill surface) | Done |
-| Demo UI Policy Copilot review | Done (offline draft; production uses SERV) |
+| Owner-side SERV draft / revise / explain | Done (`src/owner/copilot.ts`) |
+| Keyless host gate | Done (`apply_policy` / evaluate / execute) |
+| Operator host Copilot (optional SERV) | Done — self/dev only |
+| Demo UI Policy Copilot review | Done (offline draft) |
 | Live CDP battle | Optional — see [BATTLE.md](./BATTLE.md) |
 
 Verify:
 
 ```bash
-npm run reasoning:copilot   # draft → revise → apply → gate → explain
+npm run owner:copilot       # owner SERV draft → gate apply prompt
+npm run reasoning:copilot   # operator cycle when host SERV_API_KEY set
 npm run battle              # Spender → gate → AgentKit dry-run
 npm run ui                  # review flow in the browser
 ```

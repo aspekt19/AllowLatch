@@ -10,36 +10,40 @@ It does **not** custody user funds. Deterministic policy evaluation must never b
 
 ## Tech Stack
 - Runtime: Node.js, TypeScript, ESM (`"type": "module"`)
-- OpenServ Reasoning: `SERV_API_KEY` → `https://inference-api.openserv.ai/v1` (compile_mandate LLM)
-  - Client: `src/llm/serv-reasoning.ts` · compiler: `src/llm/compile-mandate.ts`
+- OpenServ Reasoning: owner (or operator) `SERV_API_KEY` → `https://inference-api.openserv.ai/v1`
+  - Client: `src/llm/serv-reasoning.ts` · Copilot: `src/llm/compile-mandate.ts` · owner API: `src/owner/copilot.ts`
   - Day-one: small model, versioned system prompt, structured JSON + Zod, `reasoning_effort`, no tight max_tokens
   - Compile uses Multipath + `serv_prompt_guard` + `serv_shadow_agent`; gate stays in `engine.ts`
-- OpenServ Platform (optional host): `@openserv-labs/sdk` + `provision` / x402 — not a replacement for Reasoning
+- OpenServ Platform (gate host): `@openserv-labs/sdk` + `provision` / x402 — keyless for consumers
 - Schemas: Zod
 - Onchain executor: `@coinbase/agentkit` + CDP (`CdpEvmWalletProvider`), USDC on Base / Base Sepolia
 - Local UI: Vite (vanilla TS) in `web/` → build output `web-dist/`
-- Offline policy compile for UI: heuristic `src/policy/local-compile.ts` (production path uses OpenServ `compile_mandate`)
+- Offline policy compile for UI: heuristic `src/policy/local-compile.ts` (production draft uses owner SERV)
 
 ## Architecture (do not blur roles)
 
 ```
-Human (owner) → SpendGate (OpenServ) → allow/deny/escalate → Spender (AgentKit) signs on Base
+Human → Owner agent (SERV draft) → SpendGate host (apply + gate) → Spender (AgentKit) signs on Base
 ```
 
 | Role | Responsibility |
 |------|----------------|
-| Human | Sets mandate; confirms escalations |
-| SpendGate | Compile policy; deterministic gate; optional gated transfer |
+| Human | Sets mandate; one Reasoning key step; confirms escalations |
+| Owner agent | Draft/revise/explain with **owner** SERV key; never send key to host |
+| SpendGate host | Store MandatePolicy; deterministic gate; optional gated transfer |
 | Spender | Proposes spends; may execute **only** after ALLOW |
 
 ## Project Structure
 ```
 src/
-  agent.ts                 # OpenServ agent + capabilities + provision/run
+  agent.ts                 # Keyless OpenServ gate (+ optional operator SERV)
+  owner/
+    copilot.ts             # Owner-side draft/revise/explain + gate prompts
   policy/
     schema.ts              # MandatePolicy, SpendIntent, EvaluationResult (Zod)
     engine.ts              # Deterministic evaluateIntent / commitIntent / ledger
     local-compile.ts       # Offline NL→policy heuristics for UI only
+  llm/                     # SERV client + draft/compile/explain
   executor/
     gated-executor.ts      # evaluate → AgentKit transfer (or dry-run)
   store/
@@ -50,13 +54,9 @@ web/                       # Dialog UI (You / SpendGate / Spender)
 web-dist/                  # Vite production build (Vercel output)
 ```
 
-## Capabilities (OpenServ agent)
-- `compile_mandate` — NL → MandatePolicy (via `this.generate` + Zod)
-- `get_policy` — inspect policy + ledger + execute mode
-- `evaluate_intent` — deterministic allow | deny | escalate (no tx)
-- `execute_gated_transfer` — evaluate then AgentKit USDC transfer / dry-run
-- `reset_ledger` — demo helper
-
+## Capabilities (OpenServ host)
+- `apply_policy` / `get_policy` / `evaluate_intent` / `execute_gated_transfer` / `reset_ledger` — keyless
+- Optional operator (host `SERV_API_KEY`): `draft_policy` / `revise_mandate` / `compile_mandate` / `explain_decision`
 ## Chains & tokens
 - Chain focus: **Base** (`base` / `base-sepolia` via `NETWORK_ID`)
 - Currency in policy: **USDC only**
@@ -66,6 +66,8 @@ web-dist/                  # Vite production build (Vercel output)
 
 ## Environment
 - Secrets only in `.env` — never commit `.env`, `.openserv.json`, CDP keys, or wallet private keys
+- **Owner agent:** `SERV_API_KEY` (Reasoning) for Copilot — never sent to SpendGate host
+- **Host:** no SERV required for consumer gate; optional host `SERV_API_KEY` for operator self/dev only
 - OpenServ: filled by `provision()` (`WALLET_PRIVATE_KEY`, `OPENSERV_API_KEY`, …)
 - Optional deploy: `OPENSERV_USER_API_KEY`
 - AgentKit live: `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `NETWORK_ID`
@@ -76,7 +78,8 @@ web-dist/                  # Vite production build (Vercel output)
 - `npm run ui` — dialog UI (Vite)
 - `npm run ui:build` — static build → `web-dist` (Vercel)
 - `npm run demo` — offline CLI scenarios
-- `npm run dev` — provision + run OpenServ agent
+- `npm run owner:copilot` — owner SERV draft → gate apply prompt
+- `npm run dev` — provision + run OpenServ host (keyless gate)
 - `npm run typecheck` — `tsc --noEmit`
 
 ## Coding Rules

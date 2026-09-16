@@ -1,18 +1,20 @@
 /**
- * How another agent connects to SpendGate — no end-user SERV/CDP keys.
+ * How another agent talks to the SpendGate *gate* (keyless host).
+ *
+ * Prefer: draft MandatePolicy on the owner agent (SERV_API_KEY + src/owner/copilot.ts),
+ * then send apply_policy with JSON here. See examples/owner-copilot.ts.
  *
  *   npx tsx examples/connect-as-agent.ts
- *   npx tsx examples/connect-as-agent.ts "draft mandate: max $10/tx, $40/day, USDC+ETH only"
+ *   npx tsx examples/connect-as-agent.ts "apply_policy …"
  *
- * Discovery is public. Paying the x402 call needs a funded OpenServ/client wallet
- * on the *caller* agent (the owner's agent), not SpendGate host secrets.
+ * Discovery is public. x402 needs a funded caller wallet — not host SERV/CDP.
  */
 import { PlatformClient } from '@openserv-labs/client'
 
 async function main() {
   const prompt =
     process.argv.slice(2).join(' ').trim() ||
-    'draft and apply spending mandate for policyId default: Max $10 per transfer, $40 per day, only USDC and ETH, Uniswap allowed, ask me above $8, no meme coins. Then summarize the policy.'
+    'get_policy for policyId=default. If empty, tell me to run owner-side draft (SERV_API_KEY) then apply_policy with MandatePolicy JSON. Do not ask for SERV_API_KEY.'
 
   const client = new PlatformClient()
   console.log('Discovering OpenServ x402 services…')
@@ -60,7 +62,7 @@ async function main() {
     console.error(
       'Have the human complete the OpenServ paywall, then retry.\n' +
         (paywall ? `Paywall / trigger: ${paywall}\n` : '') +
-        'Still no end-user SERV_API_KEY required.'
+        'Draft with owner SERV_API_KEY locally; never send that key to the gate.'
     )
     process.exit(1)
   }

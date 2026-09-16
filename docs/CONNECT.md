@@ -1,63 +1,71 @@
 # Connect to SpendGate (for humans & their agents)
 
-You do **not** need API keys, `.env`, or CDP secrets.
+## Two sides
+
+| Side | What runs | Secrets |
+|------|-----------|---------|
+| **Owner agent** (yours) | Policy Copilot: draft / revise / explain | Your `SERV_API_KEY` — one explicit OpenServ Reasoning console step (no SIWE yet) |
+| **SpendGate host** (gate) | `apply_policy` · `evaluate_intent` · `execute_gated_transfer` | Host CDP only if live execute; **never** your SERV key |
+
+SpendGate does **not** store end-user Reasoning keys.
 
 ## What you say to your agent
 
-> Connect to SpendGate on OpenServ. Set my spending mandate:  
+> Connect to SpendGate. First draft my spending mandate with my Reasoning key, then enforce it on SpendGate:  
 > Agent wallet $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap allowed. Ask me above $8. No meme coins.  
 > Before any spend, ask SpendGate. If it denies, stop. If it escalates, ask me.
-
-That’s the product.
 
 ## What happens behind the scenes
 
 ```
-You → your agent → OpenServ x402 → SpendGate host
-                                      ├─ SERV drafts/explains policy (host key)
-                                      ├─ engine.ts allow/deny/escalate
-                                      └─ AgentKit only after ALLOW (host CDP, if live)
+You → your agent
+         ├─ SERV (your key) → draft / revise / explain MandatePolicy
+         └─ OpenServ x402 → SpendGate host
+                              ├─ apply_policy (JSON only)
+                              ├─ engine.ts allow/deny/escalate
+                              └─ AgentKit only after ALLOW (host CDP, if live)
 ```
 
-- **You** never see `SERV_API_KEY` or `CDP_*`.
-- **Your agent** discovers SpendGate via OpenServ (`discoverServices` → name `SpendGate`) and pays a tiny x402 fee (demo price ~$0.01) or uses the paywall page.
-- **SpendGate host** (us / the operator) runs `npm run dev` with secrets and keeps the gate online.
+- **One explicit step:** create an OpenServ Reasoning key and give it to *your* agent (env / agent secrets). Not SIWE for now.
+- **SpendGate host** never sees that key. Our host `SERV_API_KEY` is only for our own / operator use.
+- **x402** (~$0.01 demo) pays the gate call; discovery needs no key.
 
-## For agent builders (still no end-user secrets)
+## For agent builders
 
 ```ts
 import { PlatformClient } from '@openserv-labs/client'
+import { ownerDraftPolicy, gateApplyPrompt } from './src/owner/copilot.js'
 
-const client = new PlatformClient() // discovery needs no key
+// 1) Owner-side Copilot (requires SERV_API_KEY in *this* process)
+const { draft } = await ownerDraftPolicy(
+  'max $10/tx, $40/day, USDC+ETH, Uniswap only, ask above $8'
+)
+// show draft.conflicts / questions to the human; revise if needed
+
+// 2) Keyless gate — send policy JSON only
+const client = new PlatformClient()
 const services = await client.payments.discoverServices()
 const spendgate = services.find((s) => /spendgate/i.test(s.name))
 
-// When the owner's agent has a funded wallet for x402:
 await client.payments.payWorkflow({
   workflowId: spendgate.workflowId,
-  input: {
-    prompt:
-      'draft and apply mandate: max $10/tx, $40/day, USDC+ETH, Uniswap only, ask above $8',
-  },
+  input: { prompt: gateApplyPrompt({ policy: draft.policy }) },
 })
 ```
 
-See `examples/connect-as-agent.ts`.
+See `examples/owner-copilot.ts` and `examples/connect-as-agent.ts`.
 
 ## Demo without OpenServ
 
 Open https://spendgate.vercel.app — local Policy Copilot review UI (offline draft). Same gate idea; not the live skill path.
 
-## Operators (host only)
-
-If **you** run the SpendGate service:
+## Operators (SpendGate host)
 
 ```bash
-# .env on the host — never give these to end users
-SERV_API_KEY=...
+# Gate only — no SERV required for consumer traffic
 # optional live execute:
 # CDP_API_KEY_ID=...
 npm run dev
-```
 
-Then share this page / `llms.txt` / the Cursor skill so other agents can connect.
+# optional: SERV_API_KEY on the host unlocks operator Copilot for *our* use only
+```

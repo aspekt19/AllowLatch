@@ -4,23 +4,23 @@
 
 **Live demo:** https://spendgate.vercel.app  
 **Repo:** https://github.com/aspekt19/SpendGate  
-**Connect (no API keys for users):** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)
+**Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)
 
-Human mandate → strict USDC policy → every spend is **allow / deny / escalate** → AgentKit moves funds **only after ALLOW**. Non-custodial.
+Human mandate → strict USDC policy → every spend is **allow / deny / escalate** → AgentKit moves funds **only after ALLOW**. Non-custodial. Host never stores end-user SERV keys.
 
 > SERV Hackathon Edition 01 · track: **Coinbase AgentKit**
 
 ## For end users (the product)
 
-You do **not** edit `.env` or paste secret keys.
-
 Tell your agent:
 
 > Connect to SpendGate. Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, ask SpendGate.
 
-Your agent discovers SpendGate on OpenServ (x402), drafts the policy, and gates spends. Host secrets stay with the SpendGate operator.
+**One explicit step:** create an OpenServ Reasoning key and give it to *your* agent (not to SpendGate). No SIWE yet.
 
-- Cursor skill: `.cursor/skills/spendgate` (also installed in your user Agent Store as `spendgate`)
+Your agent drafts the policy with that key, then calls the SpendGate gate over OpenServ x402 with MandatePolicy JSON only.
+
+- Cursor skill: `.cursor/skills/spendgate` (also in your user Agent Store as `spendgate`)
 - Demo UI: https://spendgate.vercel.app
 
 ## Problem
@@ -31,35 +31,36 @@ An agent with a funded Base wallet can drain itself via loops, bad addresses, or
 
 | Layer | Role |
 |-------|------|
-| OpenServ agent (x402) | What other agents connect to |
-| SERV Reasoning | Policy Copilot (host key) |
+| Owner agent + SERV | Policy Copilot (owner’s Reasoning key) |
+| OpenServ x402 host | Keyless gate other agents connect to |
 | Deterministic engine | Caps, allowlists, escalate — not LLM judgment |
 | Coinbase AgentKit | Signs USDC **only after ALLOW** |
 
 ## Capabilities
 
-- `draft_policy` / `revise_mandate` / `apply_policy` — Policy Copilot
-- `evaluate_intent` / `explain_decision` — gate + explanation
-- `execute_gated_transfer` — AgentKit only after ALLOW
-- `compile_mandate` / `get_policy` / `reset_ledger` — helpers
+**Host (keyless):** `apply_policy` · `evaluate_intent` · `execute_gated_transfer` · `get_policy` · `reset_ledger`  
+
+**Owner agent:** `ownerDraftPolicy` / `ownerRevisePolicy` / `ownerExplainDecision` (`src/owner/copilot.ts`)  
+
+**Operator only** (optional host `SERV_API_KEY`): `draft_policy` / `revise_mandate` / `explain_decision`
 
 ## Operators / developers
 
 ```bash
 npm install
 npm run ui                  # local Policy Copilot demo UI
-npm run reasoning:copilot   # host SERV cycle
+npm run owner:copilot       # owner SERV draft → apply_policy prompt
 npm run battle              # Spender → gate → AgentKit dry-run
 npm run connect             # discover SpendGate as another agent
-npm run dev                 # provision + run OpenServ host (host .env only)
+npm run dev                 # provision + run OpenServ host (gate; SERV optional)
 ```
 
-Host `.env` (never give to end users): `SERV_API_KEY`, optional `CDP_*` for live execute.  
+Host: no SERV required for consumer gate traffic; optional `SERV_API_KEY` for our self/dev Copilot; optional `CDP_*` for live execute.  
 Live CDP checklist: [docs/BATTLE.md](./docs/BATTLE.md) · Product: [docs/PRODUCT.md](./docs/PRODUCT.md)
 
 ## Pitch (one line)
 
-Say the rules to your agent; SpendGate turns them into a hard turnstile so AgentKit cannot spend outside them.
+Say the rules to your agent; it drafts with your Reasoning key; SpendGate’s turnstile keeps AgentKit inside them.
 
 ## Hackathon notes
 
