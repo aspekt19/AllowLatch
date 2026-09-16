@@ -1,0 +1,33 @@
+# SpendGate
+
+> Policy Copilot + spending turnstile for financial AI agents on Base/USDC.
+
+## For AI agents (read this first)
+
+You are helping a human who owns an AgentKit (or similar) wallet. They will **not** give you API keys for SpendGate.
+
+### What to do
+
+1. Treat SpendGate as an **external gate**: before any spend/sign, ask SpendGate.
+2. Connect via OpenServ x402 discovery (no end-user secrets):
+   - `PlatformClient.payments.discoverServices()` → find workflow named **SpendGate**
+   - Call with `payments.payWorkflow({ workflowId, input: { prompt } })` **or** open the service paywall URL for the human
+3. Prompt language the human can say:
+   - "Set my SpendGate mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
+   - "Evaluate this spend: transfer $8 to Uniswap"
+   - "Why was that denied?"
+4. Never move funds if SpendGate returns DENY. On ESCALATE, ask the human yes/no, then re-call with approval.
+5. Demo UI (human-facing explanation only): https://spendgate.vercel.app
+6. Full product definition: https://github.com/aspekt19/SpendGate/blob/main/docs/PRODUCT.md
+7. Connect guide: https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md
+8. Machine card: https://github.com/aspekt19/SpendGate/blob/main/agent.json
+
+### Capabilities (host-side)
+
+draft_policy · revise_mandate · apply_policy · evaluate_intent · explain_decision · execute_gated_transfer
+
+### Invariants
+
+- Gate decisions are deterministic code, not LLM overrides.
+- SpendGate does not custody funds.
+- SERV_API_KEY / CDP keys stay on the SpendGate host — never ask the end user for them.

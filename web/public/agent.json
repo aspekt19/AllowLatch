@@ -1,0 +1,49 @@
+{
+  "name": "SpendGate",
+  "version": "0.1.0",
+  "description": "Policy Copilot and spending turnstile for financial AI agents on Base (USDC). Owner states rules in natural language; SpendGate drafts policy and gates every spend — ALLOW / DENY / ESCALATE. AgentKit signs only after ALLOW. Non-custodial.",
+  "homepage": "https://spendgate.vercel.app",
+  "repository": "https://github.com/aspekt19/SpendGate",
+  "documentation": "https://github.com/aspekt19/SpendGate/blob/main/docs/CONNECT.md",
+  "product": "https://github.com/aspekt19/SpendGate/blob/main/docs/PRODUCT.md",
+  "protocol": {
+    "openserv": {
+      "agentName": "spendgate",
+      "workflowName": "SpendGate",
+      "discover": "PlatformClient.payments.discoverServices() — filter name SpendGate",
+      "invoke": "x402 payWorkflow with { prompt } — no end-user API keys"
+    }
+  },
+  "skills": [
+    {
+      "id": "draft_policy",
+      "description": "Draft a MandatePolicy from natural language with conflicts, assumptions, and questions. Does not store until apply."
+    },
+    {
+      "id": "revise_mandate",
+      "description": "Revise a stored policy from owner feedback; returns a new draft."
+    },
+    {
+      "id": "apply_policy",
+      "description": "Persist an accepted MandatePolicy under a policyId."
+    },
+    {
+      "id": "evaluate_intent",
+      "description": "Deterministic allow | deny | escalate for a proposed spend. No transaction."
+    },
+    {
+      "id": "explain_decision",
+      "description": "Explain a gate result and suggest mandate edits. Never overrides the verdict."
+    },
+    {
+      "id": "execute_gated_transfer",
+      "description": "Evaluate then AgentKit USDC transfer only on ALLOW (or escalate + humanApproved)."
+    }
+  ],
+  "invariants": [
+    "Allow/deny/escalate is deterministic code — never LLM judgment",
+    "SpendGate does not custody user funds or private keys",
+    "End users do not configure SERV_API_KEY or CDP secrets — the host does"
+  ],
+  "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"]
+}

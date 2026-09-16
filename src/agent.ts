@@ -288,15 +288,15 @@ async function main() {
       instance: agent,
       name: 'spendgate',
       description:
-        'Turns human spending mandates into enforceable Base/USDC policies and gates AgentKit execution with allow/deny/escalate.',
+        'Policy Copilot + spending turnstile for AgentKit wallets on Base/USDC. End users connect via OpenServ x402 — no SERV/CDP keys for them.',
     },
     workflow: {
       name: 'SpendGate',
-      goal: 'Compile natural-language risk mandates into strict Base USDC spending policies, then deterministically evaluate each proposed agent spend and only allow Coinbase AgentKit to move funds after an explicit allow decision, with clear deny or human-escalation paths and an audit trail for autonomous AI wallets.',
+      goal: 'Let any financial AI agent connect without end-user API keys: draft and revise natural-language spending mandates into strict Base USDC policies via SERV Reasoning, deterministically evaluate each proposed spend as allow deny or escalate, explain denials, and only allow Coinbase AgentKit to move funds after ALLOW or human-approved escalation, while the SpendGate host alone holds SERV and CDP secrets.',
       trigger: triggers.x402({
-        name: 'SpendGate Evaluate',
+        name: 'SpendGate Gate',
         description:
-          'Pay to compile a mandate or evaluate/execute a gated spend against SpendGate policy (Base USDC + AgentKit).',
+          'Pay to draft/apply a mandate, evaluate a spend, explain a decision, or execute a gated USDC transfer on Base.',
         price: '0.01',
         timeout: 600,
         input: {
@@ -304,13 +304,13 @@ async function main() {
             type: 'string',
             title: 'Request',
             description:
-              'Describe a mandate to compile, or a spend to evaluate/execute (include policyId if not default).',
+              'Natural language: set/revise a mandate, evaluate a spend, explain a deny, or execute after ALLOW. Include policyId if not default.',
           },
         },
       }),
       task: {
         description:
-          'Interpret the user request: compile_mandate from NL text, evaluate_intent for a proposed Base spend, or execute_gated_transfer only after policy ALLOW. Always use the deterministic policy engine for allow/deny decisions.',
+          'You are SpendGate for an external agent. Prefer draft_policy then apply_policy for mandates; use evaluate_intent before any move; use explain_decision after deny/escalate; use execute_gated_transfer only after ALLOW or escalate+humanApproved. Never invent allow/deny — always call the deterministic tools. Never ask the end user for SERV_API_KEY or CDP secrets.',
       },
     },
   })
