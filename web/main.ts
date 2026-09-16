@@ -40,6 +40,7 @@ const form = document.querySelector<HTMLFormElement>('#composer')!
 const input = document.querySelector<HTMLTextAreaElement>('#input')!
 const btnExample = document.querySelector<HTMLButtonElement>('#btn-example')!
 const btnSend = document.querySelector<HTMLButtonElement>('#btn-send')!
+const btnClearRules = document.querySelector<HTMLButtonElement>('#btn-clear-rules')!
 const brainBadge = document.querySelector<HTMLSpanElement>('#brain-badge')
 
 let phase: Phase = 'mandate'
@@ -176,6 +177,9 @@ function addDecision(result: EvaluationResult) {
 }
 
 function renderPolicy() {
+  const hasRules = Boolean(policy || pendingDraft)
+  btnClearRules.classList.toggle('is-hidden', !hasRules)
+
   if (!policy) {
     policyEmpty.classList.remove('is-hidden')
     policyLive.classList.add('is-hidden')
@@ -196,6 +200,26 @@ function renderPolicy() {
   policyStatus.classList.add('is-live')
   policyName.textContent = policy.name
   fillPolicyGrid(policy)
+}
+
+function clearRules() {
+  if (busy) return
+  if (!policy && !pendingDraft) return
+  policy = null
+  pendingDraft = null
+  lastMandate = ''
+  lastServ = null
+  pendingEscalate = null
+  ledger = freshLedger()
+  setBrain('SERV ready when host key is set', false)
+  renderPolicy()
+  renderLedger()
+  setPhase('mandate')
+  addMessage(
+    'guard',
+    'Rules cleared. Gate is idle — no MandatePolicy is active.\n\nWrite a new mandate (or load the example) whenever you want limits again.'
+  )
+  input.focus()
 }
 
 function fillPolicyGrid(p: MandatePolicy) {
@@ -569,6 +593,8 @@ btnExample.addEventListener('click', () => {
   input.value = EXAMPLE_MANDATE
   input.focus()
 })
+
+btnClearRules.addEventListener('click', () => clearRules())
 
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
