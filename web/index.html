@@ -3,158 +3,163 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SpendGate — Policy Copilot & spending turnstile</title>
+    <title>SpendGate — Reasoning drafts the law. Code judges every spend.</title>
     <meta
       name="description"
-      content="State spending rules in plain language. SpendGate drafts the policy and blocks AgentKit from moving Base USDC unless the gate allows it."
+      content="Say spending rules in plain language. SERV drafts the policy. Deterministic code allow / deny / escalates before AgentKit moves Base USDC. No custody."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <div class="ambient" aria-hidden="true">
+      <span class="orb orb-a"></span>
+      <span class="orb orb-b"></span>
+      <span class="grain"></span>
+    </div>
+
     <div class="app">
       <header class="topbar">
         <a class="brand" href="/" aria-label="SpendGate home">
-          <img class="brand-mark" src="/logo.svg" width="36" height="36" alt="" />
+          <img class="brand-mark" src="/logo.svg" width="32" height="32" alt="" />
           <span class="brand-name">SpendGate</span>
         </a>
-        <nav class="topbar-meta" aria-label="Stack">
-          <span>Base</span>
-          <span class="dot" aria-hidden="true"></span>
-          <span>USDC</span>
-          <span class="dot" aria-hidden="true"></span>
-          <span>AgentKit</span>
-          <span class="meta-div" aria-hidden="true"></span>
-          <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Gate live</span>
-          <span class="meta-div" aria-hidden="true"></span>
-          <span class="brain-badge" id="brain-badge">SERV</span>
+        <nav class="topbar-nav" aria-label="Primary">
+          <a href="#gate">Open the gate</a>
+          <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">Embed</a>
+          <a href="https://github.com/aspekt19/SpendGate" target="_blank" rel="noreferrer">GitHub</a>
+          <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Live</span>
         </nav>
       </header>
 
-      <section class="intro" aria-labelledby="intro-title">
-        <p class="intro-kicker">OpenServ · SERV Reasoning</p>
-        <h1 id="intro-title" class="intro-title">
-          Reasoning drafts the law. Code judges every spend.
-        </h1>
-        <p class="intro-lead">
-          State a mandate in plain language. <strong>SERV Reasoning</strong> drafts a strict Base/USDC
-          policy (conflicts, assumptions, questions). Before AgentKit moves funds, deterministic code
-          returns <strong>ALLOW</strong>, <strong>DENY</strong>, or <strong>ESCALATE</strong>. No custody.
-          No end-user API keys.
+      <section class="hero" aria-labelledby="hero-brand">
+        <p class="hero-kicker">OpenServ · SERV Reasoning · AgentKit</p>
+        <p id="hero-brand" class="hero-brand">SpendGate</p>
+        <h1 class="hero-title">Your agent’s spending turnstile.</h1>
+        <p class="hero-lead">
+          Say the rules in plain language. SERV drafts the policy. Code — not the LLM — decides
+          ALLOW, DENY, or ESCALATE before AgentKit can move USDC on Base.
         </p>
+        <div class="hero-cta">
+          <a class="btn-hero" href="#gate">Try the gate</a>
+          <span class="hero-note">No end-user API keys · Non-custodial</span>
+        </div>
       </section>
 
-      <div class="workspace">
-        <section class="console" aria-label="Mandate and gate console">
-          <div class="console-bar">
-            <div class="stepper" id="phase-label" aria-live="polite">
-              <span class="step is-active" data-step="1"><em>01</em> Mandate</span>
-              <span class="step-sep" aria-hidden="true"></span>
-              <span class="step" data-step="2"><em>02</em> Review</span>
-              <span class="step-sep" aria-hidden="true"></span>
-              <span class="step" data-step="3"><em>03</em> Gate</span>
-            </div>
-            <p class="console-hint" id="console-hint">Describe how your agent may spend</p>
-          </div>
+      <div class="product-shell" id="gate">
+        <div class="product-chrome">
+          <div class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+          <p class="chrome-title">Policy Copilot + gate</p>
+          <span class="brain-badge" id="brain-badge">SERV</span>
+        </div>
 
-          <div class="messages" id="messages"></div>
+        <div class="workspace">
+          <section class="console" aria-label="Mandate and gate console">
+            <div class="console-bar">
+              <div class="stepper" id="phase-label" aria-live="polite">
+                <span class="step is-active" data-step="1"><em>01</em> Mandate</span>
+                <span class="step-sep" aria-hidden="true"></span>
+                <span class="step" data-step="2"><em>02</em> Review</span>
+                <span class="step-sep" aria-hidden="true"></span>
+                <span class="step" data-step="3"><em>03</em> Gate</span>
+              </div>
+              <p class="console-hint" id="console-hint">Describe how your agent may spend</p>
+            </div>
 
-          <form class="composer" id="composer">
-            <label class="sr-only" for="input">Message</label>
-            <textarea
-              id="input"
-              rows="2"
-              placeholder="e.g. Max $10 per transfer, $40/day, only USDC &amp; ETH, ask me above $8…"
-              autocomplete="off"
-            ></textarea>
-            <div class="composer-actions">
-              <button type="button" class="btn-ghost" id="btn-example">Load example mandate</button>
-              <button type="submit" class="btn-primary" id="btn-send">
-                <span>Compile policy</span>
-                <span class="btn-key" aria-hidden="true">↵</span>
-              </button>
-            </div>
-          </form>
-        </section>
+            <div class="messages" id="messages"></div>
 
-        <aside class="rail" aria-label="Policy status">
-          <div class="rail-block">
-            <div class="rail-head">
-              <h2 class="rail-title">Active policy</h2>
-              <span class="rail-status" id="policy-status">Idle</span>
-            </div>
-            <div class="policy-empty" id="policy-empty">
-              <p>No policy compiled yet.</p>
-              <p class="muted">Send a mandate to generate limits, allowlists, and escalation rules.</p>
-            </div>
-            <div class="policy-live is-hidden" id="policy-live">
-              <p class="policy-name" id="policy-name"></p>
-              <dl class="policy-grid" id="policy-grid"></dl>
-            </div>
-            <div class="policy-actions is-hidden" id="policy-actions">
-              <button type="button" class="btn-policy-action" id="btn-download-policy">
-                Download JSON
-              </button>
-              <button type="button" class="btn-policy-action" id="btn-copy-policy">
-                Copy JSON
-              </button>
-              <button type="button" class="btn-clear-rules" id="btn-clear-rules">
-                Clear rules
-              </button>
-            </div>
-            <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
-              Export puts MandatePolicy JSON on your machine. Embed it in your agent and gate
-              every spend before signing —
-              <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">docs/EMBED.md</a>.
-            </p>
-          </div>
+            <form class="composer" id="composer">
+              <label class="sr-only" for="input">Message</label>
+              <textarea
+                id="input"
+                rows="2"
+                placeholder="e.g. Max $10 per transfer, $40/day, only USDC &amp; ETH, ask me above $8…"
+                autocomplete="off"
+              ></textarea>
+              <div class="composer-actions">
+                <button type="button" class="btn-ghost" id="btn-example">Load example mandate</button>
+                <button type="submit" class="btn-primary" id="btn-send">
+                  <span>Draft policy</span>
+                  <span class="btn-key" aria-hidden="true">↵</span>
+                </button>
+              </div>
+            </form>
+          </section>
 
-          <div class="rail-block">
-            <h2 class="rail-title">Ledger · today</h2>
-            <p class="ledger-figure" id="ledger-view">$0.00</p>
-            <p class="ledger-sub" id="ledger-sub">0 transactions this hour</p>
-          </div>
+          <aside class="rail" aria-label="Policy status">
+            <div class="rail-block">
+              <div class="rail-head">
+                <h2 class="rail-title">Active policy</h2>
+                <span class="rail-status" id="policy-status">Idle</span>
+              </div>
+              <div class="policy-empty" id="policy-empty">
+                <p>No policy yet.</p>
+                <p class="muted">Send a mandate — SERV drafts limits, allowlists, and escalation.</p>
+              </div>
+              <div class="policy-live is-hidden" id="policy-live">
+                <p class="policy-name" id="policy-name"></p>
+                <dl class="policy-grid" id="policy-grid"></dl>
+              </div>
+              <div class="policy-actions is-hidden" id="policy-actions">
+                <button type="button" class="btn-policy-action" id="btn-download-policy">
+                  Download JSON
+                </button>
+                <button type="button" class="btn-policy-action" id="btn-copy-policy">
+                  Copy JSON
+                </button>
+                <button type="button" class="btn-clear-rules" id="btn-clear-rules">
+                  Clear rules
+                </button>
+              </div>
+              <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
+                Embed the JSON in your agent and gate every spend before signing —
+                <a href="https://github.com/aspekt19/SpendGate/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">docs/EMBED.md</a>.
+              </p>
+            </div>
 
-          <div class="rail-block rail-flow">
-            <h2 class="rail-title">Roles in this demo</h2>
-            <ol class="flow-list">
-              <li>
-                <span>You</span>
-                Owner — mandate &amp; human confirmations
-              </li>
-              <li>
-                <span>SpendGate</span>
-                Compile policy · gate every spend
-              </li>
-              <li>
-                <span>Spender</span>
-                AgentKit agent proposing spends
-              </li>
-            </ol>
-            <p class="muted tight">
-              Live path: SERV drafts &amp; explains on the host; the gate never lets the LLM override allow/deny.
-              Agents connect via OpenServ x402 — no end-user keys.
-            </p>
-          </div>
-        </aside>
+            <div class="rail-block">
+              <h2 class="rail-title">Ledger · today</h2>
+              <p class="ledger-figure" id="ledger-view">$0.00</p>
+              <p class="ledger-sub" id="ledger-sub">0 transactions this hour</p>
+            </div>
+
+            <div class="rail-block rail-flow">
+              <h2 class="rail-title">How it runs</h2>
+              <ol class="flow-list">
+                <li>
+                  <span>You</span>
+                  Mandate &amp; human confirmations
+                </li>
+                <li>
+                  <span>SpendGate</span>
+                  SERV draft · deterministic gate
+                </li>
+                <li>
+                  <span>Spender</span>
+                  AgentKit only after ALLOW
+                </li>
+              </ol>
+            </div>
+          </aside>
+        </div>
       </div>
 
       <footer class="foot">
         <div class="foot-brand">
-          <img src="/logo.svg" width="20" height="20" alt="" />
+          <img src="/logo.svg" width="18" height="18" alt="" />
           <span>© 2026 SpendGate</span>
         </div>
         <div class="foot-links">
           <a href="https://github.com/aspekt19/SpendGate" target="_blank" rel="noreferrer">GitHub</a>
           <span class="dot" aria-hidden="true"></span>
-          <a href="https://docs.openserv.ai/serv-reasoning/" target="_blank" rel="noreferrer">SERV Reasoning</a>
+          <a href="https://docs.openserv.ai/serv-reasoning/" target="_blank" rel="noreferrer">SERV</a>
           <span class="dot" aria-hidden="true"></span>
           <span>Does not custody funds</span>
         </div>
