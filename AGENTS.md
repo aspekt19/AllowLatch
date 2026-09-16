@@ -17,13 +17,14 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Live battle checklist | [`docs/BATTLE.md`](./docs/BATTLE.md) |
 | SERV Reasoning client | [`src/llm/serv-reasoning.ts`](./src/llm/serv-reasoning.ts) |
 | Mandate compile / Policy Copilot | [`src/llm/compile-mandate.ts`](./src/llm/compile-mandate.ts) |
+| Explain gate decision (SERV) | [`src/llm/explain-decision.ts`](./src/llm/explain-decision.ts) |
 | Dialog UI | [`web/`](./web/) |
 
 ## SERV Reasoning (how we use it)
 
 Docs: https://docs.openserv.ai/serv-reasoning/
 
-- **LLM for judgment** — `draftPolicyWithServ` / `revisePolicyWithServ` / `compileMandateWithServ`
+- **LLM for judgment** — `draftPolicyWithServ` / `revisePolicyWithServ` / `explainDecisionWithServ` / `compileMandateWithServ`
 - **Deterministic gate** — allow/deny/escalate stays in `engine.ts` (never LLM)
 - Day-one defaults: small model, versioned system prompt, structured JSON + Zod, `reasoning_effort`, no tight `max_tokens`
 - Copilot extras: Multipath (`*-serv-multipath`), `serv_prompt_guard`, `serv_shadow_agent`
@@ -33,8 +34,8 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 | Surface | Role |
 |---------|------|
-| **OpenServ agent** (`npm run dev`) | Copilot + gate: `draft_policy`, `revise_mandate`, `apply_policy`, `evaluate_intent`, `execute_gated_transfer` |
-| **Vite dialog UI** (`npm run ui`) | Demo UX; offline heuristic compile + same `engine.ts` |
+| **OpenServ agent** (`npm run dev`) | Copilot + gate: `draft_policy`, `revise_mandate`, `apply_policy`, `explain_decision`, `evaluate_intent`, `execute_gated_transfer` |
+| **Vite dialog UI** (`npm run ui`) | Demo UX; offline `draftPolicyLocally` review + same `engine.ts` |
 
 ## Runtime checklist
 

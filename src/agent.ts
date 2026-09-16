@@ -21,6 +21,7 @@ import {
   draftPolicyWithServ,
   revisePolicyWithServ,
 } from './llm/compile-mandate.js'
+import { explainDecisionWithServ } from './llm/explain-decision.js'
 
 const store = new PolicyStore()
 
@@ -34,7 +35,8 @@ Your job:
 1) draft_policy / revise_mandate — help the owner shape a MandatePolicy (conflicts, assumptions, questions).
 2) apply_policy / compile_mandate — store a policy once the owner accepts it.
 3) evaluate_intent / execute_gated_transfer — gate spends; AgentKit only after ALLOW.
-4) Prefer draft_policy over silent compile when the mandate is ambiguous.
+4) explain_decision — after a gate result, explain why and suggest mandate edits (does not override the verdict).
+5) Prefer draft_policy over silent compile when the mandate is ambiguous.
 
 You are the turnstile. Be conservative: when ambiguous, prefer deny or escalate.`,
 })
@@ -203,7 +205,39 @@ agent.addCapability({
             ? 'Call execute_gated_transfer to move USDC via AgentKit (or dry-run).'
             : result.decision === 'escalate'
               ? 'Wait for human confirmation, then execute_gated_transfer with humanApproved=true.'
-              : 'Do NOT sign. Fix intent or update mandate.',
+              : 'Do NOT sign. Optionally call explain_decision, or revise_mandate / fix intent.',
+      },
+      null,
+      2
+    )
+  },
+})
+
+agent.addCapability({
+  name: 'explain_decision',
+  description:
+    'Policy Copilot: explain a prior evaluate_intent result in plain language and suggest mandate changes. Never overrides the gate verdict.',
+  inputSchema: z.object({
+    policyId: z.string().default('default'),
+    intent: SpendIntentSchema,
+  }),
+  async run({ args }) {
+    const policy = store.getPolicy(args.policyId)
+    const ledger = store.getLedger(args.policyId)
+    const evaluation = evaluateIntent(policy, args.intent, ledger)
+    const { explanation, meta } = await explainDecisionWithServ({ policy, evaluation })
+    return JSON.stringify(
+      {
+        ok: true,
+        evaluation,
+        explanation,
+        serv: {
+          model: meta.model,
+          promptVersion: meta.promptVersion,
+          latencyMs: meta.latencyMs,
+          usage: meta.usage,
+        },
+        note: 'Verdict unchanged. Use revise_mandate + apply_policy if the owner wants different rules.',
       },
       null,
       2

@@ -81,6 +81,18 @@ export const PolicyDraftSchema = z.object({
 
 export type PolicyDraft = z.infer<typeof PolicyDraftSchema>
 
+/** Human-readable explanation of a gate decision (SERV Copilot). */
+export const DecisionExplanationSchema = z.object({
+  headline: z.string().min(1).max(160),
+  explanation: z.string().min(1).max(800),
+  /** Concrete mandate edits the owner could make if they want a different outcome. */
+  suggestedMandateChanges: z.array(z.string()).default([]),
+  /** Whether the spend could pass after a policy revise (not after ignoring the gate). */
+  revisable: z.boolean(),
+})
+
+export type DecisionExplanation = z.infer<typeof DecisionExplanationSchema>
+
 /** Example starter policy for demos. */
 export const DEMO_POLICY: MandatePolicy = {
   version: '1.0',

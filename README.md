@@ -34,6 +34,7 @@ SpendGate does **not** custody user funds.
 npm install
 npm run reasoning:ping      # SERV Reasoning smoke test
 npm run reasoning:draft     # Policy Copilot: draft + conflicts/questions
+npm run reasoning:copilot   # Full cycle: draft → revise → gate → explain
 npm run reasoning:cycle     # Reasoning compile → allow/deny/escalate
 npm run battle              # Spender → SpendGate → AgentKit (dry-run without CDP)
 npm run ui                  # local dialog UI

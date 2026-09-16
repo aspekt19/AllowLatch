@@ -99,8 +99,19 @@ Chain focus: **Base**. Policy currency: **USDC**.
 
 ## Build direction
 
-| Exists today | Next |
-|--------------|------|
-| SERV compile, deterministic gate, battle dry-run, demo UI | `draft_policy` (conflicts / assumptions / questions), `revise_mandate`, `explain_decision`, skill-first UX, live CDP path |
+| Layer | Status |
+|-------|--------|
+| Deterministic gate | Done (`engine.ts`) |
+| SERV draft / revise / compile | Done |
+| `explain_decision` | Done |
+| Agent capabilities (skill surface) | Done |
+| Demo UI Policy Copilot review | Done (offline draft; production uses SERV) |
+| Live CDP battle | Optional — see [BATTLE.md](./BATTLE.md) |
 
-See also: [BATTLE.md](./BATTLE.md), [AGENTS.md](../AGENTS.md).
+Verify:
+
+```bash
+npm run reasoning:copilot   # draft → revise → apply → gate → explain
+npm run battle              # Spender → gate → AgentKit dry-run
+npm run ui                  # review flow in the browser
+```

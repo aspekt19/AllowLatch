@@ -1,13 +1,21 @@
-import { compileMandateLocally } from '../src/policy/local-compile.ts'
+import { draftPolicyLocally } from '../src/policy/local-compile.ts'
 import { commitIntent, evaluateIntent, freshLedger } from '../src/policy/engine.ts'
-import type { EvaluationResult, MandatePolicy, SpendIntent, SpendLedger } from '../src/policy/schema.ts'
+import type {
+  EvaluationResult,
+  MandatePolicy,
+  PolicyDraft,
+  SpendIntent,
+  SpendLedger,
+} from '../src/policy/schema.ts'
 
-type Phase = 'mandate' | 'spend' | 'escalate'
+type Phase = 'mandate' | 'review' | 'spend' | 'escalate'
 type Role = 'you' | 'guard' | 'spender'
 
 const UNISWAP = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
 const EXAMPLE_MANDATE =
   'Agent wallet budget $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap router allowed. Ask me above $8. No meme coins.'
+const MESSY_EXAMPLE =
+  'Agent wallet about $200. Maybe $10 per transfer or wait maybe $25? $40 a day but weekends can be higher. Only USDC and ETH, Uniswap ok. Ask me above $8. No memes. Also allow any address? Wait — only Uniswap.'
 
 const messagesEl = document.querySelector<HTMLDivElement>('#messages')!
 const policyEmpty = document.querySelector<HTMLDivElement>('#policy-empty')!
@@ -26,6 +34,8 @@ const btnSend = document.querySelector<HTMLButtonElement>('#btn-send')!
 
 let phase: Phase = 'mandate'
 let policy: MandatePolicy | null = null
+let pendingDraft: PolicyDraft | null = null
+let lastMandate = ''
 let ledger: SpendLedger = freshLedger()
 let pendingEscalate: SpendIntent | null = null
 
@@ -33,6 +43,7 @@ function setPhase(next: Phase) {
   phase = next
   const hints: Record<Phase, string> = {
     mandate: 'Describe how your agent may spend',
+    review: 'Apply the draft, or clarify the mandate',
     spend: 'Propose a spend or use a scenario below',
     escalate: 'Approve or reject this spend',
   }
@@ -43,11 +54,11 @@ function setPhase(next: Phase) {
     el.classList.remove('is-active', 'is-done')
     const n = Number(el.dataset.step)
     if (next === 'mandate' && n === 1) el.classList.add('is-active')
-    if (next === 'spend') {
+    if (next === 'review') {
       if (n === 1) el.classList.add('is-done')
       if (n === 2) el.classList.add('is-active')
     }
-    if (next === 'escalate') {
+    if (next === 'spend' || next === 'escalate') {
       if (n <= 2) el.classList.add('is-done')
       if (n === 3) el.classList.add('is-active')
     }
@@ -56,14 +67,22 @@ function setPhase(next: Phase) {
   input.placeholder =
     next === 'mandate'
       ? 'e.g. Max $10 per transfer, $40/day, only USDC & ETH, ask me above $8…'
-      : next === 'escalate'
-        ? 'Type yes to approve, or no to deny…'
-        : 'e.g. transfer $8 to Uniswap — or tap a scenario'
+      : next === 'review'
+        ? 'Type “apply”, or clarify (e.g. use $10 per transfer, Uniswap only)…'
+        : next === 'escalate'
+          ? 'Type yes to approve, or no to deny…'
+          : 'e.g. transfer $8 to Uniswap — or tap a scenario'
 
   const sendLabel = btnSend.querySelector('span:first-child')
   if (sendLabel) {
     sendLabel.textContent =
-      next === 'mandate' ? 'Compile policy' : next === 'escalate' ? 'Reply' : 'Send'
+      next === 'mandate'
+        ? 'Draft policy'
+        : next === 'review'
+          ? 'Apply / clarify'
+          : next === 'escalate'
+            ? 'Reply'
+            : 'Send'
   }
 }
 
@@ -106,8 +125,14 @@ function renderPolicy() {
   if (!policy) {
     policyEmpty.classList.remove('is-hidden')
     policyLive.classList.add('is-hidden')
-    policyStatus.textContent = 'Idle'
-    policyStatus.classList.remove('is-live')
+    policyStatus.textContent = pendingDraft ? 'Draft' : 'Idle'
+    policyStatus.classList.toggle('is-live', Boolean(pendingDraft))
+    if (pendingDraft) {
+      policyEmpty.classList.add('is-hidden')
+      policyLive.classList.remove('is-hidden')
+      policyName.textContent = pendingDraft.policy.name
+      fillPolicyGrid(pendingDraft.policy)
+    }
     return
   }
 
@@ -116,29 +141,30 @@ function renderPolicy() {
   policyStatus.textContent = 'Live'
   policyStatus.classList.add('is-live')
   policyName.textContent = policy.name
+  fillPolicyGrid(policy)
+}
 
+function fillPolicyGrid(p: MandatePolicy) {
   const rows: [string, string][] = [
-    ['Per order', `$${policy.capital.maxPerOrderUsd}`],
-    ['Daily cap', `$${policy.capital.maxNotionalUsdPerDay}`],
-    ['Confirm above', `$${policy.escalation.requireHumanConfirmAboveUsd}`],
+    ['Per order', `$${p.capital.maxPerOrderUsd}`],
+    ['Daily cap', `$${p.capital.maxNotionalUsdPerDay}`],
+    ['Confirm above', `$${p.escalation.requireHumanConfirmAboveUsd}`],
     [
       'Symbols',
-      policy.universe.allowedSymbols.length
-        ? policy.universe.allowedSymbols.join(', ')
-        : 'any',
+      p.universe.allowedSymbols.length ? p.universe.allowedSymbols.join(', ') : 'any',
     ],
     [
       'Addresses',
-      policy.universe.allowedAddresses.length
-        ? `${policy.universe.allowedAddresses.length} allowlisted`
+      p.universe.allowedAddresses.length
+        ? `${p.universe.allowedAddresses.length} allowlisted`
         : 'open',
     ],
     [
       'Actions',
       [
-        policy.actions.allowTransfer && 'transfer',
-        policy.actions.allowSwap && 'swap',
-        policy.actions.allowX402Pay && 'x402',
+        p.actions.allowTransfer && 'transfer',
+        p.actions.allowSwap && 'swap',
+        p.actions.allowX402Pay && 'x402',
       ]
         .filter(Boolean)
         .join(' · ') || 'none',
@@ -146,16 +172,79 @@ function renderPolicy() {
   ]
 
   policyGrid.innerHTML = rows
-    .map(
-      ([k, v]) =>
-        `<div><dt>${k}</dt><dd>${v.replace(/</g, '&lt;')}</dd></div>`
-    )
+    .map(([k, v]) => `<div><dt>${k}</dt><dd>${v.replace(/</g, '&lt;')}</dd></div>`)
     .join('')
 }
 
 function renderLedger() {
   ledgerView.textContent = `$${ledger.spentUsdToday.toFixed(2)}`
   ledgerSub.textContent = `${ledger.txCountThisHour} tx this hour`
+}
+
+function showDraftReview(draft: PolicyDraft) {
+  pendingDraft = draft
+  policy = null
+  renderPolicy()
+
+  const lines = [
+    'Policy draft ready for review (Policy Copilot).',
+    '',
+    draft.summary,
+  ]
+  if (draft.conflicts.length) {
+    lines.push('', 'Conflicts:')
+    for (const c of draft.conflicts) lines.push(`• ${c}`)
+  }
+  if (draft.assumptions.length) {
+    lines.push('', 'Assumptions:')
+    for (const a of draft.assumptions) lines.push(`• ${a}`)
+  }
+  if (draft.questions.length) {
+    lines.push('', 'Questions:')
+    for (const q of draft.questions) lines.push(`• ${q}`)
+  }
+  lines.push(
+    '',
+    draft.readyToApply
+      ? 'Reply “apply” to activate the gate, or clarify further.'
+      : 'Clarify the questions, or reply “apply anyway” to accept this conservative draft.'
+  )
+
+  const host = addMessage('guard', lines.join('\n'))
+  const wrap = document.createElement('div')
+  wrap.className = 'chips'
+  for (const [label, fn] of [
+    ['Apply policy', () => applyDraft(false)],
+    ['Apply anyway', () => applyDraft(true)],
+    ['Messy example', () => {
+      input.value = MESSY_EXAMPLE
+      input.focus()
+    }],
+  ] as const) {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = 'chip'
+    btn.textContent = label
+    btn.addEventListener('click', fn)
+    wrap.appendChild(btn)
+  }
+  host.appendChild(wrap)
+  setPhase('review')
+}
+
+function applyDraft(_force: boolean) {
+  if (!pendingDraft) return
+  policy = pendingDraft.policy
+  pendingDraft = null
+  ledger = freshLedger()
+  renderPolicy()
+  renderLedger()
+  addMessage(
+    'guard',
+    `Policy applied. Gate is live.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nThe Spender may propose spends now — I allow, deny, or escalate.`
+  )
+  setPhase('spend')
+  addSpendChips()
 }
 
 function addSpendChips() {
@@ -220,10 +309,7 @@ function addSpendChips() {
     wrap.appendChild(btn)
   }
 
-  const host = addMessage(
-    'guard',
-    'Policy is live. The Spender will propose actions — I allow, deny, or escalate. AgentKit would sign only on ALLOW.\n\nTry a scenario:'
-  )
+  const host = addMessage('guard', 'Try a Spender scenario:')
   host.appendChild(wrap)
 }
 
@@ -250,7 +336,7 @@ function parseSpend(text: string): SpendIntent | null {
   }
 }
 
-function runSpend(intent: SpendIntent, fromChip = false) {
+function runSpend(intent: SpendIntent, _fromChip = false) {
   if (!policy) return
 
   const summary = `${intent.action} $${intent.amountUsd}${intent.symbol ? ` ${intent.symbol}` : ''}${
@@ -276,23 +362,32 @@ function runSpend(intent: SpendIntent, fromChip = false) {
       'guard',
       'Above your confirm threshold. Reply yes to treat as ALLOW for AgentKit, or no to block.'
     )
-  } else if (!fromChip) {
-    // keep phase
+  } else {
+    addMessage(
+      'guard',
+      'Blocked. In production, explain_decision (SERV) would suggest mandate edits — here the reasons above are the gate truth.'
+    )
   }
 }
 
 function handleMandate(text: string) {
   addMessage('you', text)
-  policy = compileMandateLocally(text)
-  ledger = freshLedger()
-  renderPolicy()
-  renderLedger()
-  addMessage(
-    'guard',
-    `Mandate compiled into a Base/USDC policy.\n\n${policy.name}\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day\nHuman confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\nSymbols: ${policy.universe.allowedSymbols.join(', ') || 'any'}\n\nI am the turnstile. The Spender cannot move funds unless I allow it.`
-  )
-  setPhase('spend')
-  addSpendChips()
+  lastMandate = text
+  const draft = draftPolicyLocally(text)
+  showDraftReview(draft)
+}
+
+function handleReview(text: string) {
+  addMessage('you', text)
+  const t = text.trim().toLowerCase()
+  if (/^(apply(\s+anyway)?|yes|ok|accept|примен)/i.test(t)) {
+    applyDraft(/anyway/.test(t))
+    return
+  }
+  // Treat as clarification → re-draft with combined mandate
+  lastMandate = `${lastMandate}\n\nClarification: ${text.trim()}`
+  const draft = draftPolicyLocally(lastMandate)
+  showDraftReview(draft)
 }
 
 function handleEscalate(text: string) {
@@ -329,6 +424,10 @@ function onSubmit(text: string) {
 
   if (phase === 'mandate') {
     handleMandate(trimmed)
+    return
+  }
+  if (phase === 'review') {
+    handleReview(trimmed)
     return
   }
   if (phase === 'escalate') {
@@ -370,7 +469,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am SpendGate — Policy Copilot and spending turnstile for an AgentKit wallet on Base.\n\n1. You state the mandate (limits, tokens, addresses, when to ask you).\n2. I compile a strict policy.\n3. A Spender proposes spends; I allow, deny, or escalate. AgentKit moves USDC only after ALLOW.\n\nStart with your rules, or load the example.'
+  'I am SpendGate — Policy Copilot and spending turnstile for an AgentKit wallet on Base.\n\n1. You state the mandate.\n2. I draft a policy with conflicts, assumptions, and questions — you review, then apply.\n3. Spender proposes spends; I allow, deny, or escalate. AgentKit moves USDC only after ALLOW.\n\nStart with your rules, or load the example.'
 )
 setPhase('mandate')
 renderPolicy()
