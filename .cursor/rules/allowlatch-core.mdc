@@ -9,7 +9,7 @@ OpenServ spending turnstile for Base AgentKit wallets. Full detail: `.cursorrule
 
 ## Invariants
 
-- Product name is **AllowLatch** (never rebrand to SpendGate or MandateGuard — those collide with other projects).
+- Product name is **AllowLatch**.
 - Allow / deny / escalate decisions are **deterministic** in `src/policy/engine.ts` — do not let the LLM override them.
 - No fund custody; AgentKit executes only after ALLOW and a consumed allow-receipt (or escalate + human approval).
 - Secrets stay in `.env`; never commit CDP keys or `.openserv.json`.

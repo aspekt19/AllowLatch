@@ -34,4 +34,4 @@ OpenServ x402 settlement identifies the paying wallet. AllowLatch also writes SQ
 
 - Market “download JSON and trade all night” as the product.
 - Ship unrestricted production policy export from the free demo.
-- Confuse this project with commercial **spendgate.ai** (unrelated). Brand is **AllowLatch** only — demo: https://allowlatch.vercel.app
+- Market this as a different product with a similar public name. Brand is **AllowLatch** only — demo: https://allowlatch.vercel.app

@@ -1,6 +1,6 @@
 # Architecture notes
 
-AllowLatch is an **application-layer payment policy turnstile**, not a custody vault. Brand is **AllowLatch** only (not SpendGate / MandateGuard / spendgate.ai).
+AllowLatch is an **application-layer payment policy turnstile**, not a custody vault. Brand is **AllowLatch** only.
 
 ## Enforced execution path
 

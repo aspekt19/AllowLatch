@@ -6,7 +6,7 @@ export function getHostInfo() {
   return {
     paywallUrl:
       process.env.ALLOWLATCH_PAYWALL_URL?.trim() ||
-      process.env.SPENDGATE_PAYWALL_URL?.trim() || // legacy
+      process.env.SPENDGATE_PAYWALL_URL?.trim() || // deprecated env
       null,
     priceUsd: '0.1',
     monetize: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md',

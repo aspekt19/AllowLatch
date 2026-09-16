@@ -10,7 +10,7 @@
 
 No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pay x402 ($0.10) or an evaluate pack ($1 / 25).
 
-> Product name is **AllowLatch** (not SpendGate / MandateGuard — those collide with other projects). Unrelated: commercial spendgate.ai.
+> Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
 ## For end users
 

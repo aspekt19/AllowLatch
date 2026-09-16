@@ -5,7 +5,7 @@ AllowLatch is an OpenServ agent that turns a human spending mandate (natural lan
 It does **not** custody user funds. Deterministic policy evaluation must never be replaced by LLM judgment.
 
 **Repo:** https://github.com/aspekt19/AllowLatch  
-**Product name:** AllowLatch (do not rebrand to SpendGate or MandateGuard — those names collide with unrelated projects).
+**Product name:** AllowLatch.
 
 ## Tech Stack
 - Runtime: Node.js, TypeScript, ESM (`"type": "module"`)

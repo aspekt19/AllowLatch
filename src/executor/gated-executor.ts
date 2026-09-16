@@ -37,8 +37,8 @@ let kitBundle: Promise<KitBundle> | null = null
 export function resolveExecuteMode(): ExecuteMode {
   const forced =
     process.env.ALLOWLATCH_EXECUTE_MODE ||
-    process.env.SPENDGATE_EXECUTE_MODE || // legacy alias
-    process.env.MANDATEGUARD_EXECUTE_MODE
+    process.env.SPENDGATE_EXECUTE_MODE || // deprecated env
+    process.env.MANDATEGUARD_EXECUTE_MODE // deprecated env
   if (forced === 'dry-run' || forced === 'live') return forced
   const hasCdp =
     !!process.env.CDP_API_KEY_ID &&

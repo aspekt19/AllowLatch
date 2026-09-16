@@ -24,7 +24,7 @@ export type AllowReceipt = {
 function receiptSecret(): string {
   const s =
     process.env.ALLOWLATCH_RECEIPT_SECRET?.trim() ||
-    process.env.SPENDGATE_RECEIPT_SECRET?.trim() || // legacy alias
+    process.env.SPENDGATE_RECEIPT_SECRET?.trim() || // deprecated env
     process.env.SERV_API_KEY?.trim() ||
     ''
   if (!s) throw new Error('ALLOWLATCH_RECEIPT_SECRET or SERV_API_KEY required for receipts')

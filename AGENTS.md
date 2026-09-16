@@ -56,7 +56,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
 4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
-5. Product name is **AllowLatch** (not SpendGate / MandateGuard).
+5. Product name is **AllowLatch**.
 
 ## Verify
 
