@@ -9,8 +9,10 @@
   "protocol": {
     "openserv": {
       "agentName": "allowlatch",
-      "workflowName": "AllowLatch",
-      "discover": "PlatformClient.payments.discoverServices() - filter name AllowLatch",
+      "workflowName": "AllowLatch Gate",
+      "discover": "PlatformClient.payments.discoverServices() - filter name /allowlatch/i (listed as AllowLatch Gate)",
+      "priceUsd": "0.025",
+      "evaluatePack": "buy_evaluate_pack - target $1 / 100 evaluates; then evaluate_intent with packKey",
       "invoke": "x402 payWorkflow with { prompt } - no end-user API keys"
     }
   },
@@ -28,8 +30,20 @@
       "description": "Persist an accepted MandatePolicy under a policyId."
     },
     {
+      "id": "compile_mandate",
+      "description": "SERV: compile NL mandate into MandatePolicy JSON."
+    },
+    {
+      "id": "sync_wallet_permissions",
+      "description": "Optional: mirror daily USDC cap into Coinbase Spend Permissions (hybrid / wallet_native)."
+    },
+    {
       "id": "evaluate_intent",
       "description": "Deterministic allow | deny | escalate. Issues single-use allow-receipt on ALLOW. No transaction."
+    },
+    {
+      "id": "buy_evaluate_pack",
+      "description": "Prepaid evaluate credits (target $1 / 100). Later evaluate_intent with packKey burns 1 credit."
     },
     {
       "id": "explain_decision",
@@ -42,6 +56,10 @@
     {
       "id": "list_audit",
       "description": "Recent audit events: policy, evaluate, receipt, tx."
+    },
+    {
+      "id": "reset_ledger",
+      "description": "Reset spend ledger for a policyId (operator / demo)."
     }
   ],
   "invariants": [

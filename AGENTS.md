@@ -10,7 +10,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Product overview & scripts | [README.md](./README.md) |
 | Product definition | [`docs/PRODUCT.md`](./docs/PRODUCT.md) |
 | Architecture hardening | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
-| Wallet-native roadmap | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) |
+| Wallet-native Spend Permissions | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) (hybrid / wallet_native done) |
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
 | Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |

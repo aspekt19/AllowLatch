@@ -9,8 +9,10 @@
   "protocol": {
     "openserv": {
       "agentName": "allowlatch",
-      "workflowName": "AllowLatch",
-      "discover": "PlatformClient.payments.discoverServices() - filter name AllowLatch",
+      "workflowName": "AllowLatch Gate",
+      "discover": "PlatformClient.payments.discoverServices() - filter name /allowlatch/i (listed as AllowLatch Gate)",
+      "priceUsd": "0.025",
+      "evaluatePack": "buy_evaluate_pack - target $1 / 100 evaluates; then evaluate_intent with packKey",
       "invoke": "x402 payWorkflow with { prompt } - no end-user API keys"
     }
   },
@@ -29,7 +31,11 @@
     },
     {
       "id": "evaluate_intent",
-      "description": "Deterministic allow | deny | escalate. No transaction."
+      "description": "Deterministic allow | deny | escalate. Issues single-use allow-receipt on ALLOW. No transaction."
+    },
+    {
+      "id": "buy_evaluate_pack",
+      "description": "Prepaid evaluate credits (target $1 / 100). Later evaluate_intent with packKey burns 1 credit."
     },
     {
       "id": "explain_decision",
@@ -37,13 +43,19 @@
     },
     {
       "id": "execute_gated_transfer",
-      "description": "Evaluate then AgentKit USDC transfer only on ALLOW (or escalate + humanApproved)."
+      "description": "Re-evaluate, consume allow-receipt (jti), then AgentKit USDC transfer only on ALLOW (or escalate + humanApproved)."
+    },
+    {
+      "id": "list_audit",
+      "description": "Recent audit events: policy, evaluate, receipt, tx."
     }
   ],
   "invariants": [
     "Allow/deny/escalate is deterministic code - never LLM judgment",
+    "Execute requires verified single-use allow-receipt (or escalate + humanApproved)",
     "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP - the host does; x402 pays the call"
   ],
-  "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"]
+  "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"],
+  "httpGate": "npm run http:gate - POST /v1/evaluate, /v1/execute (framework-agnostic)"
 }

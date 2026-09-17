@@ -1,6 +1,6 @@
-# AllowLatch — Product
+# AllowLatch - Product
 
-**AllowLatch** is a control layer for financial AI agents with a wallet (Coinbase AgentKit / Base / USDC).
+**AllowLatch** is a control layer for financial AI agents with a wallet on Base (USDC). Primary integrations today: OpenServ + Coinbase AgentKit - the product is the gate, not a single SDK.
 
 It is **not** a bank, not a custodian, and not an LLM that decides whether money may move.
 
@@ -8,8 +8,8 @@ It is a **Policy Copilot + hard turnstile**:
 
 1. The owner states and revises spending rules in natural language.
 2. **SERV Reasoning on the AllowLatch host** drafts the policy, surfaces conflicts, resists prompt injection, and explains denials (Multipath · prompt_guard · shadow).
-3. Before every spend, **deterministic code** returns allow / deny / escalate — the LLM never overrides the verdict.
-4. AgentKit moves funds **only after ALLOW** (or escalate + explicit human approval).
+3. Before every spend, **deterministic code** returns allow / deny / escalate - the LLM never overrides the verdict.
+4. The spender agent may move funds **only after ALLOW** (or escalate + explicit human approval), typically via AgentKit/CDP or host `execute_gated_transfer`.
 
 End users need **no API keys**. Agents connect via OpenServ x402; the host holds SERV (+ optional CDP).
 
@@ -20,9 +20,9 @@ Repo: https://github.com/aspekt19/AllowLatch
 
 ## Problem
 
-An agent with a funded Base wallet can drain itself through loops, bad destinations, over-eager swaps, or prompt injection. A chat instruction (“don’t spend more than $10”) is not a control.
+An agent with a funded Base wallet can drain itself through loops, bad destinations, over-eager swaps, or prompt injection. A chat instruction ("don't spend more than $10") is not a control.
 
-AgentKit itself does not enforce spend caps, destination allowlists, or human approval on transfers. Something must sit **in front of signing**.
+Wallet SDKs (including AgentKit) do not by themselves enforce spend caps, destination allowlists, or human approval on transfers. Something must sit **in front of signing**.
 
 ---
 
@@ -36,11 +36,11 @@ Give the owner of a financial agent a way to say **how money may be spent**, kee
 
 | Who | Why |
 |-----|-----|
-| Builders on Base / AgentKit | Stop a bot from draining test or live USDC |
+| Owners of AI agents with wallets | Mandate in words → policy → auditable decisions |
+| Builders on Base / AgentKit / OpenServ | First integration path: keep your agent, add the latch |
 | Operators of paying / x402 agents | Limits, addresses, escalation without re-coding every time |
-| Owners of “agent + wallet” setups | Mandate in words → policy → auditable decisions |
 
-Out of scope: retail banking UX, and “any rules for any agents” outside finance.
+Out of scope: retail banking UX, and "any rules for any agents" outside finance.
 
 ---
 
@@ -56,7 +56,7 @@ Financial agent (Spender)
   → before spend: evaluate / execute_gated_transfer (x402)
 AllowLatch Gate (code, no LLM)
   → ALLOW | DENY | ESCALATE
-AgentKit / CDP (host, if live)
+Wallet / AgentKit / CDP (after ALLOW)
   → sign Base USDC only on ALLOW (+ humanApproved on escalate)
 ```
 
@@ -64,12 +64,12 @@ AgentKit / CDP (host, if live)
 |-------|------|------|
 | Copilot | SERV Reasoning (host) | Mandate, conflicts, injection resistance, explain |
 | Gate | `src/policy/engine.ts` | Caps, symbols, addresses, velocity, escalate |
-| Execute | AgentKit / CDP | Transaction only after green light |
-| Connect | OpenServ x402 | Discovery + payment (no end-user keys) |
+| Execute | AgentKit / CDP (optional host) | Transaction only after green light |
+| Connect | OpenServ x402 (**AllowLatch Gate**) | Discovery + payment (no end-user keys) |
 
 AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 pricing.
 
-**Target UX:** skills on the user’s existing agent — zero secrets for the human. Dialog UI + `npm run wow` show the full story.
+**Target UX:** skills on the user's existing agent - zero secrets for the human. Dialog UI + `npm run wow` show the full story. Embed path: [EMBED.md](./EMBED.md).
 
 ---
 
@@ -98,7 +98,7 @@ Honest scope: AllowLatch is middleware authorization (+ receipt) **and** can mir
 
 ## One-line pitch
 
-> For a financial agent on Base: state rules in words → SERV drafts and explains → without ALLOW + valid allow-receipt, AgentKit does not move money.
+> For a financial agent on Base: state rules in words → SERV drafts and explains → without ALLOW + valid allow-receipt, the wallet does not move money.
 
 ---
 
@@ -114,8 +114,8 @@ Honest scope: AllowLatch is middleware authorization (+ receipt) **and** can mir
 | Live UI `/api/copilot` + injection chips | Done |
 | WOW theater CLI | Done (`npm run wow`) |
 | OpenServ x402 connect | Done |
-| Wallet-native Spend Permissions | Done (hybrid/wallet_native via CDP) — [WALLET_NATIVE.md](./WALLET_NATIVE.md) |
-| Live CDP battle | Optional — see [BATTLE.md](./BATTLE.md) |
+| Wallet-native Spend Permissions | Done (hybrid/wallet_native via CDP) - [WALLET_NATIVE.md](./WALLET_NATIVE.md) |
+| Live CDP battle | Optional - see [BATTLE.md](./BATTLE.md) |
 
 Verify:
 

@@ -63,4 +63,4 @@ Monetization: [MONETIZE.md](./MONETIZE.md)
 
 ## Demo-only snapshot
 
-The website “Demo snapshot” export is watermarked (`enforcement: "demo-only"`). It is for inspection, not production.
+The website "Demo snapshot" export is watermarked (`enforcement: "demo-only"`). It is for inspection, not production.

@@ -4,14 +4,14 @@
 
 ## For AI agents (read this first)
 
-You are helping a human who owns an AgentKit (or similar) wallet. They will **not** give you API keys for AllowLatch.
+You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or similar). They will **not** give you API keys for AllowLatch.
 
 ### What to do
 
 1. Treat AllowLatch as an **external gate**: before any spend/sign, ask AllowLatch.
 2. Connect via OpenServ x402 (no end-user secrets):
-   - `PlatformClient.payments.discoverServices()` → **AllowLatch**
-   - `payments.payWorkflow({ workflowId, input: { prompt } })` or open the paywall
+   - `PlatformClient.payments.discoverServices()` → name matching `/allowlatch/i` (listed as **AllowLatch Gate**)
+   - `payments.payWorkflow({ workflowId or triggerUrl, input: { prompt } })` or open the paywall
 3. Prompt language:
    - "Set my AllowLatch mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
    - "Evaluate this spend: transfer $8 to Uniswap"
@@ -21,17 +21,18 @@ You are helping a human who owns an AgentKit (or similar) wallet. They will **no
 6. Demo UI: https://allowlatch.vercel.app
 7. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
 8. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
-9. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
-10. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+9. Embed (into your agent): https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+10. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
+11. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
 
 ### Capabilities (host)
 
-draft_policy · revise_mandate · apply_policy · evaluate_intent · explain_decision · execute_gated_transfer · list_audit · reset_ledger
+draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet_permissions · evaluate_intent · buy_evaluate_pack · explain_decision · execute_gated_transfer · list_audit · reset_ledger
 
 ### Invariants
 
 - Gate decisions are deterministic code, not LLM overrides.
 - SERV on the host drafts/explains; never changes the verdict.
 - Execute requires a verified, unconsumed allow-receipt (or escalate + humanApproved).
-- AllowLatch does not custody funds (middleware + receipt; wallet-native caps are roadmap).
+- AllowLatch does not custody funds (middleware + receipt; optional hybrid Spend Permissions on-chain).
 - Never ask the end user for SERV_API_KEY or CDP secrets.

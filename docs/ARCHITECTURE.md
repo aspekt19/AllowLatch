@@ -1,6 +1,6 @@
 # Architecture notes
 
-AllowLatch is a **payment policy turnstile** for AgentKit wallets on Base: NL → SERV draft → deterministic gate → allow-receipt → optional AgentKit execute, with optional **on-chain Spend Permission** mirroring.
+AllowLatch is a **payment policy turnstile** for financial AI agents on Base (USDC): NL → SERV draft → deterministic gate → allow-receipt → optional execute (AgentKit/CDP or caller-signed), with optional **on-chain Spend Permission** mirroring.
 
 ## Execution path
 
@@ -18,9 +18,9 @@ evaluate_intent
 
 See [WALLET_NATIVE.md](./WALLET_NATIVE.md). Short version:
 
-- `middleware` — receipt only  
-- `hybrid` — receipt + CDP Spend Permission daily USDC cap (recommended)  
-- `wallet_native` — live execute blocked until permission is `synced`
+- `middleware` - receipt only  
+- `hybrid` - receipt + CDP Spend Permission daily USDC cap (recommended)  
+- `wallet_native` - live execute blocked until permission is `synced`
 
 ## Storage
 
@@ -30,8 +30,8 @@ SQLite (`data/allowlatch.sqlite`): WAL, `BEGIN IMMEDIATE`, exclusive queue, audi
 
 | Adapter | Entry |
 |---------|--------|
-| OpenServ host | `npm run dev` |
+| OpenServ host | `npm run dev` (x402 service name: **AllowLatch Gate**, $0.025) |
 | HTTP gate | `npm run http:gate` |
-| SDK | `src/sdk/assert-spend.ts` |
+| SDK | `src/sdk/assert-spend.ts` · `createGatedAgentKit` |
 
 Demo: https://allowlatch.vercel.app
