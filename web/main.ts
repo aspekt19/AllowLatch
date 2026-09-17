@@ -677,35 +677,47 @@ btnEnforceHost.addEventListener('click', () => {
   void enforceOnHost()
 })
 
-const GATED_COMMANDS = `# AllowLatch — gate-baked AgentKit path
-git clone https://github.com/aspekt19/AllowLatch.git
-cd AllowLatch
-npm install
+const EMBED_SNIPPET = `// In YOUR AgentKit agent — before any transfer/swap/x402 pay:
+// 1) npm i @openserv-labs/client
+// 2) copy src/sdk/assert-spend.ts (+ receipt helpers) from
+//    https://github.com/aspekt19/AllowLatch  OR depend on the repo
+// 3) set ALLOWLATCH_TRIGGER_URL from discoverServices() / host logs
+// 4) set WALLET_PRIVATE_KEY for x402 payer (agent wallet)
 
-# Terminal A — local gate
-npm run http:gate
+import { assertSpend } from './assert-spend.js' // path after you copy the SDK file
 
-# Terminal B — fail-closed until policy, then gated transfer demo
-npm run agent:gated
+// NEVER call AgentKit transfer until this resolves with ALLOW + receipt
+const { receipt } = await assertSpend({
+  triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL,
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+  intent: {
+    action: 'transfer',
+    amountUsd: 5,
+    toAddress: '0x…', // destination
+    symbol: 'USDC',
+  },
+})
 
-# Optional live Base: set CDP_* in .env, ALLOWLATCH_EXECUTE_MODE=live
-# Optional OpenServ host: npm run dev
-# Docs: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+// Then sign / execute only with this receipt (or call AllowLatch execute_gated_transfer).
+console.log('allowed', receipt?.jti)
+
+// Apply mandate once via https://allowlatch.vercel.app → Enforce · $0.025
+// Full guide: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
 `
 
-const btnCopyGated = document.querySelector<HTMLButtonElement>('#btn-copy-gated-commands')
+const btnCopyEmbed = document.querySelector<HTMLButtonElement>('#btn-copy-embed-snippet')
 const agentkitCopyStatus = document.querySelector<HTMLElement>('#agentkit-copy-status')
-btnCopyGated?.addEventListener('click', async () => {
+btnCopyEmbed?.addEventListener('click', async () => {
   try {
-    await navigator.clipboard.writeText(GATED_COMMANDS)
+    await navigator.clipboard.writeText(EMBED_SNIPPET)
     if (agentkitCopyStatus) {
       agentkitCopyStatus.textContent =
-        'Commands copied — paste into a terminal (or into Codespaces after it opens).'
+        'Embed snippet copied — paste into your AgentKit project before any wallet transfer.'
     }
   } catch {
     if (agentkitCopyStatus) {
       agentkitCopyStatus.textContent =
-        'Clipboard blocked — use “Open starter in Codespaces” or clone from GitHub and run the three steps above.'
+        'Clipboard blocked — open the Embed guide and copy assertSpend from there.'
     }
   }
 })

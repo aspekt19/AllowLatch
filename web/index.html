@@ -33,7 +33,7 @@
         </a>
         <nav class="topbar-nav" aria-label="Primary">
           <a href="#gate">Open the gate</a>
-          <a href="#agentkit">AgentKit starter</a>
+          <a href="#agentkit">Add to AgentKit</a>
           <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">Embed</a>
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
           <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Live</span>
@@ -51,7 +51,7 @@
         <div class="hero-cta">
           <div class="hero-cta-row">
             <a class="btn-hero" href="#gate">Try the gate</a>
-            <a class="btn-hero btn-hero-secondary" href="#agentkit">New AgentKit + gate</a>
+            <a class="btn-hero btn-hero-secondary" href="#agentkit">Add gate to AgentKit</a>
           </div>
           <span class="hero-note">No end-user API keys · Non-custodial</span>
         </div>
@@ -59,57 +59,53 @@
 
       <section class="agentkit-strip" id="agentkit" aria-labelledby="agentkit-title">
         <div class="agentkit-inner">
-          <p class="agentkit-kicker">For builders · OpenServ AgentKit track</p>
-          <h2 id="agentkit-title" class="agentkit-title">Create the bot with the gate already inside</h2>
+          <p class="agentkit-kicker">For AgentKit builders</p>
+          <h2 id="agentkit-title" class="agentkit-title">Keep your agent. Add the latch.</h2>
           <p class="agentkit-lead">
-            AgentKit has no “pre-filled create agent” web form — you scaffold code. We give you the
-            next-best path: open this repo with the gate already wired, run two commands, then set
-            rules when you want. Until a mandate exists, spends fail closed; other agent work still runs.
+            Coming from
+            <a href="https://github.com/coinbase/agentkit" target="_blank" rel="noreferrer">Coinbase AgentKit</a>?
+            You don’t fork AllowLatch to “become” an agent — you build (or keep) your AgentKit bot, then put
+            AllowLatch <em>in front of every spend</em>. We host the gate; your code asks before it signs.
           </p>
 
           <ol class="agentkit-steps">
             <li>
-              <strong>Open the starter</strong> — GitHub Codespaces (browser IDE) or clone the repo.
-              Gate code lives in <code>createGatedAgentKit</code>; demo script:
-              <code>npm run agent:gated</code>.
+              <strong>Your agent stays yours</strong> — scaffold with AgentKit / CDP as usual. Non-spend
+              tools unchanged.
             </li>
             <li>
-              <strong>Run the gate path</strong> — in the project:
-              <code>npm install</code>, then terminal A
-              <code>npm run http:gate</code>, terminal B
-              <code>npm run agent:gated</code>.
+              <strong>Wire the gate before transfers</strong> — call AllowLatch
+              (<code>assertSpend</code> / <code>createGatedAgentKit</code>) so raw wallet sign never runs
+              without ALLOW + receipt.
             </li>
             <li>
-              <strong>Set rules when ready</strong> — draft a mandate in this UI (or
-              <code>applyPolicy</code>). Live Base txs need CDP keys from
-              <a href="https://portal.cdp.coinbase.com/" target="_blank" rel="noreferrer">Coinbase CDP</a>;
-              OpenServ host is <code>npm run dev</code>.
+              <strong>Apply a mandate once</strong> — draft rules here, then
+              <strong>Enforce · $0.025</strong> (or OpenServ <code>apply_policy</code>). Change limits later
+              without rebuilding the bot.
             </li>
           </ol>
 
           <div class="agentkit-actions">
+            <button type="button" class="btn-hero" id="btn-copy-embed-snippet">
+              Copy embed snippet
+            </button>
             <a
-              class="btn-hero"
-              id="btn-open-codespaces"
-              href="https://codespaces.new/aspekt19/AllowLatch"
+              class="btn-hero btn-hero-secondary"
+              href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md"
               target="_blank"
               rel="noreferrer"
-              >Open starter in Codespaces</a
+              >Embed guide</a
             >
             <a
               class="btn-hero btn-hero-secondary"
-              href="https://github.com/aspekt19/AllowLatch"
+              href="https://codespaces.new/aspekt19/AllowLatch"
               target="_blank"
               rel="noreferrer"
-              >Clone on GitHub</a
+              >Try our demo (optional)</a
             >
-            <button type="button" class="btn-hero btn-hero-secondary" id="btn-copy-gated-commands">
-              Copy run commands
-            </button>
           </div>
           <p class="agentkit-note muted tight" id="agentkit-copy-status" aria-live="polite">
-            After Codespaces starts: <code>npm install</code> → <code>npm run http:gate</code> →
-            <code>npm run agent:gated</code>
+            Snippet drops into <em>your</em> AgentKit project. Demo Codespaces = see the gate work end-to-end — not a replacement for your bot.
           </p>
         </div>
       </section>

@@ -8,26 +8,30 @@ Local JSON is **not** the product. Production path:
 
 ## New agent with gate baked in (recommended)
 
-AgentKit has no pre-filled “create agent” URL. Starter path:
+Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep your agent.** Add AllowLatch in front of spends — do not replace your repo with ours.
 
-1. Open https://codespaces.new/aspekt19/AllowLatch (or clone the repo)
-2. `npm install` → `npm run http:gate` → `npm run agent:gated`
-3. Apply a mandate when ready (demo UI / `applyPolicy` / OpenServ paywall)
+1. Scaffold / keep your AgentKit + CDP project  
+2. Before every transfer: `assertSpend` / `createGatedAgentKit` → ALLOW + receipt, then sign  
+3. Apply a mandate once (demo UI **Enforce · $0.025** / paywall / `apply_policy`)
 
 ```ts
-import { createGatedAgentKit } from './src/sdk/gated-agentkit.js'
+import { assertSpend } from './assert-spend.js' // copy from AllowLatch src/sdk/
 
-const agent = await createGatedAgentKit({
-  // default: HTTP gate at ALLOWLATCH_HTTP_URL or http://127.0.0.1:8787
-  // or OpenServ: set ALLOWLATCH_TRIGGER_URL (+ WALLET_PRIVATE_KEY); ALLOWLATCH_EXECUTE_ON_HOST=1 for host execute
+const { receipt } = await assertSpend({
+  triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL!,
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+  intent: {
+    action: 'transfer',
+    amountUsd: 5,
+    toAddress: '0x…',
+  },
 })
-
-// paste agent.systemPrompt into your LLM agent
-await agent.applyPolicy(mandatePolicyJson) // HTTP gate
-await agent.transfer({ toAddress: '0x…', amountUsd: 5 })
+// only then AgentKit / execute_gated_transfer with receipt
 ```
 
-Live demo CTA: https://allowlatch.vercel.app/#agentkit
+Optional: open https://codespaces.new/aspekt19/AllowLatch to **see a demo** of the gate — that is not how you ship your product agent.
+
+Live CTA: https://allowlatch.vercel.app/#agentkit
 
 ## SDK (assert only)
 
