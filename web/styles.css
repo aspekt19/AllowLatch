@@ -366,7 +366,7 @@ body {
   border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 55%),
-    color-mix(in srgb, var(--panel) 88%, #fff);
+    color-mix(in srgb, var(--surface-solid) 92%, var(--paper));
 }
 
 .agentkit-inner {
@@ -379,7 +379,7 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-mute);
+  color: var(--muted);
 }
 
 .agentkit-title {
