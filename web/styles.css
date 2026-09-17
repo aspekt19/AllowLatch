@@ -316,6 +316,13 @@ body {
   gap: 10px;
 }
 
+.hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
 .btn-hero {
   display: inline-flex;
   align-items: center;
@@ -328,13 +335,111 @@ body {
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: -0.01em;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
   box-shadow: 0 10px 28px rgba(12, 18, 32, 0.18);
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-hero:hover {
   background: var(--accent-ink);
   transform: translateY(-1px);
+}
+
+.btn-hero-secondary {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.btn-hero-secondary:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+}
+
+.agentkit-strip {
+  width: min(1080px, calc(100% - 32px));
+  margin: 8px auto 28px;
+  padding: 28px 28px 24px;
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 55%),
+    color-mix(in srgb, var(--panel) 88%, #fff);
+}
+
+.agentkit-inner {
+  max-width: 40rem;
+}
+
+.agentkit-kicker {
+  margin: 0;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.agentkit-title {
+  margin: 8px 0 0;
+  font-family: Syne, Manrope, sans-serif;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.agentkit-lead {
+  margin: 12px 0 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  font-size: 0.98rem;
+}
+
+.agentkit-points {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.agentkit-points li strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.agentkit-points code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.84em;
+}
+
+.agentkit-actions {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.agentkit-note {
+  margin: 14px 0 0;
+}
+
+.agentkit-note code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.85em;
+}
+
+@media (max-width: 640px) {
+  .agentkit-strip {
+    padding: 22px 18px 18px;
+  }
 }
 
 .hero-note {

@@ -677,6 +677,45 @@ btnEnforceHost.addEventListener('click', () => {
   void enforceOnHost()
 })
 
+const GATED_STARTER = `import { createGatedAgentKit } from './src/sdk/gated-agentkit.js'
+
+// Gate is inside the spender from day one.
+// No mandate yet → transfers fail closed. Non-spend tools: unconstrained.
+const agent = await createGatedAgentKit({
+  // default: HTTP gate at http://127.0.0.1:8787  (npm run http:gate)
+  // OpenServ: set ALLOWLATCH_TRIGGER_URL + WALLET_PRIVATE_KEY
+  // Host execute: ALLOWLATCH_EXECUTE_ON_HOST=1
+})
+
+// Paste into your LLM system prompt:
+console.log(agent.systemPrompt)
+
+// When the owner is ready — apply rules (HTTP) or paywall apply_policy (OpenServ)
+// await agent.applyPolicy(mandatePolicyJson)
+
+// Every spend hits AllowLatch first:
+// await agent.transfer({ toAddress: '0x…', amountUsd: 5 })
+
+// CLI demo: npm run http:gate && npm run agent:gated
+// Docs: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+`
+
+const btnCopyGated = document.querySelector<HTMLButtonElement>('#btn-copy-gated-starter')
+const agentkitCopyStatus = document.querySelector<HTMLElement>('#agentkit-copy-status')
+btnCopyGated?.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(GATED_STARTER)
+    if (agentkitCopyStatus) {
+      agentkitCopyStatus.textContent = 'Starter copied — paste into your AgentKit project. Then: npm run http:gate && npm run agent:gated'
+    }
+  } catch {
+    if (agentkitCopyStatus) {
+      agentkitCopyStatus.textContent =
+        'Clipboard blocked — open EMBED.md / gated-agentkit.ts on GitHub, or run npm run agent:gated locally.'
+    }
+  }
+})
+
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()

@@ -33,6 +33,7 @@
         </a>
         <nav class="topbar-nav" aria-label="Primary">
           <a href="#gate">Open the gate</a>
+          <a href="#agentkit">AgentKit starter</a>
           <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">Embed</a>
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
           <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Live</span>
@@ -48,8 +49,48 @@
           ALLOW, DENY, or ESCALATE before AgentKit can move USDC on Base.
         </p>
         <div class="hero-cta">
-          <a class="btn-hero" href="#gate">Try the gate</a>
+          <div class="hero-cta-row">
+            <a class="btn-hero" href="#gate">Try the gate</a>
+            <a class="btn-hero btn-hero-secondary" href="#agentkit">New AgentKit + gate</a>
+          </div>
           <span class="hero-note">No end-user API keys · Non-custodial</span>
+        </div>
+      </section>
+
+      <section class="agentkit-strip" id="agentkit" aria-labelledby="agentkit-title">
+        <div class="agentkit-inner">
+          <p class="agentkit-kicker">For builders · OpenServ AgentKit track</p>
+          <h2 id="agentkit-title" class="agentkit-title">Create the bot with the gate already inside</h2>
+          <p class="agentkit-lead">
+            Don’t wire AllowLatch “later”. Start a new AgentKit spender so every transfer hits the
+            turnstile from day one. Set spending rules when you’re ready — until then, spends fail
+            closed; chat and other non-spend tools still work.
+          </p>
+          <ul class="agentkit-points">
+            <li><strong>What</strong> — <code>createGatedAgentKit</code>: same SDK path as Embed, baked into the agent at creation.</li>
+            <li><strong>Why</strong> — AgentKit can sign freely; Coinbase expects an extra safety layer. The gate is that layer in the signing path.</li>
+            <li><strong>How</strong> — copy the starter → run against HTTP gate or OpenServ host → apply a mandate when you want limits.</li>
+          </ul>
+          <div class="agentkit-actions">
+            <button type="button" class="btn-hero" id="btn-copy-gated-starter">Copy AgentKit starter</button>
+            <a
+              class="btn-hero btn-hero-secondary"
+              href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md"
+              target="_blank"
+              rel="noreferrer"
+              >Full Embed guide</a
+            >
+            <a
+              class="btn-hero btn-hero-secondary"
+              href="https://github.com/aspekt19/AllowLatch/blob/main/src/sdk/gated-agentkit.ts"
+              target="_blank"
+              rel="noreferrer"
+              >SDK source</a
+            >
+          </div>
+          <p class="agentkit-note muted tight" id="agentkit-copy-status" aria-live="polite">
+            Demo CLI: <code>npm run http:gate</code> then <code>npm run agent:gated</code>
+          </p>
         </div>
       </section>
 
