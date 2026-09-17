@@ -731,7 +731,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch — SERV Policy Copilot + hard turnstile for AgentKit on Base.\n\n1. You state a mandate (try messy or injection).\n2. SERV drafts policy with conflicts — you review, then apply.\n3. Spender proposes spends; deterministic code allow / deny / escalate. AgentKit only after ALLOW.\n\nNo API keys for you — the host holds SERV. Start with your rules, or load the example.'
+  'I am AllowLatch — SERV Policy Copilot + hard spending turnstile for AI agents with wallets on Base.\n\n1. You state a mandate (try messy or injection).\n2. SERV drafts policy with conflicts — you review, then apply.\n3. Your spender agent proposes spends; deterministic code allow / deny / escalate. Money moves only after ALLOW.\n\nNo API keys for you — the host holds SERV. Building with AgentKit / OpenServ? See “AgentKit path” above. Start with your rules, or load the example.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

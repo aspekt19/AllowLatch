@@ -6,7 +6,7 @@
     <title>AllowLatch — Reasoning drafts the law. Code judges every spend.</title>
     <meta
       name="description"
-      content="Say spending rules in plain language. SERV drafts the policy. Deterministic code allow / deny / escalates before AgentKit moves Base USDC. No custody."
+      content="Say spending rules in plain language. SERV drafts the policy. Deterministic code allow / deny / escalates before any AI agent moves USDC on Base. No custody."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon-192.png" />
@@ -33,7 +33,7 @@
         </a>
         <nav class="topbar-nav" aria-label="Primary">
           <a href="#gate">Open the gate</a>
-          <a href="#agentkit">Add to AgentKit</a>
+          <a href="#agentkit">AgentKit path</a>
           <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">Embed</a>
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
           <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Live</span>
@@ -41,17 +41,18 @@
       </header>
 
       <section class="hero" aria-labelledby="hero-brand">
-        <p class="hero-kicker">OpenServ · SERV Reasoning · AgentKit</p>
+        <p class="hero-kicker">Spending turnstile for AI agents · Base / USDC</p>
         <p id="hero-brand" class="hero-brand">AllowLatch</p>
         <h1 class="hero-title">Your agent’s spending turnstile.</h1>
         <p class="hero-lead">
           Say the rules in plain language. SERV drafts the policy. Code — not the LLM — decides
-          ALLOW, DENY, or ESCALATE before AgentKit can move USDC on Base.
+          ALLOW, DENY, or ESCALATE before an AI agent can move USDC on Base. Built to plug into
+          wallets and agent stacks (including OpenServ + AgentKit).
         </p>
         <div class="hero-cta">
           <div class="hero-cta-row">
             <a class="btn-hero" href="#gate">Try the gate</a>
-            <a class="btn-hero btn-hero-secondary" href="#agentkit">Add gate to AgentKit</a>
+            <a class="btn-hero btn-hero-secondary" href="#agentkit">Building with AgentKit?</a>
           </div>
           <span class="hero-note">No end-user API keys · Non-custodial</span>
         </div>
@@ -59,13 +60,13 @@
 
       <section class="agentkit-strip" id="agentkit" aria-labelledby="agentkit-title">
         <div class="agentkit-inner">
-          <p class="agentkit-kicker">For AgentKit builders</p>
+          <p class="agentkit-kicker">Optional path · Coinbase AgentKit + OpenServ</p>
           <h2 id="agentkit-title" class="agentkit-title">Keep your agent. Add the latch.</h2>
           <p class="agentkit-lead">
-            Coming from
-            <a href="https://github.com/coinbase/agentkit" target="_blank" rel="noreferrer">Coinbase AgentKit</a>?
-            You don’t fork AllowLatch to “become” an agent — you build (or keep) your AgentKit bot, then put
-            AllowLatch <em>in front of every spend</em>. We host the gate; your code asks before it signs.
+            AllowLatch is for AI agents with wallets in general. If you’re starting from
+            <a href="https://github.com/coinbase/agentkit" target="_blank" rel="noreferrer">Coinbase AgentKit</a>
+            and OpenServ, you don’t fork us — you keep your bot and put the gate
+            <em>in front of every spend</em>. Same product; this is just the easiest first integration.
           </p>
 
           <ol class="agentkit-steps">
@@ -203,7 +204,7 @@
                 </li>
                 <li>
                   <span>Spender</span>
-                  AgentKit only after ALLOW
+                  Agent signs only after ALLOW
                 </li>
               </ol>
             </div>
