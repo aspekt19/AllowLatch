@@ -79,10 +79,18 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
   try {
     if (req.method === 'GET' && path.startsWith('/v1/policies/')) {
       const policyId = decodeURIComponent(path.slice('/v1/policies/'.length))
+      let policy = null
+      let ledger = null
+      try {
+        policy = store.getPolicy(policyId)
+        ledger = store.getLedger(policyId)
+      } catch {
+        /* no policy yet — gated agents start fail-closed */
+      }
       json(res, 200, {
         policyId,
-        policy: store.getPolicy(policyId),
-        ledger: store.getLedger(policyId),
+        policy,
+        ledger,
         executeMode: resolveExecuteMode(),
       })
       return

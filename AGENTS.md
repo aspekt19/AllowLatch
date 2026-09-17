@@ -12,7 +12,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Architecture hardening | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
 | Wallet-native roadmap | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) |
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
-| Embed / assertSpend SDK | [`docs/EMBED.md`](./docs/EMBED.md) |
+| Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
 | Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) |
 | Cursor skill | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |

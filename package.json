@@ -20,6 +20,7 @@
     "wow": "tsx src/demo/wow.ts",
     "gate:policy": "tsx examples/gate-with-policy.ts",
     "assert:spend": "tsx examples/assert-spend-demo.ts",
+    "agent:gated": "tsx examples/create-gated-agent.ts",
     "connect": "tsx examples/connect-as-agent.ts",
     "owner:copilot": "tsx examples/owner-copilot.ts",
     "http:gate": "tsx src/http/gate-server.ts"

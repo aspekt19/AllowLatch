@@ -14,11 +14,13 @@ Do not tell the user that downloading JSON from the demo site is enough for a tr
 
 ## How you connect
 
-1. Ensure AllowLatch host is online (operator `npm run dev`).
+**New AgentKit bots:** use `createGatedAgentKit` (`src/sdk/gated-agentkit.ts`) so spend is gated from day one. No mandate yet → transfers fail closed; non-spend tools OK. Demo: `npm run http:gate` + `npm run agent:gated`.
+
+1. Ensure AllowLatch host is online (operator `npm run dev`) — or `npm run http:gate` for local HTTP.
 2. Discover: `PlatformClient.payments.discoverServices()` → name `/allowlatch/i`
 3. Note `x402Pricing` (expect `0.025`), `webhookUrl` / `paywallUrl`
-4. **Apply policy** via `payWorkflow` or paywall with MandatePolicy JSON
-5. **Before every spend:** `evaluate_intent` (or `assertSpend` from `src/sdk/assert-spend.ts`)
+4. **Apply policy** via `payWorkflow` / paywall / `agent.applyPolicy` (HTTP)
+5. **Before every spend:** gated `transfer` / `evaluate_intent` / `assertSpend` — never raw AgentKit sign
 6. On ALLOW: require **allow-receipt** (`jti`), verify, pass into `execute_gated_transfer` (host consumes receipt) — or sign externally only after verify
 7. On DENY: do not sign. On ESCALATE: ask the human.
 

@@ -40,6 +40,7 @@ npm run ui                  # dialog UI (live SERV via /api/copilot when key set
 npm run wow                 # full SERV → injection → gate → explain → AgentKit
 npm run battle              # Spender → gate → AgentKit dry-run
 npm run connect             # discover AllowLatch as another agent
+npm run agent:gated         # new AgentKit spender with gate baked in (needs http:gate)
 npm run http:gate           # framework-agnostic HTTP evaluate/execute
 npm run dev                 # provision + run OpenServ host
 ```
