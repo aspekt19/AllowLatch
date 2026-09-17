@@ -1,6 +1,6 @@
 # AllowLatch
 
-**SERV Policy Copilot + spending turnstile** for financial AI agents on Base (USDC). Works with stacks like OpenServ + Coinbase AgentKit — not limited to one SDK.
+**SERV Policy Copilot + spending turnstile** for financial AI agents on Base (USDC). Works with stacks like OpenServ + Coinbase AgentKit - not limited to one SDK.
 
 **Live demo:** https://allowlatch.vercel.app  
 **Repo:** https://github.com/aspekt19/AllowLatch  
@@ -8,7 +8,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No custody. No end-user API keys — host holds SERV (+ optional CDP). Agents pay x402 ($0.025) or an evaluate pack ($1 / 100). Optional on-chain Spend Permissions: `ALLOWLATCH_ENFORCEMENT=hybrid`.
+No custody. No end-user API keys - host holds SERV (+ optional CDP). Agents pay x402 ($0.025) or an evaluate pack ($1 / 100). Optional on-chain Spend Permissions: `ALLOWLATCH_ENFORCEMENT=hybrid`.
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
@@ -26,8 +26,8 @@ Tell your agent:
 
 | Layer | Role |
 |-------|------|
-| SERV Reasoning (host) | Draft / revise / explain — Multipath, prompt_guard, shadow |
-| Deterministic engine | Caps, allowlists, escalate — never LLM judgment |
+| SERV Reasoning (host) | Draft / revise / explain - Multipath, prompt_guard, shadow |
+| Deterministic engine | Caps, allowlists, escalate - never LLM judgment |
 | Coinbase AgentKit | Signs USDC **only after ALLOW** |
 | OpenServ x402 | How other agents connect & pay |
 

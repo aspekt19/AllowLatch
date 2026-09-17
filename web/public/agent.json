@@ -10,8 +10,8 @@
     "openserv": {
       "agentName": "allowlatch",
       "workflowName": "AllowLatch",
-      "discover": "PlatformClient.payments.discoverServices() — filter name AllowLatch",
-      "invoke": "x402 payWorkflow with { prompt } — no end-user API keys"
+      "discover": "PlatformClient.payments.discoverServices() - filter name AllowLatch",
+      "invoke": "x402 payWorkflow with { prompt } - no end-user API keys"
     }
   },
   "skills": [
@@ -41,9 +41,9 @@
     }
   ],
   "invariants": [
-    "Allow/deny/escalate is deterministic code — never LLM judgment",
+    "Allow/deny/escalate is deterministic code - never LLM judgment",
     "AllowLatch does not custody user funds or private keys",
-    "End users do not configure SERV_API_KEY or CDP — the host does; x402 pays the call"
+    "End users do not configure SERV_API_KEY or CDP - the host does; x402 pays the call"
   ],
   "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"]
 }

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AllowLatch — Reasoning drafts the law. Code judges every spend.</title>
+    <title>AllowLatch - Reasoning drafts the law. Code judges every spend.</title>
     <meta
       name="description"
       content="Say spending rules in plain language. SERV drafts the policy. Deterministic code allow / deny / escalates before any AI agent moves USDC on Base. No custody."
@@ -45,7 +45,7 @@
         <p id="hero-brand" class="hero-brand">AllowLatch</p>
         <h1 class="hero-title">Your agent’s spending turnstile.</h1>
         <p class="hero-lead">
-          Say the rules in plain language. SERV drafts the policy. Code — not the LLM — decides
+          Say the rules in plain language. SERV drafts the policy. Code - not the LLM - decides
           ALLOW, DENY, or ESCALATE before an AI agent can move USDC on Base. Built to plug into
           wallets and agent stacks (including OpenServ + AgentKit).
         </p>
@@ -65,22 +65,22 @@
           <p class="agentkit-lead">
             AllowLatch is for AI agents with wallets in general. If you’re starting from
             <a href="https://github.com/coinbase/agentkit" target="_blank" rel="noreferrer">Coinbase AgentKit</a>
-            and OpenServ, you don’t fork us — you keep your bot and put the gate
+            and OpenServ, you don’t fork us - you keep your bot and put the gate
             <em>in front of every spend</em>. Same product; this is just the easiest first integration.
           </p>
 
           <ol class="agentkit-steps">
             <li>
-              <strong>Your agent stays yours</strong> — scaffold with AgentKit / CDP as usual. Non-spend
+              <strong>Your agent stays yours</strong> - scaffold with AgentKit / CDP as usual. Non-spend
               tools unchanged.
             </li>
             <li>
-              <strong>Wire the gate before transfers</strong> — call AllowLatch
+              <strong>Wire the gate before transfers</strong> - call AllowLatch
               (<code>assertSpend</code> / <code>createGatedAgentKit</code>) so raw wallet sign never runs
               without ALLOW + receipt.
             </li>
             <li>
-              <strong>Apply a mandate once</strong> — draft rules here, then
+              <strong>Apply a mandate once</strong> - draft rules here, then
               <strong>Enforce · $0.025</strong> (or OpenServ <code>apply_policy</code>). Change limits later
               without rebuilding the bot.
             </li>
@@ -106,7 +106,7 @@
             >
           </div>
           <p class="agentkit-note muted tight" id="agentkit-copy-status" aria-live="polite">
-            Snippet drops into <em>your</em> AgentKit project. Demo Codespaces = see the gate work end-to-end — not a replacement for your bot.
+            Snippet drops into <em>your</em> AgentKit project. Demo Codespaces = see the gate work end-to-end - not a replacement for your bot.
           </p>
         </div>
       </section>
@@ -159,7 +159,7 @@
               </div>
               <div class="policy-empty" id="policy-empty">
                 <p>No policy yet.</p>
-                <p class="muted">Send a mandate — SERV drafts limits, allowlists, and escalation.</p>
+                <p class="muted">Send a mandate - SERV drafts limits, allowlists, and escalation.</p>
               </div>
               <div class="policy-live is-hidden" id="policy-live">
                 <p class="policy-name" id="policy-name"></p>
