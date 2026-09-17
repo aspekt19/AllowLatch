@@ -419,6 +419,57 @@ body {
   font-size: 0.84em;
 }
 
+.agentkit-steps {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  counter-reset: ak-step;
+}
+
+.agentkit-steps li {
+  position: relative;
+  padding: 12px 14px 12px 48px;
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 70%, transparent);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  counter-increment: ak-step;
+}
+
+.agentkit-steps li::before {
+  content: counter(ak-step);
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.agentkit-steps strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.agentkit-steps code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.82em;
+}
+
+.agentkit-steps a {
+  color: var(--accent-ink);
+}
+
 .agentkit-actions {
   margin-top: 18px;
   display: flex;

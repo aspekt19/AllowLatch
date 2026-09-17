@@ -677,41 +677,35 @@ btnEnforceHost.addEventListener('click', () => {
   void enforceOnHost()
 })
 
-const GATED_STARTER = `import { createGatedAgentKit } from './src/sdk/gated-agentkit.js'
+const GATED_COMMANDS = `# AllowLatch — gate-baked AgentKit path
+git clone https://github.com/aspekt19/AllowLatch.git
+cd AllowLatch
+npm install
 
-// Gate is inside the spender from day one.
-// No mandate yet → transfers fail closed. Non-spend tools: unconstrained.
-const agent = await createGatedAgentKit({
-  // default: HTTP gate at http://127.0.0.1:8787  (npm run http:gate)
-  // OpenServ: set ALLOWLATCH_TRIGGER_URL + WALLET_PRIVATE_KEY
-  // Host execute: ALLOWLATCH_EXECUTE_ON_HOST=1
-})
+# Terminal A — local gate
+npm run http:gate
 
-// Paste into your LLM system prompt:
-console.log(agent.systemPrompt)
+# Terminal B — fail-closed until policy, then gated transfer demo
+npm run agent:gated
 
-// When the owner is ready — apply rules (HTTP) or paywall apply_policy (OpenServ)
-// await agent.applyPolicy(mandatePolicyJson)
-
-// Every spend hits AllowLatch first:
-// await agent.transfer({ toAddress: '0x…', amountUsd: 5 })
-
-// CLI demo: npm run http:gate && npm run agent:gated
-// Docs: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+# Optional live Base: set CDP_* in .env, ALLOWLATCH_EXECUTE_MODE=live
+# Optional OpenServ host: npm run dev
+# Docs: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
 `
 
-const btnCopyGated = document.querySelector<HTMLButtonElement>('#btn-copy-gated-starter')
+const btnCopyGated = document.querySelector<HTMLButtonElement>('#btn-copy-gated-commands')
 const agentkitCopyStatus = document.querySelector<HTMLElement>('#agentkit-copy-status')
 btnCopyGated?.addEventListener('click', async () => {
   try {
-    await navigator.clipboard.writeText(GATED_STARTER)
+    await navigator.clipboard.writeText(GATED_COMMANDS)
     if (agentkitCopyStatus) {
-      agentkitCopyStatus.textContent = 'Starter copied — paste into your AgentKit project. Then: npm run http:gate && npm run agent:gated'
+      agentkitCopyStatus.textContent =
+        'Commands copied — paste into a terminal (or into Codespaces after it opens).'
     }
   } catch {
     if (agentkitCopyStatus) {
       agentkitCopyStatus.textContent =
-        'Clipboard blocked — open EMBED.md / gated-agentkit.ts on GitHub, or run npm run agent:gated locally.'
+        'Clipboard blocked — use “Open starter in Codespaces” or clone from GitHub and run the three steps above.'
     }
   }
 })

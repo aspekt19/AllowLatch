@@ -8,7 +8,11 @@ Local JSON is **not** the product. Production path:
 
 ## New agent with gate baked in (recommended)
 
-Create the AgentKit spender so **spend always hits AllowLatch** from day one. Rules can be applied later; until then transfers fail closed. Non-spend work is unconstrained.
+AgentKit has no pre-filled “create agent” URL. Starter path:
+
+1. Open https://codespaces.new/aspekt19/AllowLatch (or clone the repo)
+2. `npm install` → `npm run http:gate` → `npm run agent:gated`
+3. Apply a mandate when ready (demo UI / `applyPolicy` / OpenServ paywall)
 
 ```ts
 import { createGatedAgentKit } from './src/sdk/gated-agentkit.js'
@@ -23,10 +27,7 @@ await agent.applyPolicy(mandatePolicyJson) // HTTP gate
 await agent.transfer({ toAddress: '0x…', amountUsd: 5 })
 ```
 
-```bash
-npm run http:gate    # terminal A
-npm run agent:gated  # terminal B — demo fail-closed → apply → gated transfer
-```
+Live demo CTA: https://allowlatch.vercel.app/#agentkit
 
 ## SDK (assert only)
 
