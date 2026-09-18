@@ -85,9 +85,9 @@ function authorized(req: http.IncomingMessage): boolean {
 
 function packsPurchaseAllowed(): boolean {
   // Never a public billing endpoint — OpenServ/x402 is the real path.
-  if (!LOOPBACK) return false
-  if (DEV_PACKS) return true
-  return Boolean(TOKEN)
+  // Local operator mint: loopback + Bearer token (+ optional ALLOWLATCH_DEV_PACKS=1).
+  if (!LOOPBACK || !TOKEN) return false
+  return DEV_PACKS || true
 }
 
 async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
