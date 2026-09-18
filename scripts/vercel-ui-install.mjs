@@ -12,6 +12,10 @@ writeFileSync(
       private: true,
       type: 'module',
       dependencies: {
+        '@fontsource-variable/geist': '^5.3.0',
+        '@fontsource-variable/geist-mono': '^5.3.0',
+        '@fontsource/instrument-serif': '^5.3.0',
+        '@vercel/analytics': '^2.0.1',
         '@vercel/node': '^5.3.26',
         dotenv: '^17.4.2',
         openai: '^7.15.0',
