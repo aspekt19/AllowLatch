@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getHostInfo } from './host-info-data.js'
-import { allowedCopilotOrigins, checkRateLimit, clientIp } from './abuse-guard.js'
+import { getHostInfo } from '../src/web/host-info-data.js'
+import { allowedCopilotOrigins, checkRateLimit, clientIp } from '../src/http/abuse-guard.js'
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined

@@ -39,7 +39,7 @@ function copilotApiPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.startsWith('/api/host-info') && req.method === 'GET') {
-          const { getHostInfo } = await import('./api/host-info-data.ts')
+          const { getHostInfo } = await import('./src/web/host-info-data.ts')
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify(getHostInfo()))
@@ -51,7 +51,7 @@ function copilotApiPlugin(): Plugin {
         }
         try {
           const body = await readJson(req)
-          const { checkBodySize, checkRateLimit, clientIp } = await import('./api/abuse-guard.ts')
+          const { checkBodySize, checkRateLimit, clientIp } = await import('./src/http/abuse-guard.ts')
           const ip = clientIp({
             headers: req.headers as Record<string, unknown>,
             socket: req.socket,
@@ -71,7 +71,7 @@ function copilotApiPlugin(): Plugin {
             res.end(JSON.stringify({ ok: false, error: size.error }))
             return
           }
-          const { handleCopilotBody } = await import('./api/copilot-handler.ts')
+          const { handleCopilotBody } = await import('./src/web/copilot-handler.ts')
           const { status, json } = await handleCopilotBody(body)
           res.statusCode = status
           res.setHeader('Content-Type', 'application/json')

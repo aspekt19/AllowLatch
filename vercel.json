@@ -10,7 +10,8 @@
       "includeFiles": "src/**"
     },
     "api/host-info.ts": {
-      "maxDuration": 10
+      "maxDuration": 10,
+      "includeFiles": "src/web/**,src/http/abuse-guard.ts"
     }
   },
   "rewrites": [

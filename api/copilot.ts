@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { handleCopilotBody } from './copilot-handler.js'
+import { handleCopilotBody } from '../src/web/copilot-handler.js'
 import {
   allowedCopilotOrigins,
   checkBodySize,
   checkOrigin,
   checkRateLimit,
   clientIp,
-} from './abuse-guard.js'
+} from '../src/http/abuse-guard.js'
 
 export const config = {
   maxDuration: 60,
@@ -48,7 +48,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  const ip = clientIp(req as unknown as { headers?: Record<string, unknown>; socket?: { remoteAddress?: string } })
+  const ip = clientIp(
+    req as unknown as { headers?: Record<string, unknown>; socket?: { remoteAddress?: string } }
+  )
   const rate = checkRateLimit(`copilot:${ip}`)
   if (!rate.ok) {
     res.setHeader('Retry-After', '60')

@@ -2,16 +2,16 @@
  * Copilot HTTP handlers shared by Vite middleware and Vercel `/api/copilot`.
  * Host SERV_API_KEY only - never accept a caller key.
  */
-import { draftPolicyWithServ, revisePolicyWithServ } from '../src/llm/compile-mandate.js'
-import { explainDecisionWithServ } from '../src/llm/explain-decision.js'
+import { draftPolicyWithServ, revisePolicyWithServ } from '../llm/compile-mandate.js'
+import { explainDecisionWithServ } from '../llm/explain-decision.js'
 import {
   EvaluationResultSchema,
   MandatePolicySchema,
   type MandatePolicy,
-} from '../src/policy/schema.js'
-import { evaluateIntent, freshLedger } from '../src/policy/engine.js'
-import { SpendIntentSchema } from '../src/policy/schema.js'
-import { clampMandateText } from './abuse-guard.js'
+} from '../policy/schema.js'
+import { evaluateIntent, freshLedger } from '../policy/engine.js'
+import { SpendIntentSchema } from '../policy/schema.js'
+import { clampMandateText } from '../http/abuse-guard.js'
 
 export type CopilotJson =
   | { ok: true; mode: 'draft' | 'revise' | 'explain'; draft?: unknown; explanation?: unknown; evaluation?: unknown; serv: unknown; brain: string }
