@@ -26,6 +26,7 @@ async function main() {
     intent: {
       action: 'swap',
       amountUsd: 5,
+      calldataHash: '0x' + 'aa'.repeat(16),
       symbol: 'ETH',
       toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
       reason: 'assert-spend demo',

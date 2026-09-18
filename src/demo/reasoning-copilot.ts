@@ -64,6 +64,7 @@ async function main() {
   const intent: SpendIntent = {
     action: 'swap',
     amountUsd: 5,
+    calldataHash: '0x' + 'aa'.repeat(16),
     symbol: 'PEPE',
     toAddress: UNISWAP,
     reason: 'YOLO meme',

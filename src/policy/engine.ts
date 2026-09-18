@@ -192,6 +192,16 @@ export function evaluateIntent(
     )
   }
 
+  // Bind swap ALLOW to exact calldata so a receipt cannot authorize a mutated router call.
+  if (intent.action === 'swap' && !intent.calldataHash?.trim()) {
+    reasons.push(
+      'calldataHash required for swap intents (binds the allow-receipt to exact calldata bytes).'
+    )
+  }
+  if (intent.action === 'swap' && !intent.contractAddress?.trim() && !intent.toAddress?.trim()) {
+    reasons.push('Swap intents require contractAddress or toAddress (router).')
+  }
+
   if (reasons.length > 0) {
     return {
       decision: 'deny',

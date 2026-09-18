@@ -83,7 +83,9 @@ AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 p
 
 Chain focus: **Base**. Policy currency: **USDC**.
 
-Honest scope: AllowLatch is middleware authorization (+ receipt) **and** can mirror daily USDC caps into Coinbase Spend Permissions (`ALLOWLATCH_ENFORCEMENT=hybrid|wallet_native`). See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+Honest scope: AllowLatch is middleware authorization (+ receipt) **and** can mirror daily USDC caps into Coinbase Spend Permissions (`ALLOWLATCH_ENFORCEMENT=hybrid|wallet_native`). Middleware alone is not custody-grade if a signer can bypass the gate. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+
+The public site (allowlatch.vercel.app) is the **demo UI** - production evaluate/execute/x402 runs on the OpenServ host. Details: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 

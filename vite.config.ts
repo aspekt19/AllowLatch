@@ -7,10 +7,20 @@ dotenv.config()
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
-function readJson(req: Connect.IncomingMessage): Promise<unknown> {
+function readJson(req: Connect.IncomingMessage, maxBytes = 64 * 1024): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
-    req.on('data', (c) => chunks.push(Buffer.from(c)))
+    let total = 0
+    req.on('data', (c) => {
+      const buf = Buffer.from(c)
+      total += buf.length
+      if (total > maxBytes) {
+        reject(new Error(`Request body too large (max ${maxBytes} bytes)`))
+        req.destroy()
+        return
+      }
+      chunks.push(buf)
+    })
     req.on('end', () => {
       try {
         const raw = Buffer.concat(chunks).toString('utf8')
@@ -41,6 +51,26 @@ function copilotApiPlugin(): Plugin {
         }
         try {
           const body = await readJson(req)
+          const { checkBodySize, checkRateLimit, clientIp } = await import('./api/abuse-guard.ts')
+          const ip = clientIp({
+            headers: req.headers as Record<string, unknown>,
+            socket: req.socket,
+          })
+          const rate = checkRateLimit(`copilot:${ip}`)
+          if (!rate.ok) {
+            res.statusCode = rate.status
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Retry-After', '60')
+            res.end(JSON.stringify({ ok: false, error: rate.error }))
+            return
+          }
+          const size = checkBodySize(body)
+          if (!size.ok) {
+            res.statusCode = size.status
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ ok: false, error: size.error }))
+            return
+          }
           const { handleCopilotBody } = await import('./api/copilot-handler.ts')
           const { status, json } = await handleCopilotBody(body)
           res.statusCode = status

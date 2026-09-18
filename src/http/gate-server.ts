@@ -8,7 +8,8 @@
  *   GET  /v1/audit?limit=50              — recent audit events
  *   POST /v1/ledgers/:policyId/reset     — reset ledger
  *
- * Auth: optional Bearer ALLOWLATCH_HTTP_TOKEN. Bind 127.0.0.1 by default.
+ * Auth: Bearer ALLOWLATCH_HTTP_TOKEN required when not bound to loopback.
+ * Bind 127.0.0.1 by default. Pack purchase is local-dev only (or token + ALLOWLATCH_DEV_PACKS).
  */
 import dotenv from 'dotenv'
 dotenv.config()
@@ -21,44 +22,82 @@ import { evaluateIntent } from '../policy/engine.js'
 import { PolicyStore } from '../store/fs-store.js'
 import { gatedTransfer, resolveExecuteMode } from '../executor/gated-executor.js'
 import { issueAllowReceipt, parseAllowReceipt } from '../billing/receipt.js'
+import {
+  GATE_MAX_BODY_BYTES,
+  assertJsonBodySize,
+  isLoopbackHost,
+  resolveCorsOrigin,
+} from './abuse-guard.js'
 
 const store = new PolicyStore()
 const PORT = Number(process.env.ALLOWLATCH_HTTP_PORT || 8787)
 const HOST = process.env.ALLOWLATCH_HTTP_HOST || '127.0.0.1'
 const TOKEN = process.env.ALLOWLATCH_HTTP_TOKEN?.trim()
+const DEV_PACKS = process.env.ALLOWLATCH_DEV_PACKS === '1'
+const LOOPBACK = isLoopbackHost(HOST)
 
-function json(res: http.ServerResponse, status: number, body: unknown) {
+function corsHeaders(req: http.IncomingMessage): Record<string, string> {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
+  const allowed = resolveCorsOrigin(origin)
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    Vary: 'Origin',
+  }
+  if (allowed) headers['Access-Control-Allow-Origin'] = allowed
+  return headers
+}
+
+function json(req: http.IncomingMessage, res: http.ServerResponse, status: number, body: unknown) {
   const payload = JSON.stringify(body, null, 2)
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    ...corsHeaders(req),
   })
   res.end(payload)
 }
 
 async function readJson(req: http.IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
+  let total = 0
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    total += buf.length
+    if (total > GATE_MAX_BODY_BYTES) {
+      throw new Error(`Request body too large (max ${GATE_MAX_BODY_BYTES} bytes)`)
+    }
+    chunks.push(buf)
   }
   const raw = Buffer.concat(chunks).toString('utf8')
   if (!raw.trim()) return {}
+  assertJsonBodySize(raw, GATE_MAX_BODY_BYTES)
   return JSON.parse(raw)
 }
 
 function authorized(req: http.IncomingMessage): boolean {
-  if (!TOKEN) return true
+  if (!TOKEN) {
+    // Open only on loopback for local integration tests.
+    return LOOPBACK
+  }
   const h = req.headers.authorization || ''
   return h === `Bearer ${TOKEN}`
 }
 
+function packsPurchaseAllowed(): boolean {
+  // Never a public billing endpoint — OpenServ/x402 is the real path.
+  if (!LOOPBACK) return false
+  if (DEV_PACKS) return true
+  return Boolean(TOKEN)
+}
+
 async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    })
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
+    if (origin && !resolveCorsOrigin(origin)) {
+      res.writeHead(403).end()
+      return
+    }
+    res.writeHead(204, corsHeaders(req))
     res.end()
     return
   }
@@ -67,12 +106,21 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
   const path = url.pathname
 
   if (path === '/health') {
-    json(res, 200, { ok: true, executeMode: resolveExecuteMode() })
+    json(req, res, 200, {
+      ok: true,
+      executeMode: resolveExecuteMode(),
+      authRequired: Boolean(TOKEN) || !LOOPBACK,
+    })
     return
   }
 
   if (!authorized(req)) {
-    json(res, 401, { ok: false, error: 'unauthorized' })
+    json(req, res, 401, {
+      ok: false,
+      error: TOKEN
+        ? 'unauthorized'
+        : 'Set ALLOWLATCH_HTTP_TOKEN (required when not on loopback; recommended even locally)',
+    })
     return
   }
 
@@ -87,7 +135,7 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
       } catch {
         /* no policy yet — gated agents start fail-closed */
       }
-      json(res, 200, {
+      json(req, res, 200, {
         policyId,
         policy,
         ledger,
@@ -101,7 +149,7 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
       const body = (await readJson(req)) as { policy?: unknown; ownerId?: string }
       const policy = MandatePolicySchema.parse(body.policy ?? body)
       await store.setPolicy(policyId, policy, body.ownerId ?? policy.ownerId)
-      json(res, 200, { ok: true, policyId, policy })
+      json(req, res, 200, { ok: true, policyId, policy })
       return
     }
 
@@ -117,9 +165,9 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
       if (body.packKey?.trim()) {
         packCreditsRemaining = store.tryConsumePackCredit(body.packKey.trim())
         if (packCreditsRemaining === null) {
-          json(res, 402, {
+          json(req, res, 402, {
             ok: false,
-            error: 'No evaluate-pack credits. POST /v1/packs/purchase first.',
+            error: 'No evaluate-pack credits. Buy via OpenServ x402 (buy_evaluate_pack), not this HTTP mint.',
           })
           return
         }
@@ -144,11 +192,19 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
         requestId: body.intent.requestId,
         payload: { decision: evaluation.decision, jti: receipt?.jti, packCreditsRemaining },
       })
-      json(res, 200, { ...evaluation, ledger, receipt, packCreditsRemaining })
+      json(req, res, 200, { ...evaluation, ledger, receipt, packCreditsRemaining })
       return
     }
 
     if (req.method === 'POST' && path === '/v1/packs/purchase') {
+      if (!packsPurchaseAllowed()) {
+        json(req, res, 403, {
+          ok: false,
+          error:
+            'HTTP pack mint disabled. Use OpenServ x402 buy_evaluate_pack, or set ALLOWLATCH_DEV_PACKS=1 on loopback with a token.',
+        })
+        return
+      }
       const body = z
         .object({
           packKey: z.string().min(3),
@@ -158,15 +214,15 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
       const credits = store.addPackCredits(body.packKey, body.credits)
       await store.audit({
         type: 'pack.purchased',
-        payload: { packKey: body.packKey, added: body.credits, credits },
+        payload: { packKey: body.packKey, added: body.credits, credits, localDev: true },
       })
-      json(res, 200, { ok: true, packKey: body.packKey, credits })
+      json(req, res, 200, { ok: true, packKey: body.packKey, credits, localDev: true })
       return
     }
 
     if (req.method === 'GET' && path.startsWith('/v1/packs/')) {
       const packKey = decodeURIComponent(path.slice('/v1/packs/'.length))
-      json(res, 200, { packKey, credits: store.getPackCredits(packKey) })
+      json(req, res, 200, { packKey, credits: store.getPackCredits(packKey) })
       return
     }
 
@@ -187,33 +243,39 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
         receipt: parseAllowReceipt(body.receipt) ?? body.receipt,
         requestId: body.requestId,
       })
-      json(res, 200, result)
+      json(req, res, 200, result)
       return
     }
 
     if (req.method === 'GET' && path === '/v1/audit') {
       const limit = Number(url.searchParams.get('limit') || 50)
-      json(res, 200, { events: store.listAudit(Math.min(200, Math.max(1, limit))) })
+      json(req, res, 200, { events: store.listAudit(Math.min(200, Math.max(1, limit))) })
       return
     }
 
     if (req.method === 'POST' && /^\/v1\/ledgers\/[^/]+\/reset$/.test(path)) {
       const policyId = decodeURIComponent(path.split('/')[3]!)
       await store.resetLedger(policyId)
-      json(res, 200, { ok: true, policyId, ledger: store.getLedger(policyId) })
+      json(req, res, 200, { ok: true, policyId, ledger: store.getLedger(policyId) })
       return
     }
 
-    json(res, 404, { ok: false, error: 'not found' })
+    json(req, res, 404, { ok: false, error: 'not found' })
   } catch (err) {
-    json(res, 400, {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    })
+    const message = err instanceof Error ? err.message : String(err)
+    const status = /too large/i.test(message) ? 413 : 400
+    json(req, res, status, { ok: false, error: message })
   }
 }
 
 async function main() {
+  if (!LOOPBACK && !TOKEN) {
+    console.error(
+      '[http-gate] Refusing to bind non-loopback host without ALLOWLATCH_HTTP_TOKEN. Set the token or bind 127.0.0.1.'
+    )
+    process.exit(1)
+  }
+
   await store.init()
   if (!process.env.ALLOWLATCH_RECEIPT_SECRET?.trim() && !process.env.SERV_API_KEY?.trim()) {
     process.env.ALLOWLATCH_RECEIPT_SECRET = 'dev-http-gate-receipt-secret'
@@ -225,7 +287,12 @@ async function main() {
   server.listen(PORT, HOST, () => {
     console.log(`AllowLatch HTTP gate on http://${HOST}:${PORT}`)
     console.log(`  executeMode: ${resolveExecuteMode()}`)
-    console.log(`  auth: ${TOKEN ? 'Bearer token required' : 'open (set ALLOWLATCH_HTTP_TOKEN)'}`)
+    console.log(
+      `  auth: ${TOKEN ? 'Bearer token required' : LOOPBACK ? 'open loopback (set ALLOWLATCH_HTTP_TOKEN)' : 'token required'}`
+    )
+    console.log(
+      `  packs/purchase: ${packsPurchaseAllowed() ? 'local-dev enabled' : 'disabled (use OpenServ x402)'}`
+    )
   })
 }
 

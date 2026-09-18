@@ -6,7 +6,10 @@ export function getHostInfo() {
   return {
     paywallUrl: process.env.ALLOWLATCH_PAYWALL_URL?.trim() || null,
     priceUsd: '0.025',
+    surface: 'demo-ui',
+    note: 'allowlatch.vercel.app is the demo/UI surface. Production gate + x402 is the OpenServ host (npm run dev).',
     monetize: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md',
     embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
+    architecture: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md',
   }
 }

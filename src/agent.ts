@@ -302,7 +302,7 @@ agent.addCapability({
         receipt,
         packCreditsRemaining,
         receiptNote: receipt
-          ? 'Single-use allow-receipt (jti + action digest + optional calldataHash). Pass into execute_gated_transfer.'
+          ? 'Single-use allow-receipt (jti + action digest; calldataHash required for swaps). Pass into execute_gated_transfer.'
           : undefined,
         executionHint:
           result.decision === 'allow'

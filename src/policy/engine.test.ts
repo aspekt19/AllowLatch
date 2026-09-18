@@ -23,6 +23,8 @@ describe('evaluateIntent', () => {
       amountUsd: 8,
       symbol: 'ETH',
       toAddress: router,
+      contractAddress: router,
+      calldataHash: '0x' + 'cd'.repeat(16),
     }
     const r = evaluateIntent(DEMO_POLICY, intent, freshLedger())
     assert.equal(r.decision, 'allow')
@@ -31,10 +33,26 @@ describe('evaluateIntent', () => {
   it('denies meme symbol', () => {
     const r = evaluateIntent(
       DEMO_POLICY,
-      { action: 'swap', amountUsd: 5, symbol: 'PEPE', toAddress: router },
+      {
+        action: 'swap',
+        amountUsd: 5,
+        symbol: 'PEPE',
+        toAddress: router,
+        calldataHash: '0x' + 'cd'.repeat(16),
+      },
       freshLedger()
     )
     assert.equal(r.decision, 'deny')
+  })
+
+  it('denies swap without calldataHash', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      { action: 'swap', amountUsd: 5, symbol: 'ETH', toAddress: router },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /calldataHash/i)
   })
 
   it('escalates above human threshold', () => {

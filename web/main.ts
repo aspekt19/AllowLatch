@@ -430,6 +430,14 @@ function applyDraft(_force: boolean) {
   addSpendChips()
 }
 
+function demoCalldataHash(seed: string): string {
+  // Deterministic demo binding — production agents must hash real calldata.
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  const hex = h.toString(16).padStart(8, '0')
+  return `0x${(hex + 'c0ffee').repeat(4).slice(0, 32)}`
+}
+
 function addSpendChips() {
   const wrap = document.createElement('div')
   wrap.className = 'chips'
@@ -441,6 +449,8 @@ function addSpendChips() {
         amountUsd: 8,
         symbol: 'ETH',
         toAddress: UNISWAP,
+        contractAddress: UNISWAP,
+        calldataHash: demoCalldataHash('allow-8-eth'),
         reason: 'Rebalance idle USDC',
       },
     },
@@ -451,6 +461,8 @@ function addSpendChips() {
         amountUsd: 5,
         symbol: 'PEPE',
         toAddress: UNISWAP,
+        contractAddress: UNISWAP,
+        calldataHash: demoCalldataHash('deny-pepe'),
         reason: 'YOLO',
       },
     },
@@ -518,12 +530,19 @@ function parseSpend(text: string): SpendIntent | null {
 
   const addr = text.match(/0x[a-fA-F0-9]{40}/)?.[0]
   const symbol = text.toUpperCase().match(/\b(ETH|WETH|USDC|PEPE|DOGE|SHIB)\b/)?.[1]
+  const toAddress = addr ?? (/uniswap/i.test(text) ? UNISWAP : undefined)
 
   return {
     action,
     amountUsd,
     symbol,
-    toAddress: addr ?? (/uniswap/i.test(text) ? UNISWAP : undefined),
+    toAddress,
+    ...(action === 'swap'
+      ? {
+          contractAddress: toAddress ?? UNISWAP,
+          calldataHash: demoCalldataHash(`demo-swap:${amountUsd}:${symbol ?? ''}:${text}`),
+        }
+      : {}),
     reason: text,
   }
 }

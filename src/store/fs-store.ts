@@ -16,6 +16,9 @@ import { freshLedger } from '../policy/engine.js'
 
 const DATA_DIR = path.resolve(process.cwd(), 'data')
 const DB_PATH = (() => {
+  if (process.env.ALLOWLATCH_SQLITE_PATH?.trim()) {
+    return path.resolve(process.env.ALLOWLATCH_SQLITE_PATH.trim())
+  }
   const preferred = path.join(DATA_DIR, 'allowlatch.sqlite')
   const legacyNames = ['legacy-store.sqlite', 'spendgate.sqlite']
   if (!existsSync(preferred)) {
@@ -38,6 +41,7 @@ export type AuditEvent = {
 }
 
 function openDb(): DatabaseSync {
+  mkdirSync(path.dirname(DB_PATH), { recursive: true })
   mkdirSync(DATA_DIR, { recursive: true })
   const db = new DatabaseSync(DB_PATH)
   db.exec('PRAGMA journal_mode = WAL;')

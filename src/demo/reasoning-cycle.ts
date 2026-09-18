@@ -43,6 +43,7 @@ async function main() {
       intent: {
         action: 'swap',
         amountUsd: 8,
+        calldataHash: '0x' + 'aa'.repeat(16),
         symbol: 'ETH',
         toAddress: UNISWAP,
         reason: 'Rebalance',
@@ -56,6 +57,7 @@ async function main() {
         amountUsd: 5,
         symbol: 'PEPE',
         toAddress: UNISWAP,
+        calldataHash: '0x' + 'aa'.repeat(16),
         reason: 'YOLO',
       },
     },

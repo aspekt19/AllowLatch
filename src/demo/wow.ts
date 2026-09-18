@@ -115,6 +115,7 @@ async function main() {
   const ok: SpendIntent = {
     action: 'swap',
     amountUsd: 5,
+    calldataHash: '0x' + 'aa'.repeat(16),
     symbol: 'ETH',
     toAddress: UNISWAP,
     reason: 'Rebalance',
@@ -134,6 +135,7 @@ async function main() {
   const pepe: SpendIntent = {
     action: 'swap',
     amountUsd: 5,
+    calldataHash: '0x' + 'aa'.repeat(16),
     symbol: 'PEPE',
     toAddress: UNISWAP,
     reason: 'YOLO',

@@ -32,6 +32,8 @@ const intent: SpendIntent = {
   amountUsd,
   symbol,
   toAddress: UNISWAP,
+  contractAddress: UNISWAP,
+  calldataHash: '0x' + 'aa'.repeat(16),
   reason: 'embed-policy demo',
 }
 

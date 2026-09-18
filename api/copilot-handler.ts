@@ -1,6 +1,6 @@
 /**
  * Copilot HTTP handlers shared by Vite middleware and Vercel `/api/copilot`.
- * Host SERV_API_KEY only — never accept a caller key.
+ * Host SERV_API_KEY only - never accept a caller key.
  */
 import { draftPolicyWithServ, revisePolicyWithServ } from '../src/llm/compile-mandate.js'
 import { explainDecisionWithServ } from '../src/llm/explain-decision.js'
@@ -11,6 +11,7 @@ import {
 } from '../src/policy/schema.js'
 import { evaluateIntent, freshLedger } from '../src/policy/engine.js'
 import { SpendIntentSchema } from '../src/policy/schema.js'
+import { clampMandateText } from './abuse-guard.js'
 
 export type CopilotJson =
   | { ok: true; mode: 'draft' | 'revise' | 'explain'; draft?: unknown; explanation?: unknown; evaluation?: unknown; serv: unknown; brain: string }
@@ -33,7 +34,10 @@ export async function handleCopilotBody(body: unknown): Promise<{ status: number
 
   try {
     if (action === 'draft') {
-      const mandateText = String(raw.mandateText ?? '')
+      const mandateText = clampMandateText(String(raw.mandateText ?? ''))
+      if (!mandateText.trim()) {
+        return { status: 400, json: { ok: false, error: 'mandateText required' } }
+      }
       const { draft, meta } = await draftPolicyWithServ(mandateText)
       return {
         status: 200,
@@ -55,7 +59,10 @@ export async function handleCopilotBody(body: unknown): Promise<{ status: number
     }
 
     if (action === 'revise') {
-      const revisionText = String(raw.revisionText ?? '')
+      const revisionText = clampMandateText(String(raw.revisionText ?? ''))
+      if (!revisionText.trim()) {
+        return { status: 400, json: { ok: false, error: 'revisionText required' } }
+      }
       const currentPolicy = MandatePolicySchema.parse(raw.currentPolicy)
       const { draft, meta } = await revisePolicyWithServ({ currentPolicy, revisionText })
       return {
