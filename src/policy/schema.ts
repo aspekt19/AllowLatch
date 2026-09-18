@@ -74,7 +74,7 @@ export const SpendIntentSchema = z.object({
     .string()
     .regex(/^0x[a-fA-F0-9]{8}$/, 'functionSelector must be 0x + 8 hex chars')
     .optional(),
-  /** keccak256 (or sha256) of intended calldata — binds allow-receipt to exact bytes. */
+  /** keccak256 (or sha256) of intended calldata — required for swap intents by the gate; binds allow-receipt to exact bytes. */
   calldataHash: z.string().min(16).max(66).optional(),
   /** Free-text reason from the strategy agent. */
   reason: z.string().optional(),
