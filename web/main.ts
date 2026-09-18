@@ -1,3 +1,7 @@
+import '@fontsource-variable/geist'
+import '@fontsource-variable/geist-mono'
+import '@fontsource/instrument-serif'
+import { inject } from '@vercel/analytics'
 import { draftPolicyLocally } from '../src/policy/local-compile.ts'
 import { commitIntent, evaluateIntent, freshLedger } from '../src/policy/engine.ts'
 import type {
@@ -7,6 +11,15 @@ import type {
   SpendIntent,
   SpendLedger,
 } from '../src/policy/schema.ts'
+
+inject()
+
+const siteNav = document.querySelector<HTMLElement>('#site-nav')
+const onNavScroll = () => {
+  siteNav?.classList.toggle('is-scrolled', window.scrollY > 8)
+}
+onNavScroll()
+window.addEventListener('scroll', onNavScroll, { passive: true })
 
 type Phase = 'mandate' | 'review' | 'spend' | 'escalate'
 type Role = 'you' | 'guard' | 'spender'
@@ -731,7 +744,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch - SERV Policy Copilot + hard spending turnstile for AI agents with wallets on Base.\n\n1. You state a mandate (try messy or injection).\n2. SERV drafts policy with conflicts - you review, then apply.\n3. Your spender agent proposes spends; deterministic code allow / deny / escalate. Money moves only after ALLOW.\n\nNo API keys for you - the host holds SERV. Building with AgentKit / OpenServ? See “AgentKit path” above. Start with your rules, or load the example.'
+  'I am AllowLatch - SERV Policy Copilot + hard spending turnstile for AI agents with wallets on Base.\n\n1. State a mandate (try messy text or injection).\n2. SERV drafts a policy with conflicts - review, then apply.\n3. Propose spends; deterministic code returns ALLOW / DENY / ESCALATE. Funds move only after ALLOW + receipt.\n\nNo API keys for you - the host holds SERV. Building with AgentKit? Use Embed above, or start with your rules / Load example.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

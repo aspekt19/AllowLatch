@@ -3,229 +3,337 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AllowLatch - Reasoning drafts the law. Code judges every spend.</title>
+    <title>AllowLatch - Spending turnstile for AI agents on Base</title>
     <meta
       name="description"
-      content="Say spending rules in plain language. SERV drafts the policy. Deterministic code allow / deny / escalates before any AI agent moves USDC on Base. No custody."
+      content="State spending rules in plain language. SERV drafts the policy. Deterministic code returns ALLOW, DENY, or ESCALATE before an AI agent can move USDC on Base. Non-custodial."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon-192.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="ambient" aria-hidden="true">
-      <span class="orb orb-a"></span>
-      <span class="orb orb-b"></span>
-      <span class="grain"></span>
-    </div>
-
-    <div class="app">
-      <header class="topbar">
+    <header class="site-nav" id="site-nav">
+      <div class="shell nav-inner">
         <a class="brand" href="/" aria-label="AllowLatch home">
-          <img class="brand-mark" src="/logo.svg" width="32" height="32" alt="" />
+          <img class="brand-mark" src="/logo.svg" width="28" height="28" alt="" />
           <span class="brand-name">AllowLatch</span>
         </a>
-        <nav class="topbar-nav" aria-label="Primary">
-          <a href="#gate">Open the gate</a>
-          <a href="#agentkit">AgentKit path</a>
-          <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">Embed</a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#how">How it works</a>
+          <a href="#agentkit">Embed</a>
+          <a href="#pricing">Pricing</a>
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
-          <span class="gate-live"><span class="gate-dot" aria-hidden="true"></span>Live</span>
+          <a class="nav-cta" href="#gate">Try the gate</a>
         </nav>
-      </header>
+      </div>
+    </header>
 
+    <main>
       <section class="hero" aria-labelledby="hero-brand">
-        <p class="hero-kicker">Spending turnstile for AI agents · Base / USDC</p>
-        <p id="hero-brand" class="hero-brand">AllowLatch</p>
-        <h1 class="hero-title">Your agent’s spending turnstile.</h1>
-        <p class="hero-lead">
-          Say the rules in plain language. SERV drafts the policy. Code - not the LLM - decides
-          ALLOW, DENY, or ESCALATE before an AI agent can move USDC on Base. Built to plug into
-          wallets and agent stacks (including OpenServ + AgentKit).
-        </p>
-        <div class="hero-cta">
-          <div class="hero-cta-row">
-            <a class="btn-hero" href="#gate">Try the gate</a>
-            <a class="btn-hero btn-hero-secondary" href="#agentkit">Building with AgentKit?</a>
+        <div class="hero-plane" aria-hidden="true">
+          <svg class="hero-diagram" viewBox="0 0 1200 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="lane" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#0f766e" stop-opacity="0" />
+                <stop offset="0.35" stop-color="#0f766e" stop-opacity="0.35" />
+                <stop offset="0.65" stop-color="#0f766e" stop-opacity="0.35" />
+                <stop offset="1" stop-color="#0f766e" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="1200" height="640" fill="#f4f6f8" />
+            <path d="M0 320 H1200" stroke="url(#lane)" stroke-width="1.5" />
+            <path d="M0 280 H420 M780 280 H1200" stroke="#d8dee6" stroke-width="1" />
+            <path d="M0 360 H420 M780 360 H1200" stroke="#d8dee6" stroke-width="1" />
+            <!-- turnstile post -->
+            <rect x="560" y="180" width="80" height="280" rx="4" fill="#e8ecf0" stroke="#c5ced8" />
+            <rect x="576" y="200" width="48" height="240" rx="2" fill="#fff" stroke="#b8c2ce" />
+            <!-- arm closed -->
+            <g class="hero-arm">
+              <rect x="624" y="300" width="156" height="18" rx="3" fill="#0f766e" />
+              <rect x="764" y="296" width="26" height="26" rx="3" fill="#115e59" />
+            </g>
+            <!-- receipt chip -->
+            <rect x="420" y="292" width="110" height="56" rx="6" fill="#fff" stroke="#0f766e" stroke-width="1.5" />
+            <text x="475" y="316" text-anchor="middle" fill="#0f766e" font-family="ui-monospace, monospace" font-size="11">ALLOW</text>
+            <text x="475" y="334" text-anchor="middle" fill="#64748b" font-family="ui-monospace, monospace" font-size="9">receipt · jti</text>
+            <!-- spender -->
+            <circle cx="320" cy="320" r="18" fill="#fff" stroke="#94a3b8" stroke-width="1.5" />
+            <text x="320" y="324" text-anchor="middle" fill="#475569" font-family="ui-monospace, monospace" font-size="9">AI</text>
+            <text x="320" y="370" text-anchor="middle" fill="#94a3b8" font-family="ui-monospace, monospace" font-size="10">spender</text>
+            <!-- wallet -->
+            <rect x="900" y="292" width="120" height="56" rx="6" fill="#fff" stroke="#94a3b8" />
+            <text x="960" y="325" text-anchor="middle" fill="#334155" font-family="ui-monospace, monospace" font-size="11">Base · USDC</text>
+          </svg>
+        </div>
+        <div class="shell hero-copy">
+          <p id="hero-brand" class="hero-brand">AllowLatch</p>
+          <h1 class="hero-title">The spending turnstile for AI agents.</h1>
+          <p class="hero-lead">
+            Say the rules in plain language. SERV drafts the policy. Code - not the model - decides
+            ALLOW, DENY, or ESCALATE before any wallet move on Base.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-solid" href="#gate">Open the live gate</a>
+            <a class="btn btn-line" href="#agentkit">Embed in your agent</a>
           </div>
-          <span class="hero-note">No end-user API keys · Non-custodial</span>
+          <p class="hero-meta">Non-custodial · No end-user API keys · Base / USDC</p>
         </div>
       </section>
 
-      <section class="agentkit-strip" id="agentkit" aria-labelledby="agentkit-title">
-        <div class="agentkit-inner">
-          <p class="agentkit-kicker">Optional path · Coinbase AgentKit + OpenServ</p>
-          <h2 id="agentkit-title" class="agentkit-title">Keep your agent. Add the latch.</h2>
-          <p class="agentkit-lead">
-            AllowLatch is for AI agents with wallets in general. If you’re starting from
-            <a href="https://github.com/coinbase/agentkit" target="_blank" rel="noreferrer">Coinbase AgentKit</a>
-            and OpenServ, you don’t fork us - you keep your bot and put the gate
-            <em>in front of every spend</em>. Same product; this is just the easiest first integration.
-          </p>
+      <section class="section problem" id="problem" aria-labelledby="problem-title">
+        <div class="shell section-grid">
+          <div class="section-intro">
+            <p class="eyebrow">The failure mode</p>
+            <h2 id="problem-title">A chat instruction is not a control.</h2>
+          </div>
+          <div class="problem-body">
+            <p>
+              An agent with a funded Base wallet can drain itself through loops, bad destinations,
+              over-eager swaps, or prompt injection. Wallet SDKs sign what they are asked to sign.
+              Something has to sit in front of that signature.
+            </p>
+            <p class="problem-aside">
+              AllowLatch is that turnstile: hosted policy, deterministic gate, single-use
+              allow-receipt. The LLM drafts and explains. It never overrides the verdict.
+            </p>
+          </div>
+        </div>
+      </section>
 
-          <ol class="agentkit-steps">
+      <section class="section how" id="how" aria-labelledby="how-title">
+        <div class="shell">
+          <div class="section-intro section-intro-wide">
+            <p class="eyebrow">How it runs</p>
+            <h2 id="how-title">Mandate in words. Verdict in code.</h2>
+            <p class="section-lead">
+              One path from owner intent to a signed transfer - with a hard stop in the middle.
+            </p>
+          </div>
+          <ol class="pipeline">
             <li>
-              <strong>Your agent stays yours</strong> - scaffold with AgentKit / CDP as usual. Non-spend
-              tools unchanged.
+              <span class="pipeline-idx">01</span>
+              <h3>Owner mandate</h3>
+              <p>Limits, symbols, addresses, escalate threshold - in natural language.</p>
             </li>
             <li>
-              <strong>Wire the gate before transfers</strong> - call AllowLatch
-              (<code>assertSpend</code> / <code>createGatedAgentKit</code>) so raw wallet sign never runs
-              without ALLOW + receipt.
+              <span class="pipeline-idx">02</span>
+              <h3>SERV Copilot</h3>
+              <p>Host Reasoning drafts MandatePolicy, surfaces conflicts, resists injection.</p>
             </li>
             <li>
-              <strong>Apply a mandate once</strong> - draft rules here, then
-              <strong>Enforce · $0.025</strong> (or OpenServ <code>apply_policy</code>). Change limits later
-              without rebuilding the bot.
+              <span class="pipeline-idx">03</span>
+              <h3>engine.ts gate</h3>
+              <p>Deterministic ALLOW / DENY / ESCALATE. Ledger + audit on the host.</p>
+            </li>
+            <li>
+              <span class="pipeline-idx">04</span>
+              <h3>Receipt, then sign</h3>
+              <p>Single-use <code>jti</code>. AgentKit (or your wallet stack) signs only after ALLOW.</p>
             </li>
           </ol>
+        </div>
+      </section>
 
-          <div class="agentkit-actions">
-            <button type="button" class="btn-hero" id="btn-copy-embed-snippet">
-              Copy embed snippet
-            </button>
-            <a
-              class="btn-hero btn-hero-secondary"
-              href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md"
-              target="_blank"
-              rel="noreferrer"
-              >Embed guide</a
-            >
-            <a
-              class="btn-hero btn-hero-secondary"
-              href="https://codespaces.new/aspekt19/AllowLatch"
-              target="_blank"
-              rel="noreferrer"
-              >Try our demo (optional)</a
-            >
+      <section class="section agentkit" id="agentkit" aria-labelledby="agentkit-title">
+        <div class="shell agentkit-layout">
+          <div class="agentkit-copy">
+            <p class="eyebrow">Integration</p>
+            <h2 id="agentkit-title">Keep your agent. Add the latch.</h2>
+            <p class="section-lead">
+              AllowLatch is the gate, not a replacement repo. Primary path today: Coinbase AgentKit +
+              OpenServ. Wire <code>assertSpend</code> / <code>createGatedAgentKit</code> before every
+              transfer. Apply a mandate once; change limits without rebuilding the bot.
+            </p>
+            <div class="agentkit-actions">
+              <button type="button" class="btn btn-solid" id="btn-copy-embed-snippet">
+                Copy embed snippet
+              </button>
+              <a
+                class="btn btn-line"
+                href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md"
+                target="_blank"
+                rel="noreferrer"
+                >Embed guide</a
+              >
+            </div>
+            <p class="agentkit-note muted" id="agentkit-copy-status" aria-live="polite">
+              Snippet drops into your AgentKit project. Demo Codespaces is optional - not a fork target.
+            </p>
           </div>
-          <p class="agentkit-note muted tight" id="agentkit-copy-status" aria-live="polite">
-            Snippet drops into <em>your</em> AgentKit project. Demo Codespaces = see the gate work end-to-end - not a replacement for your bot.
+          <pre class="agentkit-code" tabindex="0"><code>await assertSpend({ intent, triggerUrl, walletPrivateKey })
+// ALLOW + receipt → then sign
+// DENY → refuse
+// ESCALATE → ask the human</code></pre>
+        </div>
+      </section>
+
+      <section class="section pricing" id="pricing" aria-labelledby="pricing-title">
+        <div class="shell pricing-layout">
+          <div class="section-intro">
+            <p class="eyebrow">Pricing</p>
+            <h2 id="pricing-title">Enforcement is paid and remote.</h2>
+          </div>
+          <div class="pricing-rows">
+            <div class="price-row">
+              <div>
+                <h3>x402 gate call</h3>
+                <p>draft · apply · evaluate · explain · execute</p>
+              </div>
+              <p class="price-figure">$0.025</p>
+            </div>
+            <div class="price-row">
+              <div>
+                <h3>Evaluate pack</h3>
+                <p>buy_evaluate_pack · then burn credits with packKey</p>
+              </div>
+              <p class="price-figure">$1 / 100</p>
+            </div>
+            <div class="price-row price-row-muted">
+              <div>
+                <h3>Demo UI + local draft</h3>
+                <p>Try SERV here. Snapshot export is watermarked - not production.</p>
+              </div>
+              <p class="price-figure">Free</p>
+            </div>
+          </div>
+          <p class="pricing-foot muted">
+            Discover OpenServ service <strong>AllowLatch Gate</strong>
+            (<code>/allowlatch/i</code>. Details in
+            <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE.md</a>.
           </p>
         </div>
       </section>
 
-      <div class="product-shell" id="gate">
-        <div class="product-chrome">
-          <div class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></div>
-          <p class="chrome-title">Policy Copilot + gate</p>
-          <span class="brain-badge" id="brain-badge">SERV</span>
-        </div>
-
-        <div class="workspace">
-          <section class="console" aria-label="Mandate and gate console">
-            <div class="console-bar">
-              <div class="stepper" id="phase-label" aria-live="polite">
-                <span class="step is-active" data-step="1"><em>01</em> Mandate</span>
-                <span class="step-sep" aria-hidden="true"></span>
-                <span class="step" data-step="2"><em>02</em> Review</span>
-                <span class="step-sep" aria-hidden="true"></span>
-                <span class="step" data-step="3"><em>03</em> Gate</span>
-              </div>
-              <p class="console-hint" id="console-hint">Describe how your agent may spend</p>
-            </div>
-
-            <div class="messages" id="messages"></div>
-
-            <form class="composer" id="composer">
-              <label class="sr-only" for="input">Message</label>
-              <textarea
-                id="input"
-                rows="2"
-                placeholder="e.g. Max $10 per transfer, $40/day, only USDC &amp; ETH, ask me above $8…"
-                autocomplete="off"
-              ></textarea>
-              <div class="composer-actions">
-                <button type="button" class="btn-ghost" id="btn-example">Load example mandate</button>
-                <button type="submit" class="btn-primary" id="btn-send">
-                  <span>Draft policy</span>
-                  <span class="btn-key" aria-hidden="true">↵</span>
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <aside class="rail" aria-label="Policy status">
-            <div class="rail-block">
-              <div class="rail-head">
-                <h2 class="rail-title">Active policy</h2>
-                <span class="rail-status" id="policy-status">Idle</span>
-              </div>
-              <div class="policy-empty" id="policy-empty">
-                <p>No policy yet.</p>
-                <p class="muted">Send a mandate - SERV drafts limits, allowlists, and escalation.</p>
-              </div>
-              <div class="policy-live is-hidden" id="policy-live">
-                <p class="policy-name" id="policy-name"></p>
-                <dl class="policy-grid" id="policy-grid"></dl>
-              </div>
-            <div class="policy-actions is-hidden" id="policy-actions">
-              <button type="button" class="btn-policy-action" id="btn-enforce-host">
-                Enforce on AllowLatch · $0.025
-              </button>
-              <button type="button" class="btn-policy-action" id="btn-download-policy">
-                Demo snapshot (not enforced)
-              </button>
-              <button type="button" class="btn-clear-rules" id="btn-clear-rules">
-                Clear rules
-              </button>
-            </div>
-            <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
-              Production = pay AllowLatch ($0.025) so the host stores the policy and your agent
-              calls <code>evaluate_intent</code> before every spend.
-              <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE.md</a>
-              ·
-              <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED.md</a>
+      <section class="section gate-section" id="gate" aria-labelledby="gate-title">
+        <div class="shell">
+          <div class="section-intro section-intro-wide">
+            <p class="eyebrow">Live product</p>
+            <h2 id="gate-title">Policy Copilot + gate</h2>
+            <p class="section-lead">
+              Draft a mandate, review the policy, then run spend scenarios. SERV on the host when
+              configured; local heuristics otherwise.
             </p>
+          </div>
+
+          <div class="product-shell">
+            <div class="product-chrome">
+              <div class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+              <p class="chrome-title">allowlatch · gate</p>
+              <span class="brain-badge" id="brain-badge">SERV</span>
             </div>
 
-            <div class="rail-block">
-              <h2 class="rail-title">Ledger · today</h2>
-              <p class="ledger-figure" id="ledger-view">$0.00</p>
-              <p class="ledger-sub" id="ledger-sub">0 transactions this hour</p>
-            </div>
+            <div class="workspace">
+              <section class="console" aria-label="Mandate and gate console">
+                <div class="console-bar">
+                  <div class="stepper" id="phase-label" aria-live="polite">
+                    <span class="step is-active" data-step="1"><em>01</em> Mandate</span>
+                    <span class="step-sep" aria-hidden="true"></span>
+                    <span class="step" data-step="2"><em>02</em> Review</span>
+                    <span class="step-sep" aria-hidden="true"></span>
+                    <span class="step" data-step="3"><em>03</em> Gate</span>
+                  </div>
+                  <p class="console-hint" id="console-hint">Describe how your agent may spend</p>
+                </div>
 
-            <div class="rail-block rail-flow">
-              <h2 class="rail-title">How it runs</h2>
-              <ol class="flow-list">
-                <li>
-                  <span>You</span>
-                  Mandate &amp; human confirmations
-                </li>
-                <li>
-                  <span>AllowLatch</span>
-                  SERV draft · deterministic gate
-                </li>
-                <li>
-                  <span>Spender</span>
-                  Agent signs only after ALLOW
-                </li>
-              </ol>
+                <div class="messages" id="messages"></div>
+
+                <form class="composer" id="composer">
+                  <label class="sr-only" for="input">Message</label>
+                  <textarea
+                    id="input"
+                    rows="2"
+                    placeholder="e.g. Max $10 per transfer, $40/day, only USDC &amp; ETH, ask me above $8…"
+                    autocomplete="off"
+                  ></textarea>
+                  <div class="composer-actions">
+                    <button type="button" class="btn-ghost" id="btn-example">Load example mandate</button>
+                    <button type="submit" class="btn-primary" id="btn-send">
+                      <span>Draft policy</span>
+                      <kbd class="btn-key" aria-hidden="true">↵</kbd>
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <aside class="rail" aria-label="Policy status">
+                <div class="rail-block">
+                  <div class="rail-head">
+                    <h3 class="rail-title">Active policy</h3>
+                    <span class="rail-status" id="policy-status">Idle</span>
+                  </div>
+                  <div class="policy-empty" id="policy-empty">
+                    <p>No policy yet.</p>
+                    <p class="muted">Send a mandate - SERV drafts limits, allowlists, and escalation.</p>
+                  </div>
+                  <div class="policy-live is-hidden" id="policy-live">
+                    <p class="policy-name" id="policy-name"></p>
+                    <dl class="policy-grid" id="policy-grid"></dl>
+                  </div>
+                  <div class="policy-actions is-hidden" id="policy-actions">
+                    <button type="button" class="btn-policy-action" id="btn-enforce-host">
+                      Enforce on AllowLatch · $0.025
+                    </button>
+                    <button type="button" class="btn-policy-action" id="btn-download-policy">
+                      Demo snapshot (not enforced)
+                    </button>
+                    <button type="button" class="btn-clear-rules" id="btn-clear-rules">Clear rules</button>
+                  </div>
+                  <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
+                    Production = pay AllowLatch ($0.025) so the host stores the policy and your agent
+                    calls <code>evaluate_intent</code> before every spend.
+                    <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE.md</a>
+                    ·
+                    <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED.md</a>
+                  </p>
+                </div>
+
+                <div class="rail-block">
+                  <h3 class="rail-title">Ledger · today</h3>
+                  <p class="ledger-figure" id="ledger-view">$0.00</p>
+                  <p class="ledger-sub" id="ledger-sub">0 transactions this hour</p>
+                </div>
+
+                <div class="rail-block rail-flow">
+                  <h3 class="rail-title">Roles</h3>
+                  <ol class="flow-list">
+                    <li>
+                      <span>You</span>
+                      Mandate &amp; human confirmations
+                    </li>
+                    <li>
+                      <span>AllowLatch</span>
+                      SERV draft · deterministic gate
+                    </li>
+                    <li>
+                      <span>Spender</span>
+                      Signs only after ALLOW
+                    </li>
+                  </ol>
+                </div>
+              </aside>
             </div>
-          </aside>
+          </div>
         </div>
-      </div>
+      </section>
+    </main>
 
-      <footer class="foot">
+    <footer class="site-foot">
+      <div class="shell foot-inner">
         <div class="foot-brand">
           <img src="/logo.svg" width="18" height="18" alt="" />
-          <span>© 2026 AllowLatch</span>
+          <span>AllowLatch</span>
+          <span class="foot-year">© 2026</span>
         </div>
         <div class="foot-links">
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
-          <span class="dot" aria-hidden="true"></span>
+          <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md" target="_blank" rel="noreferrer">Product</a>
           <a href="https://docs.openserv.ai/serv-reasoning/" target="_blank" rel="noreferrer">SERV</a>
-          <span class="dot" aria-hidden="true"></span>
           <span>Does not custody funds</span>
         </div>
-      </footer>
-    </div>
+      </div>
+    </footer>
+
     <script type="module" src="/main.ts"></script>
   </body>
 </html>
