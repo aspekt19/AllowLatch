@@ -21,17 +21,18 @@ You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or sim
 6. Demo UI: https://allowlatch.vercel.app
 7. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
 8. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
-9. Embed: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
-10. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+9. Embed (into your agent): https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+10. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
+11. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
 
 ### Capabilities (host)
 
-draft_policy · revise_mandate · apply_policy · evaluate_intent · buy_evaluate_pack · explain_decision · execute_gated_transfer · list_audit · reset_ledger
+draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet_permissions · evaluate_intent · buy_evaluate_pack · explain_decision · execute_gated_transfer · list_audit · reset_ledger
 
 ### Invariants
 
 - Gate decisions are deterministic code, not LLM overrides.
 - SERV on the host drafts/explains; never changes the verdict.
 - Execute requires a verified, unconsumed allow-receipt (or escalate + humanApproved).
-- AllowLatch does not custody funds.
+- AllowLatch does not custody funds (middleware + receipt; optional hybrid Spend Permissions on-chain).
 - Never ask the end user for SERV_API_KEY or CDP secrets.

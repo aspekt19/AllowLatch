@@ -9,7 +9,8 @@
  *   POST /v1/ledgers/:policyId/reset     — reset ledger
  *
  * Auth: Bearer ALLOWLATCH_HTTP_TOKEN required when not bound to loopback.
- * Bind 127.0.0.1 by default. Pack purchase is local-dev only (or token + ALLOWLATCH_DEV_PACKS).
+ * Bind 127.0.0.1 by default. Pack grant is local-dev only (token + ALLOWLATCH_DEV_PACKS=1).
+ * Routes: POST /v1/packs/grant (preferred) · POST /v1/packs/purchase (alias).
  */
 import dotenv from 'dotenv'
 dotenv.config()
@@ -195,7 +196,7 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
       return
     }
 
-    if (req.method === 'POST' && path === '/v1/packs/purchase') {
+    if (req.method === 'POST' && (path === '/v1/packs/purchase' || path === '/v1/packs/grant')) {
       if (!packsPurchaseAllowed()) {
         json(req, res, 403, {
           ok: false,
@@ -212,8 +213,8 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
         .parse(await readJson(req))
       const credits = store.addPackCredits(body.packKey, body.credits)
       await store.audit({
-        type: 'pack.purchased',
-        payload: { packKey: body.packKey, added: body.credits, credits, localDev: true },
+        type: 'pack.granted',
+        payload: { packKey: body.packKey, added: body.credits, credits, localDev: true, path },
       })
       json(req, res, 200, { ok: true, packKey: body.packKey, credits, localDev: true })
       return
@@ -290,7 +291,7 @@ async function main() {
       `  auth: ${TOKEN ? 'Bearer token required' : LOOPBACK ? 'open loopback (set ALLOWLATCH_HTTP_TOKEN)' : 'token required'}`
     )
     console.log(
-      `  packs/purchase: ${packsPurchaseAllowed() ? 'local-dev enabled' : 'disabled (use OpenServ x402)'}`
+      `  packs/grant: ${packsPurchaseAllowed() ? 'local-dev enabled' : 'disabled (use OpenServ x402)'}`
     )
   })
 }

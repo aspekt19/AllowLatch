@@ -8,7 +8,7 @@ AllowLatch is a **payment policy turnstile** for financial AI agents on Base (US
 |---------|------------|
 | **https://allowlatch.vercel.app** | Demo UI + `/api/copilot` (SERV draft/revise/explain). **Not** the full production gate/x402 host. |
 | **OpenServ host** (`npm run dev`) | Production path: discover **AllowLatch Gate**, x402 ($0.025 / pack), evaluate, receipt, optional execute. |
-| **HTTP gate** (`npm run http:gate`) | Local/framework-agnostic API on loopback; Bearer token required if bound off-loopback. Pack credits via operator `/v1/packs/grant` or OpenServ `buy_evaluate_pack` - not a public free mint. |
+| **HTTP gate** (`npm run http:gate`) | Local/framework-agnostic API on loopback; Bearer token required if bound off-loopback. Pack credits via operator `POST /v1/packs/grant` (alias `/v1/packs/purchase`, requires `ALLOWLATCH_DEV_PACKS=1` + token) or OpenServ `buy_evaluate_pack` - not a public free mint. |
 
 ## Execution path
 
@@ -22,7 +22,7 @@ evaluate_intent
    → AgentKit transfer (or dry-run)
 ```
 
-**Swaps:** host evaluates + issues receipt; it does **not** submit swap txs. Caller must re-supply the same `calldataHash` when verifying before an external router/AgentKit swap.
+**Swaps:** host evaluates + issues receipt; it does **not** submit swap txs. Swap intents **require** `calldataHash` (and preferably `contractAddress`). Caller must re-supply the same hash when verifying before an external router/AgentKit swap.
 
 ## Enforcement modes
 

@@ -59,7 +59,7 @@ Monetization: [MONETIZE.md](./MONETIZE.md)
 
 ## Agent instruction
 
-> Before any transfer/swap/payment, call AllowLatch `assertSpend` / `evaluate_intent` (paid). On DENY stop. On ESCALATE ask me. Never sign without a valid allow-receipt. Never rely on a local JSON file for live spends. For host-executed transfers, pass the receipt into `execute_gated_transfer`.
+> Before any transfer/swap/payment, call AllowLatch `assertSpend` / `evaluate_intent` (paid). On DENY stop. On ESCALATE ask me. Never sign without a valid allow-receipt. For swaps, supply `calldataHash` (and prefer `contractAddress`) so the receipt binds to exact calldata - the host evaluates/receives only; your agent submits the swap. Never rely on a local JSON file for live spends. For host-executed transfers, pass the receipt into `execute_gated_transfer`.
 
 ## Demo-only snapshot
 

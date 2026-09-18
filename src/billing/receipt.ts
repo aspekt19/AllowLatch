@@ -14,7 +14,7 @@ export type AllowReceipt = {
   policyHash: string
   /** Canonical spend digest (action/amount/to/contract/selector/calldataHash). */
   intentHash: string
-  /** Echo of intent.calldataHash when present — execute must re-supply the same bytes hash. */
+  /** Echo of intent.calldataHash when set (required for swaps by the gate). Execute must re-supply the same bytes hash. */
   calldataHash?: string
   issuedAt: number
   expiresAt: number

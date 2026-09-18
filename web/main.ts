@@ -140,7 +140,7 @@ function setPhase(next: Phase) {
     next === 'mandate'
       ? 'e.g. Max $10 per transfer, $40/day, only USDC & ETH, ask me above $8…'
       : next === 'review'
-        ? 'Type “apply”, or clarify (e.g. use $10 per transfer, Uniswap only)…'
+        ? 'Type "apply", or clarify (e.g. use $10 per transfer, Uniswap only)…'
         : next === 'escalate'
           ? 'Type yes to approve, or no to deny…'
           : 'e.g. transfer $8 to Uniswap - or tap a scenario'
@@ -379,8 +379,8 @@ function showDraftReview(draft: PolicyDraft, via: 'serv' | 'local' = 'local') {
   lines.push(
     '',
     draft.readyToApply
-      ? 'Reply “apply” to activate the gate, or clarify further.'
-      : 'Clarify the questions, or reply “apply anyway” to accept this conservative draft.'
+      ? 'Reply "apply" to activate the gate, or clarify further.'
+      : 'Clarify the questions, or reply "apply anyway" to accept this conservative draft.'
   )
 
   const host = addMessage('guard', lines.join('\n'))
@@ -424,14 +424,14 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click “Enforce on AllowLatch · $0.025”. Local demo snapshot is watermarked and not production.`
+    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click "Enforce on AllowLatch · $0.025". Local demo snapshot is watermarked and not production.`
   )
   setPhase('spend')
   addSpendChips()
 }
 
 function demoCalldataHash(seed: string): string {
-  // Deterministic demo binding — production agents must hash real calldata.
+  // Deterministic demo binding - production agents must hash real calldata.
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
   const hex = h.toString(16).padStart(8, '0')
@@ -679,7 +679,7 @@ async function onSubmit(text: string) {
     if (!intent) {
       addMessage(
         'guard',
-        'Could not parse a spend. Try: “transfer $8 to Uniswap” or use the scenarios above.'
+        'Could not parse a spend. Try: "transfer $8 to Uniswap" or use the scenarios above.'
       )
       return
     }

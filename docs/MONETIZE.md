@@ -15,7 +15,7 @@
 
 1. **Hosted policy** - change rules without shipping files to the agent.
 2. **Central SQLite ledger** - daily + lifetime caps survive agent restarts; atomic under concurrency.
-3. **Allow-receipt** - action digest + optional `calldataHash` + single-use `jti`; agent must refuse to sign without verify.
+3. **Allow-receipt** - action digest + single-use `jti` (+ **required** `calldataHash` for swaps); agent must refuse to sign without verify.
 4. **SERV Copilot** - draft/revise/explain on our key (injection-resistant tools).
 
 Free local `engine.ts` + JSON is a **teaser**. Production path: discover AllowLatch Gate → pay → `evaluate_intent` / `execute_gated_transfer` before every spend.
