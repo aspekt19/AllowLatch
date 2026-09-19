@@ -1,15 +1,11 @@
 /**
  * Gated executor: evaluate → require action-bound allow-receipt → consume jti → AgentKit.
  * Never signs without a verified, unconsumed receipt (or escalate+humanApproved mint+consume).
+ *
+ * AgentKit is loaded lazily so the OpenServ host can run evaluate/draft without installing
+ * the heavy CDP stack (needed for slim always-on cloud containers).
  */
 
-import {
-  AgentKit,
-  CdpEvmWalletProvider,
-  cdpEvmWalletActionProvider,
-  erc20ActionProvider,
-  walletActionProvider,
-} from '@coinbase/agentkit'
 import type { EvaluationResult, SpendIntent } from '../policy/schema.js'
 import { commitIntent, evaluateIntent } from '../policy/engine.js'
 import type { PolicyStore } from '../store/fs-store.js'
@@ -31,13 +27,34 @@ export const USDC_BASE_SEPOLIA = '0x036CbD53842c5426634e7929541eC2318f3dCF7e' as
 
 export type ExecuteMode = 'dry-run' | 'live'
 
+type AgentKitLike = {
+  getActions: () => Array<{ name: string; invoke: (args: Record<string, string>) => Promise<unknown> }>
+}
+
 type KitBundle = {
-  kit: AgentKit
+  kit: AgentKitLike
   walletAddress: string
   networkId: string
 }
 
 let kitBundle: Promise<KitBundle> | null = null
+
+async function loadAgentKit() {
+  const {
+    AgentKit,
+    CdpEvmWalletProvider,
+    cdpEvmWalletActionProvider,
+    erc20ActionProvider,
+    walletActionProvider,
+  } = await import('@coinbase/agentkit')
+  return {
+    AgentKit,
+    CdpEvmWalletProvider,
+    cdpEvmWalletActionProvider,
+    erc20ActionProvider,
+    walletActionProvider,
+  }
+}
 
 export function resolveExecuteMode(): ExecuteMode {
   const forced = process.env.ALLOWLATCH_EXECUTE_MODE
@@ -57,6 +74,23 @@ export function usdcAddressForNetwork(networkId: string): `0x${string}` {
 async function getKitBundle(): Promise<KitBundle> {
   if (!kitBundle) {
     kitBundle = (async () => {
+      let mod: Awaited<ReturnType<typeof loadAgentKit>>
+      try {
+        mod = await loadAgentKit()
+      } catch (err) {
+        throw new Error(
+          `AgentKit not installed on this host (live execute unavailable): ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        )
+      }
+      const {
+        AgentKit,
+        CdpEvmWalletProvider,
+        cdpEvmWalletActionProvider,
+        erc20ActionProvider,
+        walletActionProvider,
+      } = mod
       const networkId = process.env.NETWORK_ID || 'base-sepolia'
       const walletProvider = await CdpEvmWalletProvider.configureWithWallet({
         apiKeyId: process.env.CDP_API_KEY_ID!,
@@ -65,14 +99,14 @@ async function getKitBundle(): Promise<KitBundle> {
         networkId,
         address: process.env.CDP_WALLET_ADDRESS as `0x${string}` | undefined,
       })
-      const kit = await AgentKit.from({
+      const kit = (await AgentKit.from({
         walletProvider,
         actionProviders: [
           walletActionProvider(),
           erc20ActionProvider(),
           cdpEvmWalletActionProvider(),
         ],
-      })
+      })) as AgentKitLike
       return { kit, walletAddress: walletProvider.getAddress(), networkId }
     })()
   }
@@ -298,7 +332,7 @@ export async function gatedTransfer(
       smartAccount &&
       binding?.status === 'synced'
     ) {
-      const usePerm = kit.getActions().find((a) => a.name === 'use_spend_permission')
+      const usePerm = kit.getActions().find((a: { name: string }) => a.name === 'use_spend_permission')
       if (usePerm) {
         await usePerm.invoke({
           smartAccountAddress: smartAccount,
@@ -323,7 +357,7 @@ export async function gatedTransfer(
       }
     }
 
-    const transfer = kit.getActions().find((a) => a.name === 'transfer')
+    const transfer = kit.getActions().find((a: { name: string }) => a.name === 'transfer')
     if (!transfer) {
       throw new Error('AgentKit transfer action not available')
     }
@@ -343,12 +377,13 @@ export async function gatedTransfer(
     const result = await transfer.invoke({
       amount: String(input.intent.amountUsd),
       tokenAddress,
-      destinationAddress: input.intent.toAddress,
+      destinationAddress: input.intent.toAddress!,
     })
 
     await store.setLedger(input.policyId, commitIntent(ledger, input.intent))
 
-    const txHash = result.match(/0x[a-fA-F0-9]{64}/)?.[0]
+    const resultText = typeof result === 'string' ? result : JSON.stringify(result)
+    const txHash = resultText.match(/0x[a-fA-F0-9]{64}/)?.[0]
     await store.audit({
       type: 'tx.confirmed',
       policyId: input.policyId,
