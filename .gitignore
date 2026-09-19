@@ -12,3 +12,6 @@ data/*.sqlite-*
 .vercel
 .env*
 .env.local
+
+*.tgz
+allowlatch-*.tgz
