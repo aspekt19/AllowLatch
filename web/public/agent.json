@@ -14,7 +14,10 @@
       "discover": "PlatformClient.payments.discoverServices() - filter name /allowlatch/i (listed as AllowLatch Gate)",
       "priceUsd": "0.025",
       "evaluatePack": "buy_evaluate_pack - target $1 / 100 evaluates; then evaluate_intent with packKey",
-      "invoke": "x402 payWorkflow with { prompt } - no end-user API keys"
+      "invoke": "x402 payWorkflow with { prompt } - no end-user API keys; users never run the host",
+      "paywallUrl": "https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53",
+      "triggerUrl": "https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53",
+      "hostInfo": "https://allowlatch.vercel.app/api/host-info"
     }
   },
   "skills": [
@@ -68,8 +71,9 @@
     "Execute requires verified single-use allow-receipt (or escalate + humanApproved)",
     "Fail-closed: timeout, network error, malformed decision, or missing receipt → DENY",
     "Receipt binds chain, action digest, and calldataHash for swaps; prefer tokenAddress over symbol",
+    "End users never run npm run dev or set SERV_API_KEY — they discover hosted AllowLatch Gate",
     "AllowLatch does not custody user funds or private keys",
-    "End users do not configure SERV_API_KEY or CDP - the host does; x402 pays the call"
+    "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],
   "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"],
   "httpGate": "npm run http:gate - POST /v1/evaluate, /v1/execute (framework-agnostic)"

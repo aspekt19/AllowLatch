@@ -258,9 +258,11 @@ async function enforceOnHost() {
   ].join('\n')
 
   let paywall: string | null = null
+  let gateActive: boolean | null = null
   try {
     const info = await fetch('/api/host-info').then((r) => r.json())
-    paywall = info.paywallUrl || null
+    paywall = info.gate?.paywallUrl || info.paywallUrl || null
+    gateActive = typeof info.gate?.isActive === 'boolean' ? info.gate.isActive : null
   } catch {
     /* ignore */
   }
@@ -268,7 +270,7 @@ async function enforceOnHost() {
   if (!paywall) {
     addMessage(
       'guard',
-      'Set ALLOWLATCH_PAYWALL_URL on the deploy (OpenServ paywall from `npm run dev` logs), then retry Enforce.\n\nMeanwhile copy this prompt into the paywall manually:\n\n' +
+      'Could not load the public paywall from /api/host-info. See docs/CONNECT.md for AllowLatch Gate URLs.\n\nMeanwhile copy this apply prompt into the OpenServ paywall manually:\n\n' +
         prompt
     )
     try {
@@ -280,6 +282,13 @@ async function enforceOnHost() {
     return
   }
 
+  if (gateActive === false) {
+    addMessage(
+      'guard',
+      'AllowLatch Gate is listed on OpenServ but currently offline. You still do not run a host — the operator brings it back. Opening the paywall anyway.'
+    )
+  }
+
   try {
     await navigator.clipboard.writeText(prompt)
   } catch {
@@ -288,7 +297,7 @@ async function enforceOnHost() {
   window.open(paywall, '_blank', 'noopener,noreferrer')
   addMessage(
     'guard',
-    'Opened AllowLatch paywall ($0.025). Paste the apply prompt (copied if clipboard allowed) and pay to host the policy.\n\nAfter that, agents must call evaluate_intent on AllowLatch before every spend - not a local JSON file.'
+    'Opened hosted AllowLatch paywall ($0.025). Paste the apply prompt (copied if clipboard allowed) and pay.\n\nAfter that, agents call evaluate_intent on AllowLatch before every spend — not a local JSON file.'
   )
 }
 

@@ -39,10 +39,10 @@ function copilotApiPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (req.url?.startsWith('/api/host-info') && req.method === 'GET') {
-          const { getHostInfo } = await import('./src/web/host-info-data.ts')
+          const { getHostInfoAsync } = await import('./src/web/host-info-data.ts')
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(getHostInfo()))
+          res.end(JSON.stringify(await getHostInfoAsync()))
           return
         }
         if (!req.url?.startsWith('/api/copilot') || req.method !== 'POST') {

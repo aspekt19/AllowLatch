@@ -23,7 +23,8 @@
     "agent:gated": "tsx examples/create-gated-agent.ts",
     "connect": "tsx examples/connect-as-agent.ts",
     "owner:copilot": "tsx examples/owner-copilot.ts",
-    "http:gate": "tsx src/http/gate-server.ts"
+    "http:gate": "tsx src/http/gate-server.ts",
+    "deploy:openserv": "npx @openserv-labs/client deploy ."
   },
   "keywords": [],
   "author": "",

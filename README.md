@@ -9,7 +9,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No custody. No end-user API keys - host holds SERV (+ optional CDP). Agents pay x402 ($0.025) or an evaluate pack ($1 / 100). Optional on-chain Spend Permissions: `ALLOWLATCH_ENFORCEMENT=hybrid`.
+No custody. No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay x402 ($0.025) or an evaluate pack ($1 / 100). Optional on-chain Spend Permissions: `ALLOWLATCH_ENFORCEMENT=hybrid`.
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
@@ -21,7 +21,7 @@ Tell your agent:
 
 - Cursor skill: `.cursor/skills/allowlatch`
 - Demo UI: https://allowlatch.vercel.app
-- Full theater (host): `npm run wow`
+- Connect: [docs/CONNECT.md](./docs/CONNECT.md) · Hosted ops: [docs/HOSTED.md](./docs/HOSTED.md)
 
 ## Solution
 
@@ -40,13 +40,15 @@ npm run test                # engine + receipt unit tests
 npm run ui                  # dialog UI (live SERV via /api/copilot when key set)
 npm run wow                 # full SERV → injection → gate → explain → AgentKit
 npm run battle              # Spender → gate → AgentKit dry-run
-npm run connect             # discover AllowLatch as another agent
-npm run agent:gated         # new AgentKit spender with gate baked in (needs http:gate)
-npm run http:gate           # framework-agnostic HTTP evaluate/execute
-npm run dev                 # provision + run OpenServ host
+npm run connect             # discover hosted AllowLatch Gate as another agent
+npm run agent:gated         # AgentKit spender with gate baked in
+npm run http:gate           # local HTTP evaluate/execute (builder/dev)
+npm run deploy:openserv     # operator: always-on OpenServ Cloud host
+npm run dev                 # operator: local tunnel host (dev)
 ```
 
-Host `.env`: `SERV_API_KEY` (required for Copilot), optional `CDP_*` for live execute.
+End users: [docs/CONNECT.md](./docs/CONNECT.md). Operator hosting: [docs/HOSTED.md](./docs/HOSTED.md).  
+Operator `.env`: `SERV_API_KEY`, `OPENSERV_USER_API_KEY` (cloud deploy), optional `CDP_*`.
 
 ## Pitch
 

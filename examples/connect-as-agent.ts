@@ -33,9 +33,8 @@ async function main() {
   if (!allowlatch) {
     console.error(
       'AllowLatch not found in discoverServices().\n' +
-        'The host must be running `npm run dev` (provisioned x402 workflow).\n' +
-        'Until then use the demo UI: https://allowlatch.vercel.app\n' +
-        'or install the allowlatch Cursor skill and point at docs/CONNECT.md.'
+        'The hosted AllowLatch Gate should appear publicly — see docs/CONNECT.md / docs/HOSTED.md.\n' +
+        'Demo UI: https://allowlatch.vercel.app · host-info: https://allowlatch.vercel.app/api/host-info'
     )
     console.log(
       '\nKnown services (sample):',

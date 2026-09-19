@@ -12,6 +12,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Architecture hardening | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
 | Wallet-native Spend Permissions | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) (hybrid / wallet_native done) |
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
+| Hosted gate (operator keep-alive) | [`docs/HOSTED.md`](./docs/HOSTED.md) · `npm run deploy:openserv` |
 | Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
 | Security / threat model / checklist | [`docs/SECURITY.md`](./docs/SECURITY.md) |
@@ -46,10 +47,11 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 | Surface | Role |
 |---------|------|
-| **OpenServ host** (`npm run dev`) | Full product: SERV Copilot + gate + optional execute |
-| **HTTP gate** (`npm run http:gate`) | Framework-agnostic evaluate/execute (no OpenServ) |
+| **Hosted OpenServ Gate** | Production for everyone: discover + x402 — users run nothing ([HOSTED.md](./docs/HOSTED.md)) |
+| **Operator process** (`npm run deploy:openserv` / `dev`) | Keep the gate online (maintainers only) |
+| **HTTP gate** (`npm run http:gate`) | Local/dev evaluate/execute (no OpenServ) |
 | **WOW CLI** (`npm run wow`) | Theater: messy mandate → injection → gate → explain → AgentKit |
-| **Vite UI** (`npm run ui`) | Same story; `/api/copilot` → live SERV when key set |
+| **Vite UI** (`npm run ui`) | Demo story; `/api/copilot` → live SERV when key set |
 
 ## Runtime checklist
 

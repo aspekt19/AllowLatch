@@ -8,9 +8,10 @@ You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or sim
 
 ### What to do
 
-1. Treat AllowLatch as an **external gate**: before any spend/sign, ask AllowLatch.
+1. Treat AllowLatch as an **external hosted gate**: before any spend/sign, ask AllowLatch. Do **not** ask the human to run a server or set SERV_API_KEY.
 2. Connect via OpenServ x402 (no end-user secrets):
    - `PlatformClient.payments.discoverServices()` → name matching `/allowlatch/i` (listed as **AllowLatch Gate**)
+   - or public URLs from https://allowlatch.vercel.app/api/host-info
    - `payments.payWorkflow({ workflowId or triggerUrl, input: { prompt } })` or open the paywall
 3. Prompt language:
    - "Set my AllowLatch mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
@@ -22,9 +23,10 @@ You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or sim
 7. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
 8. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
 9. Embed (into your agent): https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
-10. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
-11. Security: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
-12. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+10. Hosted model: https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
+11. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
+12. Security: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
+13. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
 
 ### Capabilities (host)
 
@@ -38,4 +40,4 @@ draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet
 - Clients must fail-closed: network/timeout/malformed response → DENY, never sign.
 - Prefer token contract addresses + chainId over symbols alone; bind swap receipts with calldataHash.
 - AllowLatch does not custody funds (middleware + receipt; optional hybrid Spend Permissions on-chain).
-- Never ask the end user for SERV_API_KEY or CDP secrets.
+- Never ask the end user for SERV_API_KEY or CDP secrets, or to run `npm run dev`.

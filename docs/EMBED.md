@@ -1,14 +1,16 @@
 # Enforce AllowLatch from your agent (paid)
 
-Local JSON is **not** the product. Production path:
+You do **not** run AllowLatch yourself. Production path uses the **hosted** AllowLatch Gate:
 
-1. Host must be running (`npm run dev`) with x402 price **$0.025** - or `npm run http:gate` for a framework-agnostic HTTP API
-2. Apply policy on the host (paywall / `payWorkflow` / `POST /v1/policies/:id`)
-3. Before **every** spend: `assertSpend` / `evaluate` → ALLOW + single-use **receipt** (`jti`) → pass receipt into `execute_gated_transfer` / `POST /v1/execute` → only then sign
+1. Discover **AllowLatch Gate** on OpenServ (or use public trigger/paywall from [CONNECT.md](./CONNECT.md) / `/api/host-info`) — **$0.025**
+2. Apply policy once (paywall / `payWorkflow` / `apply_policy`)
+3. Before **every** spend: `assertSpend` / `evaluate` → ALLOW + single-use **receipt** (`jti`) → pass receipt into `execute_gated_transfer` → only then sign
+
+Local `npm run http:gate` is optional for **offline development** of your agent — not the end-user product.
 
 ## New agent with gate baked in (recommended)
 
-Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep your agent.** Add AllowLatch in front of spends - do not replace your repo with ours.
+Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep your agent.** Add AllowLatch in front of spends.
 
 1. Scaffold / keep your AgentKit + CDP project  
 2. Before every transfer: `assertSpend` / `createGatedAgentKit` → ALLOW + receipt, then sign  
@@ -18,6 +20,7 @@ Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep yo
 import { assertSpend } from './assert-spend.js' // copy from AllowLatch src/sdk/
 
 const { receipt } = await assertSpend({
+  // From discoverServices().webhookUrl or https://allowlatch.vercel.app/api/host-info
   triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL!,
   walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
   intent: {
@@ -29,9 +32,8 @@ const { receipt } = await assertSpend({
 // only then AgentKit / execute_gated_transfer with receipt
 ```
 
-Optional: open https://codespaces.new/aspekt19/AllowLatch to **see a demo** of the gate - that is not how you ship your product agent.
-
-Live CTA: https://allowlatch.vercel.app/#agentkit
+Live CTA: https://allowlatch.vercel.app/#agentkit  
+Hosted ops (not for end users): [HOSTED.md](./HOSTED.md)
 
 ## SDK (assert only)
 
@@ -52,14 +54,12 @@ const { receipt } = await assertSpend({
 // Pass the same receipt into execute_gated_transfer - host consumes jti (replay blocked)
 ```
 
-HTTP alternative (no OpenServ): [ARCHITECTURE.md](./ARCHITECTURE.md) · `npm run http:gate`
-
 Examples: `examples/create-gated-agent.ts` · `examples/assert-spend-demo.ts`  
 Monetization: [MONETIZE.md](./MONETIZE.md)
 
 ## Agent instruction
 
-> Before any transfer/swap/payment, call AllowLatch `assertSpend` / `evaluate_intent` (paid). Treat timeouts and API errors as DENY (fail-closed). On DENY stop. On ESCALATE ask me. Never sign without a valid allow-receipt. For swaps, supply `calldataHash` (and prefer `contractAddress`) so the receipt binds to exact calldata - the host evaluates/receives only; your agent submits the swap. Prefer `tokenAddress` + matching `chainId` over symbol alone. Never rely on a local JSON file for live spends. For host-executed transfers, pass the receipt into `execute_gated_transfer`. Put the gate in the wallet adapter (`createGatedAgentKit`) so the agent cannot call a raw signer in parallel.
+> Connect to the hosted AllowLatch Gate on OpenServ — do not ask me to run a server or set SERV_API_KEY. Before any transfer/swap/payment, call AllowLatch `assertSpend` / `evaluate_intent` (paid). Treat timeouts and API errors as DENY (fail-closed). On DENY stop. On ESCALATE ask me. Never sign without a valid allow-receipt. Prefer `tokenAddress` + matching `chainId` over symbol alone. For swaps, supply `calldataHash`. Put the gate in the wallet adapter (`createGatedAgentKit`) so you cannot call a raw signer in parallel.
 
 ## Demo-only snapshot
 

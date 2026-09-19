@@ -18,7 +18,7 @@
 3. **Allow-receipt** - action digest + single-use `jti` (+ **required** `calldataHash` for swaps); agent must refuse to sign without verify.
 4. **SERV Copilot** - draft/revise/explain on our key (injection-resistant tools).
 
-Free local `engine.ts` + JSON is a **teaser**. Production path: discover AllowLatch Gate → pay → `evaluate_intent` / `execute_gated_transfer` before every spend.
+Free local `engine.ts` + JSON is a **teaser**. Production path: discover hosted **AllowLatch Gate** → pay → `evaluate_intent` / `execute_gated_transfer` before every spend. End users never run the host — see [HOSTED.md](./HOSTED.md).
 
 ## Pricing notes
 

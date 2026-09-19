@@ -6,9 +6,10 @@ AllowLatch is a **payment policy turnstile** for financial AI agents on Base (US
 
 | Surface | What it is |
 |---------|------------|
-| **https://allowlatch.vercel.app** | Demo UI + `/api/copilot` (SERV draft/revise/explain). **Not** the full production gate/x402 host. |
-| **OpenServ host** (`npm run dev`) | Production path: discover **AllowLatch Gate**, x402 ($0.025 / pack), evaluate, receipt, optional execute. |
-| **HTTP gate** (`npm run http:gate`) | Local/framework-agnostic API on loopback; Bearer token required if bound off-loopback. Pack credits via operator `POST /v1/packs/grant` (alias `/v1/packs/purchase`, requires `ALLOWLATCH_DEV_PACKS=1` + token) or OpenServ `buy_evaluate_pack` - not a public free mint. |
+| **https://allowlatch.vercel.app** | Demo UI + `/api/copilot` (SERV draft/revise/explain) + `/api/host-info` (public paywall/trigger). **Not** the x402 gate process itself. |
+| **AllowLatch Gate (OpenServ, hosted)** | Production path for everyone: discover `/allowlatch/i`, pay $0.025 / pack, evaluate, receipt, optional execute. **End users never run this.** |
+| **`npm run dev` / `deploy:openserv`** | Operator-only: keep the hosted gate process online. See [HOSTED.md](./HOSTED.md). |
+| **HTTP gate** (`npm run http:gate`) | Local/dev framework-agnostic API on loopback — optional for builders testing embeds. |
 
 ## Execution path
 
@@ -44,8 +45,9 @@ SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, 
 
 | Adapter | Entry |
 |---------|--------|
-| OpenServ host | `npm run dev` (x402 service name: **AllowLatch Gate**, $0.025) |
-| HTTP gate | `npm run http:gate` |
+| Hosted OpenServ gate | Discover **AllowLatch Gate** · [CONNECT.md](./CONNECT.md) · [HOSTED.md](./HOSTED.md) |
+| Operator process | `npm run deploy:openserv` or `npm run dev` |
+| HTTP gate (dev) | `npm run http:gate` |
 | SDK | `src/sdk/assert-spend.ts` · `createGatedAgentKit` |
 
 ## Demo Copilot hardening

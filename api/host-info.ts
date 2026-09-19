@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getHostInfo } from '../src/web/host-info-data.js'
+import { getHostInfoAsync } from '../src/web/host-info-data.js'
 import { allowedCopilotOrigins, checkRateLimit, clientIp } from '../src/http/abuse-guard.js'
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined
   if (origin && allowedCopilotOrigins().includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
@@ -19,5 +19,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  res.status(200).json(getHostInfo())
+  const info = await getHostInfoAsync()
+  res.status(200).json(info)
 }
