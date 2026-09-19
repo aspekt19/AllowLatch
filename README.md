@@ -9,7 +9,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay **$0.025**/call or prepaid pack credits via `buy_evaluate_pack` (fixed credits per x402; default 3 ≈ $0.008/check). Default enforcement: **hybrid**. Embed: `npm i allowlatch` · MCP: `npm run mcp` · Action provider: `allowLatchActionProvider()`.
+No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay **$0.025**/call or prepaid pack credits via `buy_evaluate_pack` (fixed credits per x402; default 3 ≈ $0.008/check). Default enforcement: **hybrid**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · Action provider: `allowLatchActionProvider()`.
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
