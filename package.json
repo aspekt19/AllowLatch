@@ -24,7 +24,8 @@
     "connect": "tsx examples/connect-as-agent.ts",
     "owner:copilot": "tsx examples/owner-copilot.ts",
     "http:gate": "tsx src/http/gate-server.ts",
-    "deploy:openserv": "npx @openserv-labs/client deploy ."
+    "deploy:openserv": "npx @openserv-labs/client deploy .",
+    "deploy:host": "node scripts/deploy-openserv-host.mjs"
   },
   "keywords": [],
   "author": "",
