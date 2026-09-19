@@ -41,14 +41,17 @@ The OpenServ listing exists even when idle (`isActive: false`). Calls only succe
 
 ### Option A — OpenServ Cloud (preferred)
 
+Official `npx @openserv-labs/client deploy` currently fails on upload (500). Use the slim always-on script instead (git clone into the container, no AgentKit on disk):
+
 ```bash
-# Dashboard → API key (not the agent key from provision)
-echo 'OPENSERV_USER_API_KEY=...' >> .env
-npm run dev          # once: provision() writes .openserv.json
-npm run deploy:openserv
+# Dashboard → https://platform.openserv.ai/profile/api-keys
+# .env must contain OPENSERV_USER_API_KEY=…
+npm run deploy:host
 ```
 
-This runs `npx @openserv-labs/client deploy .` and keeps the agent on OpenServ managed containers (`go-live`).
+This creates an OpenServ/Fly container, installs a slim dependency set, starts `src/agent.ts`, and `go-live continuous`. Your Mac can sleep — the gate stays up.
+
+Re-run `npm run deploy:host` after agent code changes you need on the host.
 
 ### Option B — Always-on VM / Railway / Fly
 
