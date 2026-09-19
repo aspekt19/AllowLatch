@@ -18,7 +18,7 @@ Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep yo
 
 ```ts
 import { assertSpend } from 'allowlatch'
-// or: import { assertSpend } from 'allowlatch/assert-spend'
+// or until npmjs: npm i https://github.com/aspekt19/AllowLatch/releases/download/v0.1.0/allowlatch-0.1.0.tgz
 
 const { receipt } = await assertSpend({
   // From discoverServices().webhookUrl or https://allowlatch.vercel.app/api/host-info
