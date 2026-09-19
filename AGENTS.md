@@ -73,4 +73,5 @@ npm run wow
 npm run battle
 npm run typecheck
 npm run ui:build
+npm run mcp              # MCP stdio server
 ```
