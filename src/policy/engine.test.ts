@@ -283,6 +283,7 @@ describe('tenant auth + lifetime ledger', () => {
       policyId: 'p1',
       ownerId: 'alice',
       tokenHash: hashOwnerToken(token),
+      ownerAddress: null as string | null,
     }
     assert.equal(assertPolicyWrite(meta, { ownerToken: token }).mode, 'update')
     assert.throws(

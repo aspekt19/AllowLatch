@@ -1,9 +1,11 @@
 /**
  * Tenant / operator authorization for shared hosted gate.
- * Mutating a policy requires ownerToken (issued on first apply) or ALLOWLATCH_OPERATOR_TOKEN.
+ * Mutating a policy requires ownerToken (issued on first apply), valid EIP-712 ownerSig,
+ * or ALLOWLATCH_OPERATOR_TOKEN.
  * Evaluate/execute stay callable with policyId only (treat policyId as a capability secret).
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import type { MandatePolicy } from '../policy/schema.js'
 
 export class AuthError extends Error {
   readonly code = 'auth_denied'
@@ -17,6 +19,13 @@ export type OwnerAuthInput = {
   ownerId?: string
   ownerToken?: string
   operatorToken?: string
+  /** EVM address that must match EIP-712 recovery (optional stronger path). */
+  ownerAddress?: string
+  /** EIP-712 MandatePolicyApply signature over policyHash. */
+  ownerSig?: string
+  /** Bound at verify time — set by store from pending policy. */
+  policyId?: string
+  policy?: MandatePolicy
 }
 
 export function isOperator(token?: string): boolean {
@@ -48,17 +57,22 @@ export type PolicyMeta = {
   policyId: string
   ownerId: string | null
   tokenHash: string | null
+  ownerAddress: string | null
 }
 
 /**
  * Authorize create/update of a policy.
  * - New policy: ownerId required (unless operator).
- * - Existing with token: ownerToken or operator.
+ * - Existing with token: ownerToken OR (ownerSig verified later in store) or operator.
  * - Existing demo seed without token: claimable once with ownerId (mints token).
+ *
+ * Note: EIP-712 verification is async and runs in PolicyStore.setPolicy after this sync check
+ * when ownerSig is present; for update without ownerToken, set `sigPending` via allowSigBypass.
  */
 export function assertPolicyWrite(
   meta: PolicyMeta | null,
-  auth: OwnerAuthInput
+  auth: OwnerAuthInput,
+  opts?: { allowMissingTokenIfSig?: boolean }
 ): { mode: 'create' | 'claim' | 'update' | 'operator' } {
   if (isOperator(auth.operatorToken)) return { mode: 'operator' }
 
@@ -77,8 +91,12 @@ export function assertPolicyWrite(
     return { mode: 'claim' }
   }
 
-  if (!ownerTokenMatches(auth.ownerToken, meta.tokenHash)) {
-    throw new AuthError('ownerToken required (or ALLOWLATCH_OPERATOR_TOKEN) to mutate this policy')
+  const tokenOk = ownerTokenMatches(auth.ownerToken, meta.tokenHash)
+  const sigOffered = Boolean(auth.ownerSig?.trim())
+  if (!tokenOk && !(opts?.allowMissingTokenIfSig && sigOffered)) {
+    throw new AuthError(
+      'ownerToken or EIP-712 ownerSig required (or ALLOWLATCH_OPERATOR_TOKEN) to mutate this policy'
+    )
   }
   if (auth.ownerId?.trim() && meta.ownerId && auth.ownerId.trim() !== meta.ownerId) {
     throw new AuthError('ownerId does not match policy owner')

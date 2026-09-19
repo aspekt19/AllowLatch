@@ -1,16 +1,56 @@
 {
   "name": "allowlatch",
   "version": "0.1.0",
-  "description": "OpenServ agent: NL mandates → enforceable spend policy for Base AgentKit wallets",
-  "main": "index.js",
+  "description": "Spending turnstile for financial AI agents on Base/USDC — assertSpend, gated AgentKit, MCP, OpenServ x402",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./assert-spend": {
+      "types": "./dist/sdk/assert-spend.d.ts",
+      "import": "./dist/sdk/assert-spend.js"
+    },
+    "./gated-agentkit": {
+      "types": "./dist/sdk/gated-agentkit.d.ts",
+      "import": "./dist/sdk/gated-agentkit.js"
+    },
+    "./action-provider": {
+      "types": "./dist/sdk/allowlatch-action-provider.d.ts",
+      "import": "./dist/sdk/allowlatch-action-provider.js"
+    },
+    "./schema": {
+      "types": "./dist/policy/schema.d.ts",
+      "import": "./dist/policy/schema.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "docs/EMBED.md",
+    "docs/CONNECT.md",
+    "docs/SECURITY.md",
+    "llms.txt",
+    "agent.json"
+  ],
+  "bin": {
+    "allowlatch-mcp": "./dist/mcp/server.js"
+  },
   "scripts": {
     "dev": "tsx src/agent.ts",
     "demo": "tsx src/demo/run-demo.ts",
     "ui": "vite",
     "ui:build": "vite build",
     "ui:preview": "vite preview",
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/policy/engine.test.ts src/store/fs-store.test.ts",
+    "test": "tsx --test src/policy/engine.test.ts src/policy/engine.property.test.ts src/store/fs-store.test.ts src/auth/policy-eip712.test.ts",
+    "mcp": "tsx src/mcp/server.ts",
     "reasoning:ping": "tsx src/demo/reasoning-ping.ts",
     "reasoning:compile": "tsx src/demo/reasoning-compile.ts",
     "reasoning:cycle": "tsx src/demo/reasoning-cycle.ts",
@@ -30,13 +70,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@coinbase/agentkit": "^0.10.4",
     "@coinbase/cdp-sdk": "^1.56.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@openserv-labs/client": "^2.5.3",
     "@openserv-labs/sdk": "^2.4.1",
     "@vercel/analytics": "^2.0.1",
@@ -49,6 +89,7 @@
   "devDependencies": {
     "@types/node": "^26.6.0",
     "@vercel/node": "^13.0.1",
+    "fast-check": "^4.10.2",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.3.0"

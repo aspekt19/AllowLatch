@@ -20,6 +20,11 @@ import {
   type OwnerAuthInput,
   type PolicyMeta,
 } from '../auth/tenant.js'
+import { assertOwnerPolicySig } from '../auth/policy-eip712.js'
+import type { PolicyStoreApi, AuditEvent } from './types.js'
+
+export type { AuditEvent } from './types.js'
+export type { PolicyStoreApi } from './types.js'
 
 const DATA_DIR = path.resolve(process.cwd(), 'data')
 const DB_PATH = (() => {
@@ -36,16 +41,6 @@ const DB_PATH = (() => {
   }
   return preferred
 })()
-
-
-export type AuditEvent = {
-  id: string
-  at: string
-  type: string
-  policyId?: string
-  requestId?: string
-  payload: Record<string, unknown>
-}
 
 function openDb(): DatabaseSync {
   mkdirSync(path.dirname(DB_PATH), { recursive: true })
@@ -94,11 +89,16 @@ function openDb(): DatabaseSync {
       updated_at TEXT NOT NULL
     );
   `)
-  // Best-effort additive migration for tenant auth.
-  try {
-    db.exec('ALTER TABLE policies ADD COLUMN owner_token_hash TEXT')
-  } catch {
-    /* column already exists */
+  // Best-effort additive migrations for tenant auth + EIP-712 owner address.
+  for (const sql of [
+    'ALTER TABLE policies ADD COLUMN owner_token_hash TEXT',
+    'ALTER TABLE policies ADD COLUMN owner_address TEXT',
+  ]) {
+    try {
+      db.exec(sql)
+    } catch {
+      /* column already exists */
+    }
   }
   return db
 }
@@ -150,7 +150,7 @@ function normalizeLedger(l: Partial<SpendLedger> | SpendLedger): SpendLedger {
 }
 
 /** Facade used by agent / executor / HTTP gate. */
-export class PolicyStore {
+export class PolicyStore implements PolicyStoreApi {
   private db!: DatabaseSync
   private ready = false
   /** In-process queue for serializing critical sections across async callers. */
@@ -213,21 +213,30 @@ export class PolicyStore {
   getPolicyMeta(policyId: string): PolicyMeta | null {
     this.assertReady()
     const row = this.db
-      .prepare('SELECT policy_id, owner_id, owner_token_hash FROM policies WHERE policy_id = ?')
+      .prepare(
+        'SELECT policy_id, owner_id, owner_token_hash, owner_address FROM policies WHERE policy_id = ?'
+      )
       .get(policyId) as
-      | { policy_id: string; owner_id: string | null; owner_token_hash: string | null }
+      | {
+          policy_id: string
+          owner_id: string | null
+          owner_token_hash: string | null
+          owner_address: string | null
+        }
       | undefined
     if (!row) return null
     return {
       policyId: row.policy_id,
       ownerId: row.owner_id,
       tokenHash: row.owner_token_hash,
+      ownerAddress: row.owner_address,
     }
   }
 
   /**
    * Persist policy. Requires tenant auth for create/update on shared hosts.
    * Returns ownerToken only when newly minted (create/claim) — store it client-side.
+   * Optional EIP-712 ownerSig binds the apply to an owner EVM address.
    */
   async setPolicy(
     policyId: string,
@@ -235,13 +244,17 @@ export class PolicyStore {
     ownerId?: string,
     auth?: OwnerAuthInput,
     opts?: { skipAuth?: boolean }
-  ): Promise<{ ownerToken?: string; mode: string }> {
+  ): Promise<{ ownerToken?: string; mode: string; ownerAddress?: string | null }> {
     this.assertReady()
     const meta = this.getPolicyMeta(policyId)
     const authInput: OwnerAuthInput = {
       ownerId: ownerId ?? policy.ownerId ?? auth?.ownerId,
       ownerToken: auth?.ownerToken,
       operatorToken: auth?.operatorToken,
+      ownerAddress: auth?.ownerAddress,
+      ownerSig: auth?.ownerSig,
+      policyId,
+      policy,
     }
     // Default ON for hosted safety. Local demos/tests: ALLOWLATCH_TENANT_AUTH=0 or skipAuth.
     const tenantAuth = !opts?.skipAuth && process.env.ALLOWLATCH_TENANT_AUTH !== '0'
@@ -249,14 +262,33 @@ export class PolicyStore {
     let ownerToken: string | undefined
     let tokenHash: string | null = meta?.tokenHash ?? null
     let owner = authInput.ownerId ?? meta?.ownerId ?? null
+    let ownerAddress: string | null = meta?.ownerAddress ?? null
 
     if (tenantAuth) {
-      const decision = assertPolicyWrite(meta, authInput)
+      const decision = assertPolicyWrite(meta, authInput, {
+        allowMissingTokenIfSig: Boolean(authInput.ownerSig?.trim()),
+      })
       mode = decision.mode
+      if (decision.mode !== 'operator') {
+        const sigResult = await assertOwnerPolicySig({
+          policyId,
+          policy,
+          ownerId: authInput.ownerId,
+          ownerAddress: authInput.ownerAddress,
+          ownerSig: authInput.ownerSig,
+          storedOwnerAddress: meta?.ownerAddress,
+        })
+        if (sigResult.verified && sigResult.ownerAddress) {
+          ownerAddress = sigResult.ownerAddress
+        }
+      }
       if (decision.mode === 'create' || decision.mode === 'claim') {
         ownerToken = mintOwnerToken()
         tokenHash = hashOwnerToken(ownerToken)
         owner = authInput.ownerId!.trim()
+        if (authInput.ownerAddress?.trim()) {
+          ownerAddress = authInput.ownerAddress.trim()
+        }
       } else if (decision.mode === 'update' || decision.mode === 'operator') {
         owner = authInput.ownerId?.trim() || meta?.ownerId || owner
         tokenHash = meta?.tokenHash ?? tokenHash
@@ -264,14 +296,22 @@ export class PolicyStore {
     } else {
       owner = ownerId ?? policy.ownerId ?? meta?.ownerId ?? null
       mode = 'open'
+      if (authInput.ownerAddress?.trim()) ownerAddress = authInput.ownerAddress.trim()
     }
 
     const stored: MandatePolicy = { ...policy, ownerId: owner ?? policy.ownerId }
     this.db
       .prepare(
-        'INSERT OR REPLACE INTO policies (policy_id, owner_id, owner_token_hash, json, updated_at) VALUES (?, ?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO policies (policy_id, owner_id, owner_token_hash, owner_address, json, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
       )
-      .run(policyId, owner, tokenHash, JSON.stringify(stored), new Date().toISOString())
+      .run(
+        policyId,
+        owner,
+        tokenHash,
+        ownerAddress,
+        JSON.stringify(stored),
+        new Date().toISOString()
+      )
     const existing = this.db.prepare('SELECT json FROM ledgers WHERE policy_id = ?').get(policyId)
     if (!existing) {
       this.db
@@ -281,9 +321,9 @@ export class PolicyStore {
     await this.audit({
       type: 'policy.applied',
       policyId,
-      payload: { name: policy.name, ownerId: owner, mode },
+      payload: { name: policy.name, ownerId: owner, mode, ownerAddress },
     })
-    return { ownerToken, mode }
+    return { ownerToken, mode, ownerAddress }
   }
 
   getLedger(policyId: string): SpendLedger {

@@ -32,8 +32,20 @@ This document is the public threat model and production checklist. For architect
 4. **Receipt verify fails** (sig, expiry, policyHash, intentHash, chain, calldataHash) → DENY.
 5. **`jti` already consumed** → DENY (replay).
 6. **Escalate** without explicit `humanApproved` → do not mint/consume a receipt for auto-execute.
+7. **Host / SQLite unavailable** → client DENY (`assertSpend`); never fail-open to a local bypass for live funds.
 
 `src/sdk/assert-spend.ts` throws `AllowLatch DENY (fail-closed): …` on (1)–(4).
+
+## Owner auth (policy mutate)
+
+| Path | When |
+|------|------|
+| `ownerToken` | Minted on first `apply_policy` — required for later mutates |
+| EIP-712 `ownerSig` | Optional stronger path: sign `MandatePolicyApply { policyId, policyHash, ownerId }` (see `src/auth/policy-eip712.ts`). Can replace token on update once `ownerAddress` is bound. |
+| `ALLOWLATCH_OPERATOR_TOKEN` | Operator bypass |
+| `ALLOWLATCH_REQUIRE_OWNER_SIG=1` | Require EIP-712 on every mutate |
+
+Spenders with only `policyId` can evaluate/execute — they **cannot** rewrite limits without owner token or valid owner sig.
 
 ## What the receipt binds
 
@@ -86,6 +98,7 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 | Wrong chain | `chainId` / `networkId` vs policy.chain; receipt `chain` field |
 | Mutated swap calldata | Required `calldataHash`; receipt echo; verify before external submit |
 | Gate outage | Fail-closed client; no fail-open local bypass for live funds |
+| Forged `apply_policy` | `ownerToken` and/or EIP-712 `ownerSig` over `policyHash`; optional `ALLOWLATCH_REQUIRE_OWNER_SIG` |
 | API abuse | HTTP Bearer off-loopback; CORS + rate limits on demo `/api/copilot` |
 
 Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. Pair with hybrid Spend Permissions and a low-balance hot wallet.
@@ -106,7 +119,8 @@ Before putting meaningful balance behind AllowLatch:
 10. [ ] `risk.emergencyStop` (or equivalent kill switch) tested.
 11. [ ] Separate hot wallet with minimal USDC; rotate `ALLOWLATCH_RECEIPT_SECRET` / CDP / `ALLOWLATCH_OPERATOR_TOKEN`.
 12. [ ] Prefer / keep `hybrid` enforcement + synced Spend Permission for live execute (default mode).
-13. [ ] `buy_evaluate_pack` ignores client credit amounts; credits bound to paid x402 calls.
+13. [ ] Prefer EIP-712 `ownerSig` on apply (or keep `ownerToken` secret); enable `ALLOWLATCH_REQUIRE_OWNER_SIG` for high-value tenants.
+14. [ ] `buy_evaluate_pack` ignores client credit amounts; credits bound to paid x402 calls.
 
 ## Reporting
 

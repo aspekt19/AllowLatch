@@ -151,6 +151,8 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
         ownerId?: string
         ownerToken?: string
         operatorToken?: string
+        ownerAddress?: string
+        ownerSig?: string
       }
       const policy = MandatePolicySchema.parse(body.policy ?? body)
       try {
@@ -158,17 +160,20 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
           ownerId: body.ownerId ?? policy.ownerId,
           ownerToken: body.ownerToken,
           operatorToken: body.operatorToken,
+          ownerAddress: body.ownerAddress,
+          ownerSig: body.ownerSig,
         })
         json(req, res, 200, {
           ok: true,
           policyId,
           policy,
           ownerToken: applied.ownerToken,
+          ownerAddress: applied.ownerAddress,
           authMode: applied.mode,
         })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        const status = /ownerToken|ownerId|operator/i.test(message) ? 403 : 400
+        const status = /ownerToken|ownerId|operator|ownerSig|ownerAddress/i.test(message) ? 403 : 400
         json(req, res, status, { ok: false, error: message })
       }
       return

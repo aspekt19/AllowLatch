@@ -5,11 +5,11 @@
 **Live demo:** https://allowlatch.vercel.app  
 **Repo:** https://github.com/aspekt19/AllowLatch  
 **Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
-**Security:** [docs/SECURITY.md](./docs/SECURITY.md) (fail-closed, threat model, production checklist)
+**Security:** [docs/SECURITY.md](./docs/SECURITY.md) · [docs/AUDIT.md](./docs/AUDIT.md)
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay **$0.025**/call or prepaid pack credits via `buy_evaluate_pack` (fixed credits per x402; default 3 ≈ $0.008/check). Default enforcement: **hybrid** (receipt + optional on-chain Spend Permissions when `ALLOWLATCH_SMART_ACCOUNT` is set). Middleware alone is not custody-grade — put the gate in the signer (`createGatedAgentKit`).
+No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay **$0.025**/call or prepaid pack credits via `buy_evaluate_pack` (fixed credits per x402; default 3 ≈ $0.008/check). Default enforcement: **hybrid**. Embed: `npm i allowlatch` · MCP: `npm run mcp` · Action provider: `allowLatchActionProvider()`.
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 

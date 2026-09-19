@@ -135,12 +135,14 @@ agent.addCapability({
 agent.addCapability({
   name: 'apply_policy',
   description:
-    'Store a MandatePolicy under policyId after owner review. First apply returns ownerToken (save it). Later mutates require ownerToken or operatorToken.',
+    'Store a MandatePolicy under policyId after owner review. First apply returns ownerToken (save it). Later mutates require ownerToken and/or EIP-712 ownerSig (or operatorToken).',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     ownerId: z.string().min(1).optional(),
     ownerToken: z.string().optional(),
     operatorToken: z.string().optional(),
+    ownerAddress: z.string().optional(),
+    ownerSig: z.string().optional(),
     policy: z.record(z.unknown()),
   }),
   async run({ args }) {
@@ -153,6 +155,8 @@ agent.addCapability({
         ownerId: args.ownerId ?? policy.ownerId,
         ownerToken: args.ownerToken,
         operatorToken: args.operatorToken,
+        ownerAddress: args.ownerAddress,
+        ownerSig: args.ownerSig,
       })
       const walletNative = await syncSpendPermission({ policy })
       store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
@@ -171,12 +175,13 @@ agent.addCapability({
         policyId: args.policyId,
         ownerId: policy.ownerId ?? args.ownerId,
         ownerToken: applied.ownerToken,
+        ownerAddress: applied.ownerAddress,
         authMode: applied.mode,
         policy,
         walletNative,
         enforcement: resolveEnforcementMode(),
         note: applied.ownerToken
-          ? 'SAVE ownerToken — required for future apply/revise/sync/get_policy. Evaluate/execute need only policyId.'
+          ? 'SAVE ownerToken — required for future apply/revise/sync/get_policy (or pass EIP-712 ownerSig). Evaluate/execute need only policyId.'
           : 'Stored. Agents call evaluate_intent then execute with allow-receipt.',
       })
     } catch (err) {
@@ -216,6 +221,7 @@ agent.addCapability({
           ok: true,
           policyId: args.policyId,
           ownerToken: applied.ownerToken,
+          ownerAddress: applied.ownerAddress,
           authMode: applied.mode,
           policy: withOwner,
           walletNative,

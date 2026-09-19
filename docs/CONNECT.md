@@ -31,6 +31,13 @@ You → your agent → OpenServ x402 → AllowLatch Gate (hosted)
 ## For agent builders
 
 ```ts
+import { assertSpend, allowLatchActionProvider } from 'allowlatch'
+// or MCP: npm run mcp / npx allowlatch-mcp
+```
+
+Apply once with `ownerId` (save returned `ownerToken`). Optional: EIP-712 `ownerSig` over `policyHash` — see [SECURITY.md](./SECURITY.md).
+
+```ts
 import { PlatformClient } from '@openserv-labs/client'
 
 const client = new PlatformClient()

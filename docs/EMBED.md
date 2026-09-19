@@ -17,7 +17,8 @@ Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep yo
 3. Apply a mandate once (demo UI **Enforce · $0.025** / paywall / `apply_policy`)
 
 ```ts
-import { assertSpend } from './assert-spend.js' // copy from AllowLatch src/sdk/
+import { assertSpend } from 'allowlatch'
+// or: import { assertSpend } from 'allowlatch/assert-spend'
 
 const { receipt } = await assertSpend({
   // From discoverServices().webhookUrl or https://allowlatch.vercel.app/api/host-info
@@ -35,13 +36,32 @@ const { receipt } = await assertSpend({
 
 Prefer `createGatedAgentKit` so the agent cannot call a raw signer in parallel. Default host enforcement is **hybrid** (on-chain Spend Permissions when configured).
 
+AgentKit action provider:
+
+```ts
+import { AgentKit } from '@coinbase/agentkit'
+import { allowLatchActionProvider } from 'allowlatch/action-provider'
+
+const agentKit = await AgentKit.from({
+  actionProviders: [allowLatchActionProvider()],
+  // ...wallet
+})
+```
+
+MCP (Cursor / Claude Desktop):
+
+```bash
+npm run mcp
+# or after publish: npx allowlatch-mcp
+```
+
 Live CTA: https://allowlatch.vercel.app/#agentkit  
 Hosted ops (not for end users): [HOSTED.md](./HOSTED.md)
 
 ## SDK (assert only)
 
 ```ts
-import { assertSpend } from './src/sdk/assert-spend.js'
+import { assertSpend } from 'allowlatch'
 
 const { receipt } = await assertSpend({
   intent: {
@@ -52,9 +72,13 @@ const { receipt } = await assertSpend({
   triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL!, // discoverServices().webhookUrl
   walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
 })
+```
 
-// verifyAllowReceipt is already required inside assertSpend when requireReceipt=true
-// Pass the same receipt into execute_gated_transfer - host consumes jti (replay blocked)
+Owner apply with EIP-712 (optional):
+
+```ts
+import { buildPolicyApplyTypedData } from 'allowlatch'
+// sign typedData with owner wallet → pass ownerSig + ownerAddress into apply_policy
 ```
 
 Examples: `examples/create-gated-agent.ts` · `examples/assert-spend-demo.ts`  

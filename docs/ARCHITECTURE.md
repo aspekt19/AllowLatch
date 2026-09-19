@@ -39,7 +39,9 @@ See [WALLET_NATIVE.md](./WALLET_NATIVE.md). Short version:
 
 ## Storage
 
-SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, `BEGIN IMMEDIATE`, exclusive queue, audit, packs, wallet_bindings. Single-writer host process — a availability SPOF for the hosted ledger; clients must fail-closed when it is down.
+SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, `BEGIN IMMEDIATE`, exclusive queue, audit, packs, wallet_bindings, optional `owner_address` for EIP-712. Single-writer host process — an availability SPOF for the hosted ledger; clients must fail-closed when it is down.
+
+Abstraction: `PolicyStoreApi` (`src/store/types.ts`) + `createStore()` (`ALLOWLATCH_STORE=sqlite` today). Postgres/Turso can implement the same interface without rewriting agent/HTTP.
 
 ## Adapters
 
@@ -48,7 +50,9 @@ SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, 
 | Hosted OpenServ gate | Discover **AllowLatch Gate** · [CONNECT.md](./CONNECT.md) · [HOSTED.md](./HOSTED.md) |
 | Operator process | `npm run deploy:openserv` or `npm run dev` |
 | HTTP gate (dev) | `npm run http:gate` |
-| SDK | `src/sdk/assert-spend.ts` · `createGatedAgentKit` |
+| npm SDK | `import { assertSpend, createGatedAgentKit, allowLatchActionProvider } from 'allowlatch'` |
+| AgentKit action provider | `allowLatchActionProvider()` · `src/sdk/allowlatch-action-provider.ts` |
+| MCP | `npm run mcp` / `npx allowlatch-mcp` |
 
 ## Demo Copilot hardening
 

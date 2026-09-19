@@ -118,7 +118,12 @@ The public site (allowlatch.vercel.app) is the **demo UI** - production evaluate
 | WOW theater CLI | Done (`npm run wow`) |
 | OpenServ x402 connect | Done |
 | Wallet-native Spend Permissions | Done (hybrid/wallet_native via CDP) - [WALLET_NATIVE.md](./WALLET_NATIVE.md) |
+| EIP-712 owner sig on apply | Done (`src/auth/policy-eip712.ts`) |
+| Property tests (engine) | Done (`engine.property.test.ts`) |
+| Store abstraction | Done (`PolicyStoreApi` + `createStore`) — SQLite backend |
+| npm SDK + AgentKit action provider + MCP | Done (`allowlatch`, `npm run mcp`) |
 | Live CDP battle | Optional - see [BATTLE.md](./BATTLE.md) |
+| External security audit | Not yet — required before large balances |
 
 Verify:
 
