@@ -4,6 +4,10 @@
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+
+process.env.ALLOWLATCH_TENANT_AUTH = '0'
+process.env.ALLOWLATCH_RECEIPT_SECRET = 'test-secret-allowlatch'
+
 import { DEMO_POLICY, type SpendIntent } from './schema.js'
 import { commitIntent, evaluateIntent, freshLedger } from './engine.js'
 import {
@@ -11,8 +15,11 @@ import {
   issueAllowReceipt,
   verifyAllowReceipt,
 } from '../billing/receipt.js'
-
-process.env.ALLOWLATCH_RECEIPT_SECRET = 'test-secret-allowlatch'
+import { PolicyStore } from '../store/fs-store.js'
+import { AuthError, assertPolicyWrite, hashOwnerToken, mintOwnerToken } from '../auth/tenant.js'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 
 const router = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
 
@@ -262,5 +269,43 @@ describe('wallet-native plan', () => {
     assert.equal(plan.status, 'planned')
     assert.equal(plan.periodSeconds, 86_400)
     assert.ok(BigInt(plan.allowanceAtomic) > 0n)
+  })
+})
+
+describe('tenant auth + lifetime ledger', () => {
+  it('requires ownerId to create and ownerToken to update', () => {
+    assert.throws(
+      () => assertPolicyWrite(null, {}),
+      (e: unknown) => e instanceof AuthError
+    )
+    const token = mintOwnerToken()
+    const meta = {
+      policyId: 'p1',
+      ownerId: 'alice',
+      tokenHash: hashOwnerToken(token),
+    }
+    assert.equal(assertPolicyWrite(meta, { ownerToken: token }).mode, 'update')
+    assert.throws(
+      () => assertPolicyWrite(meta, { ownerToken: 'wrong' }),
+      (e: unknown) => e instanceof AuthError
+    )
+  })
+
+  it('resetDailyLedger preserves lifetime spend', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'allowlatch-life-'))
+    process.env.ALLOWLATCH_SQLITE_PATH = path.join(dir, 't.sqlite')
+    process.env.ALLOWLATCH_TENANT_AUTH = '0'
+    const store = new PolicyStore()
+    await store.init()
+    await store.setPolicy('life', DEMO_POLICY, 'owner', undefined, { skipAuth: true })
+    await store.setLedger('life', {
+      ...freshLedger(),
+      spentUsdToday: 12,
+      spentUsdLifetime: 90,
+    })
+    await store.resetDailyLedger('life')
+    const led = store.getLedger('life')
+    assert.equal(led.spentUsdToday, 0)
+    assert.equal(led.spentUsdLifetime, 90)
   })
 })

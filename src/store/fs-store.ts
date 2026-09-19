@@ -13,6 +13,13 @@ import {
   type SpendLedger,
 } from '../policy/schema.js'
 import { freshLedger } from '../policy/engine.js'
+import {
+  assertPolicyWrite,
+  hashOwnerToken,
+  mintOwnerToken,
+  type OwnerAuthInput,
+  type PolicyMeta,
+} from '../auth/tenant.js'
 
 const DATA_DIR = path.resolve(process.cwd(), 'data')
 const DB_PATH = (() => {
@@ -87,6 +94,12 @@ function openDb(): DatabaseSync {
       updated_at TEXT NOT NULL
     );
   `)
+  // Best-effort additive migration for tenant auth.
+  try {
+    db.exec('ALTER TABLE policies ADD COLUMN owner_token_hash TEXT')
+  } catch {
+    /* column already exists */
+  }
   return db
 }
 
@@ -148,7 +161,7 @@ export class PolicyStore {
     migrateFromJson(this.db)
     const row = this.db.prepare('SELECT policy_id FROM policies WHERE policy_id = ?').get('default')
     if (!row) {
-      await this.setPolicy('default', DEMO_POLICY)
+      await this.setPolicy('default', DEMO_POLICY, DEMO_POLICY.ownerId, undefined, { skipAuth: true })
     }
     this.ready = true
   }
@@ -191,14 +204,74 @@ export class PolicyStore {
     return MandatePolicySchema.parse(JSON.parse(row.json))
   }
 
-  async setPolicy(policyId: string, policy: MandatePolicy, ownerId?: string) {
+  policyExists(policyId: string): boolean {
     this.assertReady()
-    const owner = ownerId ?? policy.ownerId ?? null
+    const row = this.db.prepare('SELECT policy_id FROM policies WHERE policy_id = ?').get(policyId)
+    return !!row
+  }
+
+  getPolicyMeta(policyId: string): PolicyMeta | null {
+    this.assertReady()
+    const row = this.db
+      .prepare('SELECT policy_id, owner_id, owner_token_hash FROM policies WHERE policy_id = ?')
+      .get(policyId) as
+      | { policy_id: string; owner_id: string | null; owner_token_hash: string | null }
+      | undefined
+    if (!row) return null
+    return {
+      policyId: row.policy_id,
+      ownerId: row.owner_id,
+      tokenHash: row.owner_token_hash,
+    }
+  }
+
+  /**
+   * Persist policy. Requires tenant auth for create/update on shared hosts.
+   * Returns ownerToken only when newly minted (create/claim) — store it client-side.
+   */
+  async setPolicy(
+    policyId: string,
+    policy: MandatePolicy,
+    ownerId?: string,
+    auth?: OwnerAuthInput,
+    opts?: { skipAuth?: boolean }
+  ): Promise<{ ownerToken?: string; mode: string }> {
+    this.assertReady()
+    const meta = this.getPolicyMeta(policyId)
+    const authInput: OwnerAuthInput = {
+      ownerId: ownerId ?? policy.ownerId ?? auth?.ownerId,
+      ownerToken: auth?.ownerToken,
+      operatorToken: auth?.operatorToken,
+    }
+    // Default ON for hosted safety. Local demos/tests: ALLOWLATCH_TENANT_AUTH=0 or skipAuth.
+    const tenantAuth = !opts?.skipAuth && process.env.ALLOWLATCH_TENANT_AUTH !== '0'
+    let mode = 'legacy'
+    let ownerToken: string | undefined
+    let tokenHash: string | null = meta?.tokenHash ?? null
+    let owner = authInput.ownerId ?? meta?.ownerId ?? null
+
+    if (tenantAuth) {
+      const decision = assertPolicyWrite(meta, authInput)
+      mode = decision.mode
+      if (decision.mode === 'create' || decision.mode === 'claim') {
+        ownerToken = mintOwnerToken()
+        tokenHash = hashOwnerToken(ownerToken)
+        owner = authInput.ownerId!.trim()
+      } else if (decision.mode === 'update' || decision.mode === 'operator') {
+        owner = authInput.ownerId?.trim() || meta?.ownerId || owner
+        tokenHash = meta?.tokenHash ?? tokenHash
+      }
+    } else {
+      owner = ownerId ?? policy.ownerId ?? meta?.ownerId ?? null
+      mode = 'open'
+    }
+
+    const stored: MandatePolicy = { ...policy, ownerId: owner ?? policy.ownerId }
     this.db
       .prepare(
-        'INSERT OR REPLACE INTO policies (policy_id, owner_id, json, updated_at) VALUES (?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO policies (policy_id, owner_id, owner_token_hash, json, updated_at) VALUES (?, ?, ?, ?, ?)'
       )
-      .run(policyId, owner, JSON.stringify(policy), new Date().toISOString())
+      .run(policyId, owner, tokenHash, JSON.stringify(stored), new Date().toISOString())
     const existing = this.db.prepare('SELECT json FROM ledgers WHERE policy_id = ?').get(policyId)
     if (!existing) {
       this.db
@@ -208,8 +281,9 @@ export class PolicyStore {
     await this.audit({
       type: 'policy.applied',
       policyId,
-      payload: { name: policy.name, ownerId: owner },
+      payload: { name: policy.name, ownerId: owner, mode },
     })
+    return { ownerToken, mode }
   }
 
   getLedger(policyId: string): SpendLedger {
@@ -234,9 +308,32 @@ export class PolicyStore {
       .run(policyId, JSON.stringify(normalizeLedger(ledger)))
   }
 
+  /**
+   * Reset day/hour windows only. Lifetime budget is preserved (security invariant).
+   * Full lifetime wipe requires ALLOWLATCH_RESET_LIFETIME=1 + operator path.
+   */
+  async resetDailyLedger(policyId: string) {
+    const prev = this.getLedger(policyId)
+    const fresh = freshLedger()
+    await this.setLedger(policyId, {
+      ...fresh,
+      spentUsdLifetime: prev.spentUsdLifetime,
+    })
+    await this.audit({
+      type: 'ledger.reset_daily',
+      policyId,
+      payload: { preservedLifetimeUsd: prev.spentUsdLifetime },
+    })
+  }
+
+  /** @deprecated Prefer resetDailyLedger. Lifetime wipe only when ALLOWLATCH_RESET_LIFETIME=1. */
   async resetLedger(policyId: string) {
-    await this.setLedger(policyId, freshLedger())
-    await this.audit({ type: 'ledger.reset', policyId, payload: {} })
+    if (process.env.ALLOWLATCH_RESET_LIFETIME === '1') {
+      await this.setLedger(policyId, freshLedger())
+      await this.audit({ type: 'ledger.reset_lifetime', policyId, payload: {} })
+      return
+    }
+    await this.resetDailyLedger(policyId)
   }
 
   /** Returns false if jti already consumed (replay). */
@@ -339,13 +436,21 @@ export class PolicyStore {
       )
   }
 
-  listAudit(limit = 50): AuditEvent[] {
+  listAudit(limit = 50, policyId?: string): AuditEvent[] {
     this.assertReady()
-    const rows = this.db
-      .prepare(
-        'SELECT id, at, type, policy_id, request_id, payload FROM audit_events ORDER BY at DESC LIMIT ?'
-      )
-      .all(limit) as Array<{
+    const rows = (
+      policyId
+        ? this.db
+            .prepare(
+              'SELECT id, at, type, policy_id, request_id, payload FROM audit_events WHERE policy_id = ? ORDER BY at DESC LIMIT ?'
+            )
+            .all(policyId, limit)
+        : this.db
+            .prepare(
+              'SELECT id, at, type, policy_id, request_id, payload FROM audit_events ORDER BY at DESC LIMIT ?'
+            )
+            .all(limit)
+    ) as Array<{
       id: string
       at: string
       type: string

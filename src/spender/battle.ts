@@ -111,7 +111,7 @@ async function main() {
     }
   }
 
-  await store.setPolicy(POLICY_ID, policy)
+  await store.setPolicy(POLICY_ID, policy, undefined, undefined, { skipAuth: true })
   console.log('Policy stored under id "battle":')
   console.log(JSON.stringify(policy, null, 2))
 

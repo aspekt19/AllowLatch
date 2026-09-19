@@ -14,6 +14,15 @@ This document is the public threat model and production checklist. For architect
 | Allow-receipt (`jti` + HMAC) | Single-use capability token bound to action digest |
 | Agent / Spender | **Untrusted** — must not be able to sign without a consumed receipt |
 | Remote x402 / HTTP gate | Fail-closed client (`assertSpend`); treat network errors as DENY |
+| Shared host tenants | `ownerToken` (minted on first apply) or `ALLOWLATCH_OPERATOR_TOKEN` for mutate/read |
+
+## Multi-tenant rules
+
+1. **Create** policy → require `ownerId`; host returns one-time `ownerToken` (store client-side).
+2. **Update** policy / sync wallet / read claimed policy / reset day ledger → require `ownerToken` or operator.
+3. **Evaluate / execute** → `policyId` only (spender path). Prefer unguessable `policyId`s.
+4. **Lifetime budget** never resets via public tools. `reset_daily_ledger` clears day/hour only.
+5. **Pack credits** — client cannot choose mint size; each paid `buy_evaluate_pack` grants a fixed credit amount.
 
 ## Fail-closed rules
 
@@ -89,14 +98,15 @@ Before putting meaningful balance behind AllowLatch:
 2. [ ] Client treats timeout / 5xx / bad JSON as DENY (verify `assertSpend`).
 3. [ ] Parallel evaluate+execute cannot double-spend the same `jti`.
 4. [ ] Receipt binds chain, recipient, amount, asset/token, and (for swaps) calldata hash.
-5. [ ] Daily ledger rolls on UTC day boundaries; lifetime never resets.
-6. [ ] Policy apply requires owner-authenticated path; no silent limit expansion from untrusted text.
+5. [ ] Daily ledger rolls on UTC day boundaries; lifetime never resets via public APIs (`reset_daily_ledger` only).
+6. [ ] Policy apply requires `ownerId` + returned `ownerToken` (or operator token); no silent cross-tenant mutate.
 7. [ ] Token rules use contract addresses where possible; USDC matches canonical Base contract.
 8. [ ] Adversarial swap/approve calldata tested (selector + calldataHash).
-9. [ ] Audit log correlates intent → decision → receipt `jti` → tx hash.
+9. [ ] Audit log correlates intent → decision → receipt `jti` → tx hash (scoped by policyId + ownerToken).
 10. [ ] `risk.emergencyStop` (or equivalent kill switch) tested.
-11. [ ] Separate hot wallet with minimal USDC; rotate `ALLOWLATCH_RECEIPT_SECRET` / CDP secrets.
+11. [ ] Separate hot wallet with minimal USDC; rotate `ALLOWLATCH_RECEIPT_SECRET` / CDP / `ALLOWLATCH_OPERATOR_TOKEN`.
 12. [ ] Prefer `hybrid` enforcement + synced Spend Permission for live execute.
+13. [ ] `buy_evaluate_pack` ignores client credit amounts; credits bound to paid x402 calls.
 
 ## Reporting
 

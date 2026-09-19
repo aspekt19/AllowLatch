@@ -1,6 +1,8 @@
 /**
  * Store receipt consume + replay (no network).
  */
+process.env.ALLOWLATCH_TENANT_AUTH = '0'
+
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
@@ -43,7 +45,7 @@ describe('PolicyStore receipt consume', () => {
   })
 
   it('persists policy under exclusive writes', async () => {
-    await store.setPolicy('default', DEMO_POLICY, 'owner-test')
+    await store.setPolicy('default', DEMO_POLICY, 'owner-test', undefined, { skipAuth: true })
     const p = store.getPolicy('default')
     assert.equal(p.name, DEMO_POLICY.name)
   })

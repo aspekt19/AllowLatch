@@ -20,6 +20,26 @@
 
 Free local `engine.ts` + JSON is a **teaser**. Production path: discover hosted **AllowLatch Gate** → pay → `evaluate_intent` / `execute_gated_transfer` before every spend. End users never run the host — see [HOSTED.md](./HOSTED.md).
 
+## Evaluate pack (honest metering)
+
+OpenServ x402 currently uses a **single** price (**$0.025**) for every capability call, including `buy_evaluate_pack`.
+
+| Call | Credits minted | Effective |
+|------|----------------|-----------|
+| `buy_evaluate_pack` | **3** (override with `ALLOWLATCH_CREDITS_PER_X402`) | ~$0.008 / evaluate |
+| Client-supplied `credits` | **ignored** | Prevents free mint inflation |
+
+To accumulate ~100 credits, call `buy_evaluate_pack` repeatedly (each call is a paid x402). A separate $1 SKU needs multi-price OpenServ triggers — not available yet.
+
+## Tenant auth (shared host)
+
+Mutating policy / reading claimed policy / resetting day windows requires:
+
+- `ownerId` on first `apply_policy` (mints `ownerToken` — **save it**)
+- `ownerToken` on later mutates, or `ALLOWLATCH_OPERATOR_TOKEN`
+
+`evaluate_intent` / `execute_gated_transfer` need only `policyId` (treat it as a capability secret; prefer unguessable ids).
+
 ## Pricing notes
 
 - Flat **$0.025** per OpenServ x402 request is the default MVP meter (simple for judges + agents).

@@ -6,7 +6,7 @@
  *   POST /v1/evaluate                    — evaluate_intent → receipt on ALLOW
  *   POST /v1/execute                     — gated transfer (receipt required)
  *   GET  /v1/audit?limit=50              — recent audit events
- *   POST /v1/ledgers/:policyId/reset     — reset ledger
+ *   POST /v1/ledgers/:policyId/reset     — reset day/hour windows (not lifetime); requires ownerToken
  *
  * Auth: Bearer ALLOWLATCH_HTTP_TOKEN required when not bound to loopback.
  * Bind 127.0.0.1 by default. Pack grant is local-dev only (token + ALLOWLATCH_DEV_PACKS=1).
@@ -146,10 +146,31 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
 
     if (req.method === 'POST' && path.startsWith('/v1/policies/')) {
       const policyId = decodeURIComponent(path.slice('/v1/policies/'.length))
-      const body = (await readJson(req)) as { policy?: unknown; ownerId?: string }
+      const body = (await readJson(req)) as {
+        policy?: unknown
+        ownerId?: string
+        ownerToken?: string
+        operatorToken?: string
+      }
       const policy = MandatePolicySchema.parse(body.policy ?? body)
-      await store.setPolicy(policyId, policy, body.ownerId ?? policy.ownerId)
-      json(req, res, 200, { ok: true, policyId, policy })
+      try {
+        const applied = await store.setPolicy(policyId, policy, body.ownerId ?? policy.ownerId, {
+          ownerId: body.ownerId ?? policy.ownerId,
+          ownerToken: body.ownerToken,
+          operatorToken: body.operatorToken,
+        })
+        json(req, res, 200, {
+          ok: true,
+          policyId,
+          policy,
+          ownerToken: applied.ownerToken,
+          authMode: applied.mode,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        const status = /ownerToken|ownerId|operator/i.test(message) ? 403 : 400
+        json(req, res, status, { ok: false, error: message })
+      }
       return
     }
 
@@ -255,8 +276,24 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
 
     if (req.method === 'POST' && /^\/v1\/ledgers\/[^/]+\/reset$/.test(path)) {
       const policyId = decodeURIComponent(path.split('/')[3]!)
-      await store.resetLedger(policyId)
-      json(req, res, 200, { ok: true, policyId, ledger: store.getLedger(policyId) })
+      const body = (await readJson(req).catch(() => ({}))) as {
+        ownerToken?: string
+        operatorToken?: string
+      }
+      try {
+        const { assertPolicyRead } = await import('../auth/tenant.js')
+        assertPolicyRead(store.getPolicyMeta(policyId), body)
+        await store.resetDailyLedger(policyId)
+        json(req, res, 200, {
+          ok: true,
+          policyId,
+          ledger: store.getLedger(policyId),
+          note: 'Day/hour windows reset; lifetime preserved unless ALLOWLATCH_RESET_LIFETIME=1 via operator tooling.',
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        json(req, res, /ownerToken|operator/i.test(message) ? 403 : 400, { ok: false, error: message })
+      }
       return
     }
 

@@ -57,7 +57,7 @@ async function main() {
 
   const store = new PolicyStore()
   await store.init()
-  await store.setPolicy(POLICY_ID, policy)
+  await store.setPolicy(POLICY_ID, policy, undefined, undefined, { skipAuth: true })
   console.log('3) apply_policy → stored as', POLICY_ID)
   console.log(JSON.stringify(policy.capital, null, 2), '\n')
 

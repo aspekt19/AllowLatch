@@ -30,6 +30,13 @@ import { explainDecisionWithServ } from './llm/explain-decision.js'
 import { logUsage } from './billing/usage-log.js'
 import { issueAllowReceipt } from './billing/receipt.js'
 import { syncSpendPermission, resolveEnforcementMode } from './wallet/spend-permissions.js'
+import { assertPolicyRead, AuthError, isOperator } from './auth/tenant.js'
+
+/** Credits minted per paid x402 buy_evaluate_pack call (OpenServ single price $0.025). */
+function creditsPerPaidPackCall(): number {
+  const n = Number(process.env.ALLOWLATCH_CREDITS_PER_X402 || 3)
+  return Number.isFinite(n) && n > 0 ? Math.min(100, Math.floor(n)) : 3
+}
 
 const store = new PolicyStore()
 
@@ -127,125 +134,190 @@ agent.addCapability({
 
 agent.addCapability({
   name: 'apply_policy',
-  description: 'Store a MandatePolicy JSON under policyId (usually draft.policy after owner review).',
+  description:
+    'Store a MandatePolicy under policyId after owner review. First apply returns ownerToken (save it). Later mutates require ownerToken or operatorToken.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
-    ownerId: z.string().optional(),
+    ownerId: z.string().min(1).optional(),
+    ownerToken: z.string().optional(),
+    operatorToken: z.string().optional(),
     policy: z.record(z.unknown()),
   }),
   async run({ args }) {
-    const policy = MandatePolicySchema.parse({
-      ...args.policy,
-      ownerId: args.ownerId ?? (args.policy as { ownerId?: string }).ownerId,
-    })
-    await store.setPolicy(args.policyId, policy, args.ownerId ?? policy.ownerId)
-    const walletNative = await syncSpendPermission({ policy })
-    store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
-    await store.audit({
-      type: 'wallet.binding',
-      policyId: args.policyId,
-      payload: { status: walletNative.status, mode: walletNative.mode },
-    })
-    await logUsage({
-      at: new Date().toISOString(),
-      capability: 'apply_policy',
-      policyId: args.policyId,
-    })
-    return JSON.stringify({
-      ok: true,
-      policyId: args.policyId,
-      ownerId: policy.ownerId,
-      policy,
-      walletNative,
-      enforcement: resolveEnforcementMode(),
-      note: 'Stored on host (SQLite). Agents must call evaluate_intent then execute with allow-receipt. Wallet-native Spend Permission mirrored when ALLOWLATCH_SMART_ACCOUNT + CDP are set.',
-    })
+    try {
+      const policy = MandatePolicySchema.parse({
+        ...args.policy,
+        ownerId: args.ownerId ?? (args.policy as { ownerId?: string }).ownerId,
+      })
+      const applied = await store.setPolicy(args.policyId, policy, args.ownerId ?? policy.ownerId, {
+        ownerId: args.ownerId ?? policy.ownerId,
+        ownerToken: args.ownerToken,
+        operatorToken: args.operatorToken,
+      })
+      const walletNative = await syncSpendPermission({ policy })
+      store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
+      await store.audit({
+        type: 'wallet.binding',
+        policyId: args.policyId,
+        payload: { status: walletNative.status, mode: walletNative.mode },
+      })
+      await logUsage({
+        at: new Date().toISOString(),
+        capability: 'apply_policy',
+        policyId: args.policyId,
+      })
+      return JSON.stringify({
+        ok: true,
+        policyId: args.policyId,
+        ownerId: policy.ownerId ?? args.ownerId,
+        ownerToken: applied.ownerToken,
+        authMode: applied.mode,
+        policy,
+        walletNative,
+        enforcement: resolveEnforcementMode(),
+        note: applied.ownerToken
+          ? 'SAVE ownerToken — required for future apply/revise/sync/get_policy. Evaluate/execute need only policyId.'
+          : 'Stored. Agents call evaluate_intent then execute with allow-receipt.',
+      })
+    } catch (err) {
+      if (err instanceof AuthError) return JSON.stringify({ ok: false, error: err.message })
+      throw err
+    }
   },
 })
 
 agent.addCapability({
   name: 'compile_mandate',
   description:
-    'Compile NL mandate → MandatePolicy and store immediately (skips review). Prefer draft_policy + apply_policy when ambiguous.',
+    'Compile NL mandate → MandatePolicy and store. Requires ownerId on create; ownerToken on update. Prefer draft_policy + apply_policy when ambiguous.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     mandateText: z.string().min(10),
+    ownerId: z.string().min(1).optional(),
+    ownerToken: z.string().optional(),
+    operatorToken: z.string().optional(),
   }),
   async run({ args }) {
-    const { policy, meta } = await compileMandateWithServ(args.mandateText)
-    await store.setPolicy(args.policyId, policy)
-    const walletNative = await syncSpendPermission({ policy })
-    store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
-    return JSON.stringify(
-      {
-        ok: true,
-        policyId: args.policyId,
-        policy,
-        walletNative,
-        enforcement: resolveEnforcementMode(),
-        brain: 'SERV Reasoning',
-        serv: {
-          model: meta.model,
-          promptVersion: meta.promptVersion,
-          reasoningEffort: meta.reasoningEffort,
-          latencyMs: meta.latencyMs,
-          usage: meta.usage,
+    try {
+      const { policy, meta } = await compileMandateWithServ(args.mandateText)
+      const withOwner = {
+        ...policy,
+        ownerId: args.ownerId ?? policy.ownerId,
+      }
+      const applied = await store.setPolicy(args.policyId, withOwner, args.ownerId ?? withOwner.ownerId, {
+        ownerId: args.ownerId ?? withOwner.ownerId,
+        ownerToken: args.ownerToken,
+        operatorToken: args.operatorToken,
+      })
+      const walletNative = await syncSpendPermission({ policy: withOwner })
+      store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
+      return JSON.stringify(
+        {
+          ok: true,
+          policyId: args.policyId,
+          ownerToken: applied.ownerToken,
+          authMode: applied.mode,
+          policy: withOwner,
+          walletNative,
+          enforcement: resolveEnforcementMode(),
+          brain: 'SERV Reasoning',
+          serv: {
+            model: meta.model,
+            promptVersion: meta.promptVersion,
+            reasoningEffort: meta.reasoningEffort,
+            latencyMs: meta.latencyMs,
+            usage: meta.usage,
+          },
+          note: applied.ownerToken
+            ? 'SAVE ownerToken for later mutates. Call evaluate_intent before spends.'
+            : 'Policy stored. Call evaluate_intent before any Base spend.',
         },
-        note: 'Policy stored. Call evaluate_intent or execute_gated_transfer before any Base spend.',
-      },
-      null,
-      2
-    )
+        null,
+        2
+      )
+    } catch (err) {
+      if (err instanceof AuthError) return JSON.stringify({ ok: false, error: err.message })
+      throw err
+    }
   },
 })
 
 agent.addCapability({
   name: 'get_policy',
-  description: 'Return the stored MandatePolicy for a policyId.',
+  description:
+    'Return MandatePolicy + ledger for a policyId. Requires ownerToken (or operator) once the policy is claimed.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
+    ownerToken: z.string().optional(),
+    operatorToken: z.string().optional(),
   }),
   async run({ args }) {
-    return JSON.stringify(
-      {
-        policyId: args.policyId,
-        policy: store.getPolicy(args.policyId),
-        ledger: store.getLedger(args.policyId),
-        walletNative: store.getWalletBinding(args.policyId),
-        enforcement: resolveEnforcementMode(),
-        executeMode: resolveExecuteMode(),
-      },
-      null,
-      2
-    )
+    try {
+      const meta = store.getPolicyMeta(args.policyId)
+      assertPolicyRead(meta, {
+        ownerToken: args.ownerToken,
+        operatorToken: args.operatorToken,
+      })
+      return JSON.stringify(
+        {
+          policyId: args.policyId,
+          policy: store.getPolicy(args.policyId),
+          ledger: store.getLedger(args.policyId),
+          walletNative: store.getWalletBinding(args.policyId),
+          enforcement: resolveEnforcementMode(),
+          executeMode: resolveExecuteMode(),
+        },
+        null,
+        2
+      )
+    } catch (err) {
+      if (err instanceof AuthError) return JSON.stringify({ ok: false, error: err.message })
+      throw err
+    }
   },
 })
 
 agent.addCapability({
   name: 'sync_wallet_permissions',
   description:
-    'Mirror MandatePolicy daily USDC cap into a Coinbase Spend Permission on ALLOWLATCH_SMART_ACCOUNT (wallet-native enforcement).',
+    'Mirror MandatePolicy daily USDC cap into a Coinbase Spend Permission. Requires ownerToken or operator.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     dryRun: z.boolean().default(false),
+    ownerToken: z.string().optional(),
+    operatorToken: z.string().optional(),
   }),
   async run({ args }) {
-    const policy = store.getPolicy(args.policyId)
-    const walletNative = await syncSpendPermission({ policy, dryRun: args.dryRun })
-    store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
-    await store.audit({
-      type: 'wallet.binding',
-      policyId: args.policyId,
-      payload: { status: walletNative.status, mode: walletNative.mode, dryRun: args.dryRun },
-    })
-    return JSON.stringify({ ok: true, policyId: args.policyId, walletNative }, null, 2)
+    try {
+      const meta = store.getPolicyMeta(args.policyId)
+      assertPolicyRead(meta, {
+        ownerToken: args.ownerToken,
+        operatorToken: args.operatorToken,
+      })
+      // Mutating wallet binding: same bar as write
+      if (!isOperator(args.operatorToken)) {
+        assertPolicyRead(meta, { ownerToken: args.ownerToken })
+      }
+      const policy = store.getPolicy(args.policyId)
+      const walletNative = await syncSpendPermission({ policy, dryRun: args.dryRun })
+      store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
+      await store.audit({
+        type: 'wallet.binding',
+        policyId: args.policyId,
+        payload: { status: walletNative.status, mode: walletNative.mode, dryRun: args.dryRun },
+      })
+      return JSON.stringify({ ok: true, policyId: args.policyId, walletNative }, null, 2)
+    } catch (err) {
+      if (err instanceof AuthError) return JSON.stringify({ ok: false, error: err.message })
+      throw err
+    }
   },
 })
 
 agent.addCapability({
   name: 'evaluate_intent',
   description:
-    'Deterministically evaluate a spend intent against a stored policy. Returns allow | deny | escalate + allow-receipt. Does not send a transaction. Pass packKey to burn a prepaid evaluate credit ($1/100).',
+    'Deterministically evaluate a spend intent against a stored policy. Returns allow | deny | escalate + allow-receipt. Does not send a transaction. Pass packKey to burn a prepaid evaluate credit.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
     intent: SpendIntentSchema,
@@ -259,7 +331,7 @@ agent.addCapability({
       if (packCreditsRemaining === null) {
         return JSON.stringify({
           ok: false,
-          error: 'No evaluate-pack credits. Call buy_evaluate_pack ($1 / 100) or omit packKey and pay per x402 call.',
+          error: 'No evaluate-pack credits. Call buy_evaluate_pack (paid x402) or omit packKey and pay per call.',
         })
       }
     }
@@ -320,22 +392,30 @@ agent.addCapability({
 agent.addCapability({
   name: 'buy_evaluate_pack',
   description:
-    'Mint 100 prepaid evaluate credits for packKey (~$1 / ~$0.01 per check). Use with evaluate_intent.packKey.',
+    'After this paid x402 call ($0.025), mint fixed prepaid evaluate credits for packKey (default 3). Client cannot choose credit amount. Pass packKey into evaluate_intent.',
   inputSchema: z.object({
     packKey: z.string().min(3),
-    credits: z.number().int().positive().max(500).default(100),
   }),
   async run({ args }) {
-    const credits = store.addPackCredits(args.packKey, args.credits)
+    const added = creditsPerPaidPackCall()
+    const credits = store.addPackCredits(args.packKey, added)
     await store.audit({
       type: 'pack.purchased',
-      payload: { packKey: args.packKey, added: args.credits, credits },
+      payload: {
+        packKey: args.packKey,
+        added,
+        credits,
+        x402PriceUsd: 0.025,
+        note: 'Credits bound to this paid x402 invocation; client-supplied mint amounts are ignored.',
+      },
     })
     return JSON.stringify({
       ok: true,
       packKey: args.packKey,
+      added,
       credits,
-      note: 'Pass the same packKey into evaluate_intent to burn credits instead of relying on per-call economics alone.',
+      x402PriceUsd: 0.025,
+      note: `Each paid buy_evaluate_pack grants ${added} credits (~$${(0.025 / added).toFixed(4)}/check). OpenServ uses a single $0.025 meter — not a separate $1 SKU yet.`,
     })
   },
 })
@@ -403,28 +483,65 @@ agent.addCapability({
 
 agent.addCapability({
   name: 'list_audit',
-  description: 'Return recent immutable-ish audit events (policy apply, evaluate, receipt, tx).',
+  description:
+    'Return audit events for a policyId (requires ownerToken). Operator token may omit policyId for global view.',
   inputSchema: z.object({
+    policyId: z.string().optional(),
     limit: z.number().int().positive().max(200).default(50),
+    ownerToken: z.string().optional(),
+    operatorToken: z.string().optional(),
   }),
   async run({ args }) {
-    return JSON.stringify({ ok: true, events: store.listAudit(args.limit) }, null, 2)
+    try {
+      if (isOperator(args.operatorToken)) {
+        return JSON.stringify({
+          ok: true,
+          events: store.listAudit(args.limit, args.policyId),
+        })
+      }
+      if (!args.policyId) {
+        return JSON.stringify({
+          ok: false,
+          error: 'policyId required (or operatorToken for global audit)',
+        })
+      }
+      const meta = store.getPolicyMeta(args.policyId)
+      assertPolicyRead(meta, { ownerToken: args.ownerToken })
+      return JSON.stringify({ ok: true, events: store.listAudit(args.limit, args.policyId) })
+    } catch (err) {
+      if (err instanceof AuthError) return JSON.stringify({ ok: false, error: err.message })
+      throw err
+    }
   },
 })
 
 agent.addCapability({
-  name: 'reset_ledger',
-  description: 'Reset the spend ledger for a policyId (demo / new day simulation). Lifetime budget counters reset too.',
+  name: 'reset_daily_ledger',
+  description:
+    'Reset day/hour spend windows for a policyId. Does NOT reset lifetime budget. Requires ownerToken or operatorToken.',
   inputSchema: z.object({
     policyId: z.string().default('default'),
+    ownerToken: z.string().optional(),
+    operatorToken: z.string().optional(),
   }),
   async run({ args }) {
-    await store.resetLedger(args.policyId)
-    return JSON.stringify({
-      ok: true,
-      policyId: args.policyId,
-      ledger: store.getLedger(args.policyId),
-    })
+    try {
+      const meta = store.getPolicyMeta(args.policyId)
+      assertPolicyRead(meta, {
+        ownerToken: args.ownerToken,
+        operatorToken: args.operatorToken,
+      })
+      await store.resetDailyLedger(args.policyId)
+      return JSON.stringify({
+        ok: true,
+        policyId: args.policyId,
+        ledger: store.getLedger(args.policyId),
+        note: 'Lifetime spentUsdLifetime preserved.',
+      })
+    } catch (err) {
+      if (err instanceof AuthError) return JSON.stringify({ ok: false, error: err.message })
+      throw err
+    }
   },
 })
 

@@ -91,11 +91,17 @@ ls src | head
   )
 
   // secrets in small pieces via base64 (env is tiny)
-  const envB64 = Buffer.from(fs.readFileSync(path.join(root, '.env'))).toString('base64')
+  // Ensure tenant auth on hosted container
+  let envLocal = fs.readFileSync(path.join(root, '.env'), 'utf8')
+  if (!/^ALLOWLATCH_TENANT_AUTH=/m.test(envLocal)) {
+    envLocal += '\nALLOWLATCH_TENANT_AUTH=1\n'
+    fs.writeFileSync(path.join(root, '.env'), envLocal)
+  }
+  const envB64Final = Buffer.from(envLocal).toString('base64')
   const osB64 = Buffer.from(fs.readFileSync(path.join(root, '.openserv.json'))).toString('base64')
   console.log('Writing secrets…')
   await sh(
-    `printf '%s' '${envB64}' | base64 -d > /app/.env && printf '%s' '${osB64}' | base64 -d > /app/.openserv.json && wc -c /app/.env /app/.openserv.json`,
+    `printf '%s' '${envB64Final}' | base64 -d > /app/.env && printf '%s' '${osB64}' | base64 -d > /app/.openserv.json && wc -c /app/.env /app/.openserv.json`,
     90
   )
 

@@ -13,7 +13,7 @@
       "workflowName": "AllowLatch Gate",
       "discover": "PlatformClient.payments.discoverServices() - filter name /allowlatch/i (listed as AllowLatch Gate)",
       "priceUsd": "0.025",
-      "evaluatePack": "buy_evaluate_pack - target $1 / 100 evaluates; then evaluate_intent with packKey",
+      "evaluatePack": "buy_evaluate_pack — each paid $0.025 x402 mints fixed credits (default 3); client cannot choose amount",
       "invoke": "x402 payWorkflow with { prompt } - no end-user API keys; users never run the host",
       "paywallUrl": "https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53",
       "triggerUrl": "https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53",
@@ -31,15 +31,15 @@
     },
     {
       "id": "apply_policy",
-      "description": "Persist an accepted MandatePolicy under a policyId."
+      "description": "Persist MandatePolicy. First apply returns ownerToken (required for later mutates)."
     },
     {
       "id": "compile_mandate",
-      "description": "SERV: compile NL mandate into MandatePolicy JSON."
+      "description": "SERV: compile NL mandate into MandatePolicy JSON and store (requires ownerId / ownerToken)."
     },
     {
       "id": "sync_wallet_permissions",
-      "description": "Optional: mirror daily USDC cap into Coinbase Spend Permissions (hybrid / wallet_native)."
+      "description": "Optional: mirror daily USDC cap into Coinbase Spend Permissions (requires ownerToken)."
     },
     {
       "id": "evaluate_intent",
@@ -47,7 +47,7 @@
     },
     {
       "id": "buy_evaluate_pack",
-      "description": "Prepaid evaluate credits (target $1 / 100). Later evaluate_intent with packKey burns 1 credit."
+      "description": "Paid x402 call mints fixed evaluate credits for packKey (client cannot choose amount)."
     },
     {
       "id": "explain_decision",
@@ -59,11 +59,11 @@
     },
     {
       "id": "list_audit",
-      "description": "Recent audit events: policy, evaluate, receipt, tx."
+      "description": "Audit events for a policyId (ownerToken) or global (operatorToken)."
     },
     {
-      "id": "reset_ledger",
-      "description": "Reset spend ledger for a policyId (operator / demo)."
+      "id": "reset_daily_ledger",
+      "description": "Reset day/hour windows only — lifetime budget preserved. Requires ownerToken."
     }
   ],
   "invariants": [
@@ -71,6 +71,8 @@
     "Execute requires verified single-use allow-receipt (or escalate + humanApproved)",
     "Fail-closed: timeout, network error, malformed decision, or missing receipt → DENY",
     "Receipt binds chain, action digest, and calldataHash for swaps; prefer tokenAddress over symbol",
+    "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",
+    "Lifetime budget is not reset by public APIs; reset_daily_ledger clears day/hour only",
     "End users never run npm run dev or set SERV_API_KEY — they discover hosted AllowLatch Gate",
     "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
