@@ -12,8 +12,8 @@ NL mandate → engine.ts (ALLOW + receipt) → AgentKit
 
 | Mode | Behavior |
 |------|----------|
-| `middleware` | Receipt gate only (default if no smart account). |
-| `hybrid` | Receipt gate **and** mirror daily cap via CDP Spend Permission when `ALLOWLATCH_SMART_ACCOUNT` is set (default if smart account env present). |
+| `hybrid` | **Default.** Receipt gate **and** mirror daily cap via CDP Spend Permission when `ALLOWLATCH_SMART_ACCOUNT` is set. Without a smart account, still receipt-only but labeled hybrid intent. |
+| `middleware` | Receipt gate only — **not custody-grade** if the signer can bypass the gate. |
 | `wallet_native` | Live execute **refuses** unless Spend Permission status is `synced`; pulls via `use_spend_permission` then transfers. |
 
 ## Setup

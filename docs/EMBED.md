@@ -22,6 +22,7 @@ import { assertSpend } from './assert-spend.js' // copy from AllowLatch src/sdk/
 const { receipt } = await assertSpend({
   // From discoverServices().webhookUrl or https://allowlatch.vercel.app/api/host-info
   triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL!,
+  // x402 payer only — not necessarily the AgentKit/CDP signer key
   walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
   intent: {
     action: 'transfer',
@@ -31,6 +32,8 @@ const { receipt } = await assertSpend({
 })
 // only then AgentKit / execute_gated_transfer with receipt
 ```
+
+Prefer `createGatedAgentKit` so the agent cannot call a raw signer in parallel. Default host enforcement is **hybrid** (on-chain Spend Permissions when configured).
 
 Live CTA: https://allowlatch.vercel.app/#agentkit  
 Hosted ops (not for end users): [HOSTED.md](./HOSTED.md)
@@ -47,7 +50,7 @@ const { receipt } = await assertSpend({
     toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
   },
   triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL!, // discoverServices().webhookUrl
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // payer for x402
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
 })
 
 // verifyAllowReceipt is already required inside assertSpend when requireReceipt=true

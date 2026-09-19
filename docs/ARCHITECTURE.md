@@ -23,9 +23,9 @@ evaluate_intent
    → AgentKit transfer (or dry-run)
 ```
 
-**Fail-closed:** timeouts, payment failures, malformed decisions, and missing/invalid receipts are DENY — see [SECURITY.md](./SECURITY.md).
+**Fail-closed:** timeouts, payment failures, malformed decisions, missing/invalid receipts, and **host unavailability** are DENY on the client (`assertSpend`) — never fail-open. See [SECURITY.md](./SECURITY.md).
 
-**Swaps:** host evaluates + issues receipt; it does **not** submit swap txs. Swap intents **require** `calldataHash` (and preferably `contractAddress`). Caller must re-supply the same hash when verifying before an external router/AgentKit swap.
+**Swaps:** host evaluates + issues receipt; it does **not** submit swap txs. Swap intents **require** `calldataHash` (and preferably `contractAddress`). Caller must re-supply the same hash when verifying before an external router/AgentKit swap. The agent must refuse to sign without verify — put that check in the wallet adapter, not in prompt text alone.
 
 **Chain / token:** intent `chainId` / `networkId` must match `policy.chain` when set; prefer `allowedTokenAddresses` over symbols; USDC + `tokenAddress` must be the canonical Base USDC contract.
 
@@ -33,13 +33,13 @@ evaluate_intent
 
 See [WALLET_NATIVE.md](./WALLET_NATIVE.md). Short version:
 
+- `hybrid` - **default** — receipt + CDP Spend Permission daily USDC cap when configured (recommended)
 - `middleware` - receipt only (not custody-grade if the signer can bypass the gate)
-- `hybrid` - receipt + CDP Spend Permission daily USDC cap (recommended)
 - `wallet_native` - live execute blocked until permission is `synced`
 
 ## Storage
 
-SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, `BEGIN IMMEDIATE`, exclusive queue, audit, packs, wallet_bindings. Single-writer host process.
+SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, `BEGIN IMMEDIATE`, exclusive queue, audit, packs, wallet_bindings. Single-writer host process — a availability SPOF for the hosted ledger; clients must fail-closed when it is down.
 
 ## Adapters
 

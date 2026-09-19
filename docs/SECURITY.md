@@ -72,7 +72,7 @@ Agent ──┬── assertSpend(...)
         └── wallet.sendTransaction(...)   ← avoid
 ```
 
-Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapper that cannot be skipped. Prefer `ALLOWLATCH_ENFORCEMENT=hybrid` so on-chain Spend Permissions mirror daily USDC caps even if middleware is bypassed.
+Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapper that cannot be skipped. Default `ALLOWLATCH_ENFORCEMENT` is **hybrid** so on-chain Spend Permissions mirror daily USDC caps when `ALLOWLATCH_SMART_ACCOUNT` is set — even if middleware is bypassed.
 
 ## Threat model (summary)
 
@@ -105,7 +105,7 @@ Before putting meaningful balance behind AllowLatch:
 9. [ ] Audit log correlates intent → decision → receipt `jti` → tx hash (scoped by policyId + ownerToken).
 10. [ ] `risk.emergencyStop` (or equivalent kill switch) tested.
 11. [ ] Separate hot wallet with minimal USDC; rotate `ALLOWLATCH_RECEIPT_SECRET` / CDP / `ALLOWLATCH_OPERATOR_TOKEN`.
-12. [ ] Prefer `hybrid` enforcement + synced Spend Permission for live execute.
+12. [ ] Prefer / keep `hybrid` enforcement + synced Spend Permission for live execute (default mode).
 13. [ ] `buy_evaluate_pack` ignores client credit amounts; credits bound to paid x402 calls.
 
 ## Reporting

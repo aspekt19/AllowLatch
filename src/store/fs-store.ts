@@ -366,7 +366,7 @@ export class PolicyStore {
       .run(requestId, resultJson, new Date().toISOString())
   }
 
-  /** Prepaid evaluate credits ($1 ≈ 100 checks). packKey = payer wallet or API client id. */
+  /** Prepaid evaluate credits (fixed mint per paid buy_evaluate_pack; default 3). packKey = payer wallet or API client id. */
   getPackCredits(packKey: string): number {
     this.assertReady()
     const row = this.db

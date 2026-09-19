@@ -83,7 +83,7 @@ AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 p
 
 Chain focus: **Base**. Policy currency: **USDC**.
 
-Honest scope: AllowLatch is middleware authorization (+ receipt) **and** can mirror daily USDC caps into Coinbase Spend Permissions (`ALLOWLATCH_ENFORCEMENT=hybrid|wallet_native`). Middleware alone is not custody-grade if a signer can bypass the gate. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+Honest scope: AllowLatch is middleware authorization (+ receipt) **and**, by default (`ALLOWLATCH_ENFORCEMENT=hybrid`), mirrors daily USDC caps into Coinbase Spend Permissions when `ALLOWLATCH_SMART_ACCOUNT` is set. Middleware alone is not custody-grade if a signer can bypass the gate — put the gate in `createGatedAgentKit` / host execute. Policy mutates require `ownerToken` (spender `evaluate` cannot rewrite limits). See [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [SECURITY.md](./SECURITY.md).
 
 The public site (allowlatch.vercel.app) is the **demo UI** - production evaluate/execute/x402 runs on the OpenServ host. Details: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -95,12 +95,13 @@ The public site (allowlatch.vercel.app) is the **demo UI** - production evaluate
 - Not a full on-chain spend vault yet (pair with wallet permissions for custody-grade caps)  
 - Not an LLM allow/deny judge  
 - Not a universal policy OS for non-financial domains  
+- Not unqualified “non-custodial” when the host holds CDP keys for `execute_gated_transfer` — that path is operator-hosted execution after ALLOW  
 
 ---
 
 ## One-line pitch
 
-> For a financial agent on Base: state rules in words → SERV drafts and explains → without ALLOW + valid allow-receipt, the wallet does not move money.
+> For a financial agent on Base: state rules in words → SERV drafts → without ALLOW + valid allow-receipt on a gated signer (prefer hybrid Spend Permissions), the wallet should not move money.
 
 ---
 

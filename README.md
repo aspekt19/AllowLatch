@@ -9,7 +9,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No custody. No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay x402 ($0.025) or an evaluate pack ($1 / 100). Optional on-chain Spend Permissions: `ALLOWLATCH_ENFORCEMENT=hybrid`.
+No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay **$0.025**/call or prepaid pack credits via `buy_evaluate_pack` (fixed credits per x402; default 3 ≈ $0.008/check). Default enforcement: **hybrid** (receipt + optional on-chain Spend Permissions when `ALLOWLATCH_SMART_ACCOUNT` is set). Middleware alone is not custody-grade — put the gate in the signer (`createGatedAgentKit`).
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 

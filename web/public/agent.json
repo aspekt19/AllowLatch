@@ -1,7 +1,7 @@
 {
   "name": "AllowLatch",
   "version": "0.1.0",
-  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Natural-language mandates → strict policy → ALLOW/DENY/ESCALATE before any agent moves funds. Non-custodial. End users need no API keys. Integrates with OpenServ and Coinbase AgentKit.",
+  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). NL mandates → strict policy → ALLOW/DENY/ESCALATE + allow-receipt. Fail-closed clients. Prefer hybrid Spend Permissions + createGatedAgentKit (middleware alone is not custody-grade). End users need no API keys. OpenServ x402 + Coinbase AgentKit.",
   "homepage": "https://allowlatch.vercel.app",
   "repository": "https://github.com/aspekt19/AllowLatch",
   "documentation": "https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md",

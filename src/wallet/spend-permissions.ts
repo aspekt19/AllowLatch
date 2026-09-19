@@ -28,8 +28,8 @@ export type WalletNativePlan = {
 export function resolveEnforcementMode(): EnforcementMode {
   const raw = (process.env.ALLOWLATCH_ENFORCEMENT || '').trim().toLowerCase()
   if (raw === 'middleware' || raw === 'hybrid' || raw === 'wallet_native') return raw
-  // Default: hybrid when a smart account is configured, else middleware-only.
-  return process.env.ALLOWLATCH_SMART_ACCOUNT?.trim() ? 'hybrid' : 'middleware'
+  // Recommended default: hybrid (receipt + Spend Permission when SMART_ACCOUNT is set).
+  return 'hybrid'
 }
 
 function networkId(): string {
