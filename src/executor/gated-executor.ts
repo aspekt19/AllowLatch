@@ -398,7 +398,7 @@ export async function gatedTransfer(
       txHash,
       walletAddress,
       receiptConsumed: true,
-      message: result,
+      message: resultText,
       requestId,
     }
     store.saveIdempotentResult(requestId, JSON.stringify(live))
