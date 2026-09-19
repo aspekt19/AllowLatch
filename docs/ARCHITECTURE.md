@@ -15,14 +15,18 @@ AllowLatch is a **payment policy turnstile** for financial AI agents on Base (US
 ```text
 evaluate_intent
    → ALLOW + action-bound allow-receipt
-      (jti, policyHash, action digest, calldataHash for swaps, HMAC)
+      (jti, policyHash, chain, action digest, calldataHash for swaps, HMAC)
    → execute_gated_transfer(receipt)
    → verify + consume jti
    → [wallet_native/hybrid] use_spend_permission (pull USDC under on-chain cap)
    → AgentKit transfer (or dry-run)
 ```
 
+**Fail-closed:** timeouts, payment failures, malformed decisions, and missing/invalid receipts are DENY — see [SECURITY.md](./SECURITY.md).
+
 **Swaps:** host evaluates + issues receipt; it does **not** submit swap txs. Swap intents **require** `calldataHash` (and preferably `contractAddress`). Caller must re-supply the same hash when verifying before an external router/AgentKit swap.
+
+**Chain / token:** intent `chainId` / `networkId` must match `policy.chain` when set; prefer `allowedTokenAddresses` over symbols; USDC + `tokenAddress` must be the canonical Base USDC contract.
 
 ## Enforcement modes
 

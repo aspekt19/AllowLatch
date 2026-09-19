@@ -12,8 +12,10 @@ export type AllowReceipt = {
   /** Single-use nonce — must be consumed exactly once at execute boundary. */
   jti: string
   policyHash: string
-  /** Canonical spend digest (action/amount/to/contract/selector/calldataHash). */
+  /** Canonical spend digest (action/amount/to/token/contract/selector/chain/calldataHash). */
   intentHash: string
+  /** Policy chain at issue time (binds receipt to Base / Base Sepolia). */
+  chain: 'base' | 'base-sepolia'
   /** Echo of intent.calldataHash when set (required for swaps by the gate). Execute must re-supply the same bytes hash. */
   calldataHash?: string
   issuedAt: number
@@ -43,8 +45,12 @@ export function hashAction(intent: SpendIntent): string {
     action: intent.action,
     amountUsd: intent.amountUsd,
     symbol: intent.symbol ? intent.symbol.toUpperCase() : null,
+    tokenAddress: intent.tokenAddress?.trim().toLowerCase() ?? null,
     toAddress: intent.toAddress?.trim().toLowerCase() ?? null,
     contractAddress: intent.contractAddress?.trim().toLowerCase() ?? null,
+    spenderAddress: intent.spenderAddress?.trim().toLowerCase() ?? null,
+    chainId: intent.chainId ?? null,
+    networkId: intent.networkId?.trim().toLowerCase() ?? null,
     functionSelector: intent.functionSelector?.toLowerCase() ?? null,
     calldataHash: intent.calldataHash?.trim().toLowerCase() ?? null,
     slippageBps: intent.slippageBps ?? null,
@@ -65,6 +71,7 @@ function signingPayload(r: Omit<AllowReceipt, 'sig'>): string {
     r.jti,
     r.policyHash,
     r.intentHash,
+    r.chain,
     r.calldataHash ?? '',
     r.issuedAt,
     r.expiresAt,
@@ -93,6 +100,7 @@ export function issueAllowReceipt(args: {
     jti: args.jti ?? randomUUID(),
     policyHash: hashPolicy(args.policy),
     intentHash: hashAction(args.intent),
+    chain: args.policy.chain,
     calldataHash: args.intent.calldataHash?.trim().toLowerCase(),
     issuedAt,
     expiresAt: issuedAt + Math.max(15, ttl),
@@ -118,6 +126,9 @@ export function verifyAllowReceipt(
   }
   if (opts?.policy && hashPolicy(opts.policy) !== receipt.policyHash) {
     return { ok: false, error: 'policy hash mismatch' }
+  }
+  if (opts?.policy && receipt.chain && opts.policy.chain !== receipt.chain) {
+    return { ok: false, error: 'chain mismatch' }
   }
   if (opts?.intent && hashAction(opts.intent) !== receipt.intentHash) {
     return { ok: false, error: 'intent hash mismatch' }

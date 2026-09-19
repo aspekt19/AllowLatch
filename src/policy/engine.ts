@@ -5,6 +5,17 @@ import {
   type SpendLedger,
 } from './schema.js'
 
+/** Canonical USDC contracts for Base chains (currency=USDC policies). */
+export const USDC_BY_CHAIN = {
+  base: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+  'base-sepolia': '0x036cbd53842c5426634e7929541ec2318f3dcf7e',
+} as const
+
+export const CHAIN_IDS = {
+  base: 8453,
+  'base-sepolia': 84532,
+} as const
+
 function normalizeAddress(addr?: string): string | undefined {
   if (!addr) return undefined
   return addr.trim().toLowerCase()
@@ -30,7 +41,7 @@ export function freshLedger(now = new Date()): SpendLedger {
   }
 }
 
-/** Roll ledger windows forward if the calendar day/hour changed. Lifetime is never reset. */
+/** Roll ledger windows forward if the calendar day/hour changed (UTC). Lifetime is never reset. */
 export function rollLedger(ledger: SpendLedger, now = new Date()): SpendLedger {
   const dayKey = utcDayKey(now)
   const hourKey = utcHourKey(now)
@@ -43,6 +54,33 @@ export function rollLedger(ledger: SpendLedger, now = new Date()): SpendLedger {
     spentUsdLifetime: ledger.spentUsdLifetime ?? 0,
     gasUsdToday: sameDay ? (ledger.gasUsdToday ?? 0) : 0,
   }
+}
+
+function resolveIntentChain(
+  policy: MandatePolicy,
+  intent: SpendIntent
+): { ok: true } | { ok: false; reason: string } {
+  const expectedId = CHAIN_IDS[policy.chain]
+  if (intent.chainId != null && intent.chainId !== expectedId) {
+    return {
+      ok: false,
+      reason: `chainId ${intent.chainId} does not match policy chain ${policy.chain} (${expectedId}).`,
+    }
+  }
+  if (intent.networkId?.trim()) {
+    const n = intent.networkId.trim().toLowerCase()
+    const aliases =
+      policy.chain === 'base'
+        ? ['base', 'base-mainnet']
+        : ['base-sepolia', 'base_sepolia', 'basesepolia']
+    if (!aliases.includes(n) && n !== policy.chain) {
+      return {
+        ok: false,
+        reason: `networkId "${intent.networkId}" does not match policy chain ${policy.chain}.`,
+      }
+    }
+  }
+  return { ok: true }
 }
 
 /**
@@ -75,6 +113,9 @@ export function evaluateIntent(
       intent,
     }
   }
+
+  const chainCheck = resolveIntentChain(policy, intent)
+  if (!chainCheck.ok) reasons.push(chainCheck.reason)
 
   const actionOk =
     (intent.action === 'swap' && policy.actions.allowSwap) ||
@@ -132,6 +173,28 @@ export function evaluateIntent(
     reasons.push(
       `Symbol ${symbol} is not in the allowlist (${policy.universe.allowedSymbols.join(', ')}).`
     )
+  }
+
+  const token = normalizeAddress(intent.tokenAddress)
+  const deniedTokens = (policy.universe.deniedTokenAddresses ?? []).map(normalizeAddress)
+  const allowedTokens = (policy.universe.allowedTokenAddresses ?? []).map(normalizeAddress)
+  if (token && deniedTokens.includes(token)) {
+    reasons.push(`Token contract ${intent.tokenAddress} is denied.`)
+  }
+  if (token && allowedTokens.length > 0 && !allowedTokens.includes(token)) {
+    reasons.push(`Token contract ${intent.tokenAddress} is not on the token allowlist.`)
+  }
+  if (!token && allowedTokens.length > 0) {
+    reasons.push('tokenAddress required when a token-contract allowlist is active.')
+  }
+  // Symbol USDC must bind to the canonical Base USDC contract when tokenAddress is set.
+  if (token && symbol === 'USDC') {
+    const expectedUsdc = USDC_BY_CHAIN[policy.chain]
+    if (token !== expectedUsdc) {
+      reasons.push(
+        `tokenAddress ${intent.tokenAddress} is not the canonical USDC for ${policy.chain} (${expectedUsdc}).`
+      )
+    }
   }
 
   const to = normalizeAddress(intent.toAddress)

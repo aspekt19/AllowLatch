@@ -168,6 +168,8 @@ export function draftPolicyLocally(mandateText: string): PolicyDraft {
       deniedAddresses: [],
       allowedContracts: [],
       deniedContracts: [],
+      allowedTokenAddresses: [],
+      deniedTokenAddresses: [],
       allowedFunctionSelectors: [],
       deniedFunctionSelectors: [],
     },

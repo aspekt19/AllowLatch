@@ -4,7 +4,8 @@
 
 **Live demo:** https://allowlatch.vercel.app  
 **Repo:** https://github.com/aspekt19/AllowLatch  
-**Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)
+**Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
+**Security:** [docs/SECURITY.md](./docs/SECURITY.md) (fail-closed, threat model, production checklist)
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 

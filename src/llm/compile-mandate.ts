@@ -35,7 +35,8 @@ const POLICY_RULES = `MandatePolicy constraints:
 - ownerId / agentId optional identity strings when known
 - Do not invent tickers or addresses. Symbols only if clearly allowed (USDC, ETH, WETH, or named). Addresses only if named, or Uniswap Universal Router on Base when Uniswap is mentioned: ${BASE_UNISWAP_UNIVERSAL_ROUTER}
 - deniedSymbols: memes / explicitly banned (e.g. PEPE) when forbidden
-- allowedAddresses / allowedContracts / allowedFunctionSelectors non-empty ⇒ gate requires matching fields — only if mandate implies allowlist
+- allowedAddresses / allowedContracts / allowedTokenAddresses / allowedFunctionSelectors non-empty ⇒ gate requires matching fields — only if mandate implies allowlist
+- Prefer token contract addresses over symbols when the mandate names a specific token; USDC on Base is 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 - risk.maxSlippageBps when mandate mentions slippage; risk.emergencyStop only if owner says pause/stop all spends
 - agentWalletBudgetUsd is a HARD lifetime ledger ceiling (not soft metadata)
 - requireHumanConfirmAboveUsd ≤ maxPerOrderUsd; if "ask above $X", use X; else slightly below maxPerOrderUsd

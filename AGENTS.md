@@ -14,6 +14,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
 | Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
+| Security / threat model / checklist | [`docs/SECURITY.md`](./docs/SECURITY.md) |
 | Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) |
 | Cursor skill | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |
@@ -56,7 +57,8 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
 4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
-5. Product name is **AllowLatch**.
+5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend`).
+6. Product name is **AllowLatch**.
 
 ## Verify
 

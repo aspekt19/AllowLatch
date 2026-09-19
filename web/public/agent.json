@@ -6,6 +6,7 @@
   "repository": "https://github.com/aspekt19/AllowLatch",
   "documentation": "https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md",
   "product": "https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md",
+  "security": "https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md",
   "protocol": {
     "openserv": {
       "agentName": "allowlatch",
@@ -65,6 +66,8 @@
   "invariants": [
     "Allow/deny/escalate is deterministic code - never LLM judgment",
     "Execute requires verified single-use allow-receipt (or escalate + humanApproved)",
+    "Fail-closed: timeout, network error, malformed decision, or missing receipt → DENY",
+    "Receipt binds chain, action digest, and calldataHash for swaps; prefer tokenAddress over symbol",
     "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP - the host does; x402 pays the call"
   ],

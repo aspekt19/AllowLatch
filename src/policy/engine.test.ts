@@ -105,6 +105,65 @@ describe('evaluateIntent', () => {
     assert.equal(next.spentUsdToday, 3)
     assert.equal(next.spentUsdLifetime, 3)
   })
+
+  it('denies wrong chainId', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      { action: 'transfer', amountUsd: 2, toAddress: router, chainId: 1 },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /chainId/i)
+  })
+
+  it('allows matching Base chainId', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      { action: 'transfer', amountUsd: 2, toAddress: router, chainId: 8453 },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'allow')
+  })
+
+  it('denies fake USDC token contract', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      {
+        action: 'transfer',
+        amountUsd: 2,
+        symbol: 'USDC',
+        tokenAddress: '0x000000000000000000000000000000000000dead',
+        toAddress: router,
+      },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /canonical USDC/i)
+  })
+
+  it('denies token not on token allowlist', () => {
+    const usdc = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+    const policy = {
+      ...DEMO_POLICY,
+      universe: {
+        ...DEMO_POLICY.universe,
+        allowedTokenAddresses: [usdc],
+      },
+    }
+    const r = evaluateIntent(
+      policy,
+      {
+        action: 'transfer',
+        amountUsd: 2,
+        symbol: 'ETH',
+        tokenAddress: '0x4200000000000000000000000000000000000006',
+        toAddress: router,
+      },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /token allowlist/i)
+  })
 })
 
 describe('allow-receipt', () => {
@@ -127,8 +186,39 @@ describe('allow-receipt', () => {
     assert.ok(receipt)
     assert.equal(receipt!.intentHash, hashAction(intent))
     assert.equal(receipt!.calldataHash, intent.calldataHash)
+    assert.equal(receipt!.chain, 'base')
     const ok = verifyAllowReceipt(receipt!, { policy: DEMO_POLICY, intent })
     assert.equal(ok.ok, true)
+  })
+
+  it('rejects chain-mismatched receipt', () => {
+    const intent: SpendIntent = {
+      action: 'transfer',
+      amountUsd: 2,
+      toAddress: router,
+    }
+    const evaluation = evaluateIntent(DEMO_POLICY, intent, freshLedger())
+    const receipt = issueAllowReceipt({
+      policyId: 'default',
+      policy: DEMO_POLICY,
+      intent,
+      evaluation,
+    })!
+    const sepoliaPolicy = { ...DEMO_POLICY, chain: 'base-sepolia' as const }
+    const bad = verifyAllowReceipt(receipt, { policy: sepoliaPolicy, intent })
+    assert.equal(bad.ok, false)
+  })
+
+  it('binds digest to tokenAddress and chainId', () => {
+    const a: SpendIntent = {
+      action: 'transfer',
+      amountUsd: 2,
+      toAddress: router,
+      tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      chainId: 8453,
+    }
+    const b = { ...a, chainId: 84532 }
+    assert.notEqual(hashAction(a), hashAction(b))
   })
 
   it('rejects calldata swap after issue', () => {

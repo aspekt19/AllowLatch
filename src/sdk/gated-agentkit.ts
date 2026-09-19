@@ -85,10 +85,17 @@ async function httpJson(
   init?: RequestInit
 ): Promise<unknown> {
   const base = gate.baseUrl.replace(/\/$/, '')
-  const res = await fetch(`${base}${path}`, {
-    ...init,
-    headers: { ...httpHeaders(gate), ...(init?.headers as Record<string, string> | undefined) },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${base}${path}`, {
+      ...init,
+      headers: { ...httpHeaders(gate), ...(init?.headers as Record<string, string> | undefined) },
+    })
+  } catch (err) {
+    throw new Error(
+      `AllowLatch DENY (fail-closed): gate unreachable — ${err instanceof Error ? err.message : String(err)}`
+    )
+  }
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
     const errText =
@@ -100,7 +107,7 @@ async function httpJson(
         'No spending policy yet — apply a mandate first (agent.applyPolicy / AllowLatch UI). Non-spend tasks can continue.'
       )
     }
-    throw new Error(`AllowLatch HTTP ${res.status}: ${errText}`)
+    throw new Error(`AllowLatch DENY (fail-closed): HTTP ${res.status}: ${errText}`)
   }
   return body
 }

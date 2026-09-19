@@ -32,6 +32,13 @@ export const MandatePolicySchema = z.object({
     /** Contract allow/deny for swaps / approvals (checked when intent.contractAddress set). */
     allowedContracts: z.array(z.string()).default([]),
     deniedContracts: z.array(z.string()).default([]),
+    /**
+     * ERC-20 (or native sentinel) token contracts allowed for spends.
+     * Prefer this over symbols alone — same ticker can map to different contracts.
+     * Empty = no contract-level token filter (symbol rules still apply).
+     */
+    allowedTokenAddresses: z.array(z.string()).default([]),
+    deniedTokenAddresses: z.array(z.string()).default([]),
     /** If non-empty, intent.functionSelector must be on this list (4-byte selectors). */
     allowedFunctionSelectors: z.array(z.string()).default([]),
     deniedFunctionSelectors: z.array(z.string()).default([]),
@@ -59,12 +66,20 @@ export type MandatePolicy = z.infer<typeof MandatePolicySchema>
 export const SpendIntentSchema = z.object({
   action: z.enum(['swap', 'transfer', 'x402_pay']),
   amountUsd: z.number().positive(),
-  /** Token symbol for swaps, optional otherwise. */
+  /** Token symbol for swaps, optional otherwise. Prefer tokenAddress when known. */
   symbol: z.string().optional(),
+  /** ERC-20 token contract (or native asset sentinel). Stronger than symbol alone. */
+  tokenAddress: z.string().optional(),
   /** Destination / router / payTo address when known. */
   toAddress: z.string().optional(),
   /** Target contract (router, vault, etc.) when distinct from toAddress. */
   contractAddress: z.string().optional(),
+  /** Spender / allowance target when relevant (approvals). */
+  spenderAddress: z.string().optional(),
+  /** EVM chain id (8453 = Base, 84532 = Base Sepolia). Binds receipt + policy.chain. */
+  chainId: z.number().int().positive().optional(),
+  /** Optional network id string (base / base-sepolia). */
+  networkId: z.string().optional(),
   /** Requested slippage in bps for swaps. */
   slippageBps: z.number().int().nonnegative().optional(),
   /** Estimated gas cost in USD for daily gas cap checks. */
@@ -157,6 +172,8 @@ export const DEMO_POLICY: MandatePolicy = {
     deniedAddresses: [],
     allowedContracts: [],
     deniedContracts: [],
+    allowedTokenAddresses: [],
+    deniedTokenAddresses: [],
     allowedFunctionSelectors: [],
     deniedFunctionSelectors: [],
   },

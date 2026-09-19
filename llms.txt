@@ -17,13 +17,14 @@ You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or sim
    - "Evaluate this spend: transfer $8 to Uniswap"
    - "Why was that denied?"
 4. Never move funds on DENY. On ESCALATE, ask the human, then re-call with approval.
-5. On ALLOW: keep the **allow-receipt** and pass it into `execute_gated_transfer` (single-use `jti`). Do not sign without a valid receipt.
+5. On ALLOW: keep the **allow-receipt** and pass it into `execute_gated_transfer` (single-use `jti`). Do not sign without a valid receipt. Treat timeouts and API errors as DENY (fail-closed).
 6. Demo UI: https://allowlatch.vercel.app
 7. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
 8. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
 9. Embed (into your agent): https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
 10. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
-11. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+11. Security: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
+12. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
 
 ### Capabilities (host)
 
@@ -34,5 +35,7 @@ draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet
 - Gate decisions are deterministic code, not LLM overrides.
 - SERV on the host drafts/explains; never changes the verdict.
 - Execute requires a verified, unconsumed allow-receipt (or escalate + humanApproved).
+- Clients must fail-closed: network/timeout/malformed response → DENY, never sign.
+- Prefer token contract addresses + chainId over symbols alone; bind swap receipts with calldataHash.
 - AllowLatch does not custody funds (middleware + receipt; optional hybrid Spend Permissions on-chain).
 - Never ask the end user for SERV_API_KEY or CDP secrets.
