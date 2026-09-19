@@ -35,10 +35,11 @@
     "docs/CONNECT.md",
     "docs/SECURITY.md",
     "llms.txt",
-    "agent.json"
+    "agent.json",
+    "bin"
   ],
   "bin": {
-    "allowlatch-mcp": "./dist/mcp/server.js"
+    "allowlatch-mcp": "./bin/allowlatch-mcp"
   },
   "scripts": {
     "dev": "tsx src/agent.ts",
@@ -67,7 +68,15 @@
     "deploy:openserv": "npx @openserv-labs/client deploy .",
     "deploy:host": "node scripts/deploy-openserv-host.mjs"
   },
-  "keywords": [],
+  "keywords": [
+    "allowlatch",
+    "agentkit",
+    "x402",
+    "base",
+    "usdc",
+    "mcp",
+    "openserv"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -93,5 +102,13 @@
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aspekt19/AllowLatch.git"
+  },
+  "homepage": "https://allowlatch.vercel.app",
+  "bugs": {
+    "url": "https://github.com/aspekt19/AllowLatch/issues"
   }
 }

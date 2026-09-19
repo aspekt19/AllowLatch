@@ -1,0 +1,29 @@
+# Publish allowlatch to npm via Trusted Publishing (OIDC).
+# One-time setup on https://www.npmjs.com/package/allowlatch/access :
+#   Trusted Publisher → GitHub Actions → aspekt19/AllowLatch → this workflow
+# Until the package exists, create it once with a granular token (Bypass 2FA + publish).
+name: npm-publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
