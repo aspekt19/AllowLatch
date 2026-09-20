@@ -12,6 +12,10 @@
     "api/host-info.ts": {
       "maxDuration": 10,
       "includeFiles": "src/web/**,src/http/abuse-guard.ts"
+    },
+    "api/gate.ts": {
+      "maxDuration": 60,
+      "includeFiles": "src/**"
     }
   },
   "rewrites": [

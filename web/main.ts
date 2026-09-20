@@ -59,6 +59,16 @@ const btnEnforceHost = document.querySelector<HTMLButtonElement>('#btn-enforce-h
 const btnClearRules = document.querySelector<HTMLButtonElement>('#btn-clear-rules')!
 const policyExportHint = document.querySelector<HTMLParagraphElement>('#policy-export-hint')!
 const brainBadge = document.querySelector<HTMLSpanElement>('#brain-badge')
+const gateModeLabel = document.querySelector<HTMLElement>('#gate-mode-label')
+const gateHealth = document.querySelector<HTMLParagraphElement>('#gate-health')
+
+type HostedSession = {
+  policyId: string
+  ownerId: string
+  ownerToken?: string
+}
+
+const STORAGE_KEY = 'allowlatch.hosted.v1'
 
 let phase: Phase = 'mandate'
 let policy: MandatePolicy | null = null
@@ -68,7 +78,84 @@ let lastServ: ServMetaView | null = null
 let ledger: SpendLedger = freshLedger()
 let pendingEscalate: SpendIntent | null = null
 let busy = false
+let hosted: HostedSession | null = null
+let gateProxyReady = false
 
+function loadHosted(): HostedSession | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as HostedSession
+  } catch {
+    return null
+  }
+}
+
+function saveHosted(session: HostedSession | null) {
+  hosted = session
+  if (!session) localStorage.removeItem(STORAGE_KEY)
+  else localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+  updateGateModeUi()
+}
+
+function browserOwnerId(): string {
+  const key = 'allowlatch.ownerId'
+  let id = localStorage.getItem(key)
+  if (!id) {
+    id = `web-${crypto.randomUUID().slice(0, 8)}`
+    localStorage.setItem(key, id)
+  }
+  return id
+}
+
+function updateGateModeUi() {
+  if (gateModeLabel) {
+    gateModeLabel.textContent = hosted
+      ? `Mode: LIVE gate · ${hosted.policyId}`
+      : 'Mode: browser demo'
+  }
+  if (btnEnforceHost) {
+    btnEnforceHost.textContent = hosted
+      ? 'Re-sync policy on Gate · $0.025'
+      : 'Go live on Gate · $0.025'
+  }
+}
+
+async function refreshGateHealth() {
+  if (!gateHealth) return
+  try {
+    const [info, gate] = await Promise.all([
+      fetch('/api/host-info').then((r) => r.json()),
+      fetch('/api/gate').then((r) => r.json()).catch(() => ({ configured: false })),
+    ])
+    gateProxyReady = Boolean(gate.configured)
+    const active = info.gate?.isActive
+    const bits = [
+      gateProxyReady ? 'Site→Gate bridge ready' : 'Site→Gate bridge offline (operator env)',
+      active === true
+        ? 'OpenServ Gate online'
+        : active === false
+          ? 'OpenServ Gate offline'
+          : 'OpenServ Gate status unknown',
+    ]
+    gateHealth.textContent = bits.join(' · ')
+  } catch {
+    gateHealth.textContent = 'Could not reach /api/host-info'
+  }
+}
+
+async function callGate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const res = await fetch('/api/gate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = (await res.json()) as Record<string, unknown>
+  if (!res.ok || data.ok === false) {
+    throw new Error(String(data.error || `Gate HTTP ${res.status}`))
+  }
+  return data
+}
 function setBrain(label: string, live: boolean) {
   if (!brainBadge) return
   brainBadge.textContent = label
@@ -251,72 +338,91 @@ function downloadPolicyJson() {
 async function enforceOnHost() {
   const p = activePolicyJson()
   if (!p) return
-  const prompt = [
-    'apply_policy for policyId=default',
-    'Store this MandatePolicy JSON exactly, then confirm it is hosted:',
-    JSON.stringify(p),
-  ].join('\n')
+  if (busy) return
+  busy = true
+  btnEnforceHost.disabled = true
+  addMessage('guard', 'Applying policy on the hosted AllowLatch Gate ($0.025 x402)…')
 
-  let paywall: string | null = null
-  let gateActive: boolean | null = null
   try {
-    const info = await fetch('/api/host-info').then((r) => r.json())
-    paywall = info.gate?.paywallUrl || info.paywallUrl || null
-    gateActive = typeof info.gate?.isActive === 'boolean' ? info.gate.isActive : null
-  } catch {
-    /* ignore */
-  }
-
-  if (!paywall) {
-    addMessage(
-      'guard',
-      'Could not load the public paywall from /api/host-info. See docs/CONNECT.md for AllowLatch Gate URLs.\n\nMeanwhile copy this apply prompt into the OpenServ paywall manually:\n\n' +
-        prompt
-    )
-    try {
-      await navigator.clipboard.writeText(prompt)
-      addMessage('guard', 'Apply prompt copied to clipboard.')
-    } catch {
-      /* ignore */
+    if (!gateProxyReady) {
+      await refreshGateHealth()
     }
-    return
-  }
+    if (!gateProxyReady) {
+      // Fallback: open paywall + clipboard (legacy path)
+      const prompt = [
+        'apply_policy for policyId=default',
+        'Store this MandatePolicy JSON exactly, then confirm it is hosted:',
+        JSON.stringify(p),
+      ].join('\n')
+      const info = await fetch('/api/host-info').then((r) => r.json())
+      const paywall = info.gate?.paywallUrl || info.paywallUrl || null
+      try {
+        await navigator.clipboard.writeText(prompt)
+      } catch {
+        /* ignore */
+      }
+      if (paywall) window.open(paywall, '_blank', 'noopener,noreferrer')
+      addMessage(
+        'guard',
+        'Live bridge not configured on this deployment. Opened OpenServ paywall — paste the apply prompt (copied if allowed), pay $0.025, then use your agent with evaluate_intent.'
+      )
+      return
+    }
 
-  if (gateActive === false) {
+    const policyId = hosted?.policyId || `web-${browserOwnerId()}`
+    const ownerId = hosted?.ownerId || browserOwnerId()
+    const data = await callGate({
+      action: 'apply',
+      policyId,
+      ownerId,
+      ownerToken: hosted?.ownerToken,
+      policy: p,
+    })
+    const token =
+      typeof data.ownerToken === 'string'
+        ? data.ownerToken
+        : hosted?.ownerToken
+    saveHosted({
+      policyId,
+      ownerId,
+      ownerToken: token,
+    })
     addMessage(
       'guard',
-      'AllowLatch Gate is listed on OpenServ but currently offline. You still do not run a host — the operator brings it back. Opening the paywall anyway.'
+      `LIVE · policy stored on AllowLatch Gate.\n\npolicyId=${policyId}\nownerId=${ownerId}${
+        token ? `\nownerToken saved in this browser` : ''
+      }\n\nSpend scenarios below now call the hosted gate ($0.025 each, rate-limited). DENY / timeout = fail-closed.`
     )
+    setPhase('spend')
+    addSpendChips()
+  } catch (err) {
+    addMessage(
+      'guard',
+      `Go live failed (fail-closed): ${err instanceof Error ? err.message : String(err)}\n\nYou can keep testing in browser demo mode, or retry when the Gate is online.`
+    )
+  } finally {
+    busy = false
+    btnEnforceHost.disabled = false
   }
-
-  try {
-    await navigator.clipboard.writeText(prompt)
-  } catch {
-    /* ignore */
-  }
-  window.open(paywall, '_blank', 'noopener,noreferrer')
-  addMessage(
-    'guard',
-    'Opened hosted AllowLatch paywall ($0.025). Paste the apply prompt (copied if clipboard allowed) and pay.\n\nAfter that, agents call evaluate_intent on AllowLatch before every spend — not a local JSON file.'
-  )
 }
 
 function clearRules() {
   if (busy) return
-  if (!policy && !pendingDraft) return
+  if (!policy && !pendingDraft && !hosted) return
   policy = null
   pendingDraft = null
   lastMandate = ''
   lastServ = null
   pendingEscalate = null
   ledger = freshLedger()
+  saveHosted(null)
   setBrain('SERV ready when host key is set', false)
   renderPolicy()
   renderLedger()
   setPhase('mandate')
   addMessage(
     'guard',
-    'Rules cleared. Gate is idle - no MandatePolicy is active.\n\nWrite a new mandate (or load the example) whenever you want limits again.'
+    'Rules cleared (browser + live session forgotten here). Gate idle.\n\nWrite a new mandate when you want limits again.'
   )
   input.focus()
 }
@@ -433,7 +539,7 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy applied in this demo browser only.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nTo enforce for real agents: click "Enforce on AllowLatch · $0.025". Local demo snapshot is watermarked and not production.`
+    `Policy ready in this browser.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nNext: click “Go live on Gate · $0.025” to store it on the hosted Gate, then try spend scenarios (live decisions). Or try scenarios now in free demo mode.`
   )
   setPhase('spend')
   addSpendChips()
@@ -565,6 +671,65 @@ async function runSpend(intent: SpendIntent, _fromChip = false) {
 
   addMessage('spender', `Proposing spend:\n${summary}`)
 
+  // LIVE path: hosted OpenServ Gate
+  if (hosted) {
+    addMessage('guard', `Evaluating on hosted Gate (policyId=${hosted.policyId}, ~$0.025)…`)
+    try {
+      const data = await callGate({
+        action: 'evaluate',
+        policyId: hosted.policyId,
+        intent,
+      })
+      const result = (data.result || {}) as EvaluationResult & {
+        decision?: string
+        reasons?: string[]
+        receipt?: unknown
+      }
+      const decision = String(data.decision || result.decision || '').toLowerCase()
+      const fake: EvaluationResult = {
+        decision: (decision === 'allow' || decision === 'deny' || decision === 'escalate'
+          ? decision
+          : 'deny') as EvaluationResult['decision'],
+        reasons: Array.isArray(result.reasons)
+          ? result.reasons.map(String)
+          : [String(result.reasons || data.error || 'hosted gate')],
+        policyName: policy.name,
+        remainingDailyUsd: Number(result.remainingDailyUsd ?? 0),
+        remainingLifetimeUsd: Number(result.remainingLifetimeUsd ?? 0),
+        intent,
+      }
+      addDecision(fake)
+      if (fake.decision === 'allow') {
+        ledger = commitIntent(ledger, intent)
+        renderLedger()
+        const jti =
+          result.receipt && typeof result.receipt === 'object' && 'jti' in result.receipt
+            ? String((result.receipt as { jti?: string }).jti)
+            : null
+        addMessage(
+          'guard',
+          `LIVE ALLOW${jti ? ` · receipt jti=${jti}` : ''}.\nIn production AgentKit signs only with this receipt.`
+        )
+      } else if (fake.decision === 'escalate') {
+        pendingEscalate = intent
+        setPhase('escalate')
+        addMessage(
+          'guard',
+          'LIVE ESCALATE — reply yes to treat as human-approved for this demo ledger, or no to block.'
+        )
+      } else {
+        addMessage('guard', 'LIVE DENY — hosted deterministic gate blocked this spend.')
+      }
+    } catch (err) {
+      addMessage(
+        'guard',
+        `LIVE fail-closed DENY: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
+    return
+  }
+
+  // Free browser demo path
   const result = evaluateIntent(policy, intent, ledger)
   addDecision(result)
 
@@ -573,14 +738,14 @@ async function runSpend(intent: SpendIntent, _fromChip = false) {
     renderLedger()
     addMessage(
       'guard',
-      'ALLOW recorded on the ledger. In production, AgentKit signs on Base only at this point.'
+      'DEMO ALLOW (browser engine only). Click “Go live on Gate” for hosted decisions + receipt.'
     )
   } else if (result.decision === 'escalate') {
     pendingEscalate = intent
     setPhase('escalate')
     addMessage(
       'guard',
-      'Above your confirm threshold. Reply yes to treat as ALLOW for AgentKit, or no to block.'
+      'Above your confirm threshold. Reply yes to treat as ALLOW for this demo, or no to block.'
     )
   } else {
     addMessage('guard', 'Blocked by deterministic gate. Asking SERV to explain (verdict stays DENY)…')
@@ -772,9 +937,12 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch - SERV Policy Copilot + hard spending turnstile for AI agents with wallets on Base.\n\n1. State a mandate (try messy text or injection).\n2. SERV drafts a policy with conflicts - review, then apply.\n3. Propose spends; deterministic code returns ALLOW / DENY / ESCALATE. Funds move only after ALLOW + receipt.\n\nNo API keys for you - the host holds SERV. Building with AgentKit? Use Embed above, or start with your rules / Load example.'
+  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\nHow to use this page:\n1. Load example or write a mandate → Draft.\n2. Apply the draft (free in browser).\n3. Click “Go live on Gate · $0.025” to store the policy on the hosted Gate.\n4. Click spend scenarios — LIVE ALLOW / DENY / ESCALATE from the real gate.\n\nWithout Go live, scenarios run as a free browser demo. For your own agent later: npm i allowlatch.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)
+hosted = loadHosted()
+updateGateModeUi()
+void refreshGateHealth()
 renderPolicy()
 renderLedger()

@@ -216,12 +216,14 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
       <section class="section gate-section" id="gate" aria-labelledby="gate-title">
         <div class="shell">
           <div class="section-intro section-intro-wide">
-            <p class="eyebrow">Live product</p>
-            <h2 id="gate-title">Policy Copilot + gate</h2>
+            <p class="eyebrow">Use it here</p>
+            <h2 id="gate-title">Try AllowLatch now</h2>
             <p class="section-lead">
-              Draft a mandate, review the policy, then run spend scenarios. SERV on the host when
-              configured; local heuristics otherwise.
+              1) Write a mandate → 2) Apply the draft (free in-browser) → 3) <strong>Go live</strong>
+              ($0.025 stores policy on the hosted Gate) → 4) Click spend scenarios to see live
+              ALLOW / DENY / ESCALATE. No agent required for this path.
             </p>
+            <p class="muted tight" id="gate-health">Checking hosted Gate…</p>
           </div>
 
           <div class="product-shell">
@@ -280,19 +282,19 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
                   </div>
                   <div class="policy-actions is-hidden" id="policy-actions">
                     <button type="button" class="btn-policy-action" id="btn-enforce-host">
-                      Enforce on AllowLatch · $0.025
+                      Go live on Gate · $0.025
                     </button>
                     <button type="button" class="btn-policy-action" id="btn-download-policy">
-                      Demo snapshot (not enforced)
+                      Demo snapshot (browser only)
                     </button>
                     <button type="button" class="btn-clear-rules" id="btn-clear-rules">Clear rules</button>
                   </div>
                   <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
-                    Production = pay AllowLatch ($0.025) so the host stores the policy and your agent
-                    calls <code>evaluate_intent</code> before every spend.
-                    <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE.md</a>
-                    ·
-                    <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED.md</a>
+                    <strong id="gate-mode-label">Mode: browser demo</strong>
+                    — draft is free. <em>Go live</em> stores the policy on the hosted Gate ($0.025);
+                    spend chips then hit the live gate. Agents:
+                    <code>npm i allowlatch</code> ·
+                    <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED</a>.
                   </p>
                 </div>
 

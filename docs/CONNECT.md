@@ -2,7 +2,16 @@
 
 You do **not** run a server. You do **not** need API keys, `.env`, or CDP secrets.
 
-## What you say to your agent
+## Try it on the website (no agent)
+
+1. Open https://allowlatch.vercel.app → **Try AllowLatch now**
+2. Load example mandate → **Draft** → **Apply** (free browser preview)
+3. Click **Go live on Gate · $0.025** — policy is stored on the hosted Gate
+4. Click spend scenarios — live ALLOW / DENY / ESCALATE from the real gate
+
+Draft/explain use `/api/copilot`. Live apply/evaluate use `/api/gate` → OpenServ x402.
+
+## What you say to your own agent
 
 > Connect to AllowLatch on OpenServ. Set my spending mandate:  
 > Agent wallet $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap allowed. Ask me above $8. No meme coins.  
