@@ -108,6 +108,7 @@ export function siteGateEvaluate(args: {
       policy: session.policy,
       policyId: session.policyId,
       intent: args.intent,
+      evaluation,
     })
     session.ledger = commitIntent(session.ledger, args.intent)
     session.updatedAt = Date.now()
