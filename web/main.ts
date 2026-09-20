@@ -56,19 +56,33 @@ const btnSend = document.querySelector<HTMLButtonElement>('#btn-send')!
 const policyActions = document.querySelector<HTMLDivElement>('#policy-actions')!
 const btnDownloadPolicy = document.querySelector<HTMLButtonElement>('#btn-download-policy')!
 const btnEnforceHost = document.querySelector<HTMLButtonElement>('#btn-enforce-host')!
+const btnConnectAgent = document.querySelector<HTMLButtonElement>('#btn-connect-agent')
 const btnClearRules = document.querySelector<HTMLButtonElement>('#btn-clear-rules')!
 const policyExportHint = document.querySelector<HTMLParagraphElement>('#policy-export-hint')!
 const brainBadge = document.querySelector<HTMLSpanElement>('#brain-badge')
 const gateModeLabel = document.querySelector<HTMLElement>('#gate-mode-label')
 const gateHealth = document.querySelector<HTMLParagraphElement>('#gate-health')
+const connectPanel = document.querySelector<HTMLElement>('#connect-panel')
+const connectInstructionEl = document.querySelector<HTMLPreElement>('#connect-instruction')
+const connectPolicyIdEl = document.querySelector<HTMLElement>('#connect-policy-id')
+const connectCopyStatus = document.querySelector<HTMLElement>('#connect-copy-status')
+const btnCopyAgentInstruction = document.querySelector<HTMLButtonElement>('#btn-copy-agent-instruction')
+const btnCopyAgentCode = document.querySelector<HTMLButtonElement>('#btn-copy-agent-code')
+const btnCopyAgentMcp = document.querySelector<HTMLButtonElement>('#btn-copy-agent-mcp')
 
 type HostedSession = {
   policyId: string
   ownerId: string
   ownerToken?: string
+  /** Snapshot so Connect works after reload. */
+  policy?: MandatePolicy
 }
 
 const STORAGE_KEY = 'allowlatch.hosted.v1'
+let cachedTriggerUrl =
+  'https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53'
+let cachedPaywallUrl =
+  'https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53'
 
 let phase: Phase = 'mandate'
 let policy: MandatePolicy | null = null
@@ -92,10 +106,12 @@ function loadHosted(): HostedSession | null {
 }
 
 function saveHosted(session: HostedSession | null) {
+  if (session && policy) session = { ...session, policy }
   hosted = session
   if (!session) localStorage.removeItem(STORAGE_KEY)
   else localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
   updateGateModeUi()
+  renderConnectPanel()
 }
 
 function browserOwnerId(): string {
@@ -111,7 +127,7 @@ function browserOwnerId(): string {
 function updateGateModeUi() {
   if (gateModeLabel) {
     gateModeLabel.textContent = hosted
-      ? `Mode: LIVE gate · ${hosted.policyId}`
+      ? `Mode: LIVE · ${hosted.policyId}`
       : 'Mode: browser demo'
   }
   if (btnEnforceHost) {
@@ -119,6 +135,7 @@ function updateGateModeUi() {
       ? 'Re-sync on server gate'
       : 'Go live (server gate)'
   }
+  btnConnectAgent?.classList.toggle('is-hidden', !hosted)
 }
 
 async function refreshGateHealth() {
@@ -129,6 +146,8 @@ async function refreshGateHealth() {
       fetch('/api/gate').then((r) => r.json()).catch(() => ({ configured: false })),
     ])
     gateProxyReady = Boolean(gate.configured)
+    if (info.gate?.triggerUrl) cachedTriggerUrl = String(info.gate.triggerUrl)
+    if (info.gate?.paywallUrl) cachedPaywallUrl = String(info.gate.paywallUrl)
     const backend = gate.backend || 'site'
     const active = info.gate?.isActive
     const bits = [
@@ -147,6 +166,124 @@ async function refreshGateHealth() {
   }
 }
 
+function buildAgentInstruction(): string {
+  const p = hosted?.policy || policy
+  const policyId = hosted?.policyId || 'default'
+  const ownerId = hosted?.ownerId || browserOwnerId()
+  const ownerToken = hosted?.ownerToken
+  const policyJson = p ? JSON.stringify(p) : '{}'
+  return [
+    'You are my spending agent. AllowLatch holds my rules — do not invent allow/deny.',
+    '',
+    `policyId: ${policyId}`,
+    `ownerId: ${ownerId}`,
+    ownerToken ? `ownerToken: ${ownerToken}` : null,
+    `OpenServ trigger: ${cachedTriggerUrl}`,
+    `Paywall (human pay): ${cachedPaywallUrl}`,
+    '',
+    'Setup (once):',
+    '1) npm i allowlatch',
+    '2) Apply this MandatePolicy to OpenServ AllowLatch Gate (paywall or payWorkflow, $0.025):',
+    `apply_policy for policyId=${policyId}`,
+    `ownerId=${ownerId}`,
+    ownerToken ? `ownerToken=${ownerToken}` : null,
+    policyJson,
+    '',
+    'Before EVERY transfer/swap/x402 payment:',
+    '- Call assertSpend({ policyId, triggerUrl, walletPrivateKey, intent }) from allowlatch',
+    '- On DENY or timeout → stop (fail-closed). On ESCALATE → ask me. On ALLOW → keep allow-receipt jti, then sign.',
+    '- Never call a raw wallet signer in parallel. Prefer createGatedAgentKit / allowLatchActionProvider.',
+    '',
+    'I set and change limits on https://allowlatch.vercel.app — you only enforce them.',
+  ]
+    .filter((line): line is string => line != null && line !== '')
+    .join('\n')
+}
+
+function buildAgentCodeSnippet(): string {
+  const policyId = hosted?.policyId || 'default'
+  return `import { assertSpend, allowLatchActionProvider } from 'allowlatch'
+// npm i allowlatch
+
+const POLICY_ID = ${JSON.stringify(policyId)}
+const TRIGGER = process.env.ALLOWLATCH_TRIGGER_URL || ${JSON.stringify(cachedTriggerUrl)}
+
+const { receipt } = await assertSpend({
+  policyId: POLICY_ID,
+  triggerUrl: TRIGGER,
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
+  intent: {
+    action: 'transfer',
+    amountUsd: 5,
+    toAddress: '0x…',
+    symbol: 'USDC',
+  },
+})
+// Only then sign. receipt.jti is single-use.
+
+// Or AgentKit:
+// actionProviders: [allowLatchActionProvider({ policyId: POLICY_ID, triggerUrl: TRIGGER })]
+`
+}
+
+function buildAgentMcpConfig(): string {
+  const policyId = hosted?.policyId || 'default'
+  return JSON.stringify(
+    {
+      mcpServers: {
+        allowlatch: {
+          command: 'npx',
+          args: ['-y', '--package=allowlatch', 'allowlatch-mcp'],
+          env: {
+            ALLOWLATCH_POLICY_ID: policyId,
+            ALLOWLATCH_TRIGGER_URL: cachedTriggerUrl,
+            WALLET_PRIVATE_KEY: 'YOUR_X402_PAYER_KEY',
+          },
+        },
+      },
+    },
+    null,
+    2
+  )
+}
+
+function renderConnectPanel() {
+  const show = Boolean(hosted)
+  connectPanel?.classList.toggle('is-hidden', !show)
+  if (!show || !connectInstructionEl) return
+  if (connectPolicyIdEl) connectPolicyIdEl.textContent = hosted!.policyId
+  connectInstructionEl.textContent = buildAgentInstruction()
+}
+
+function openConnectPanel() {
+  if (!hosted) {
+    addMessage('guard', 'Go live first — then Connect your agent with your policyId.')
+    return
+  }
+  if (!policy && hosted.policy) {
+    policy = hosted.policy
+    renderPolicy()
+  }
+  renderConnectPanel()
+  connectPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  addMessage(
+    'guard',
+    `Connect pack ready for policyId=${hosted.policyId}.\n\nCopy the agent instruction (right rail) and paste it into your agent. Limits stay on AllowLatch — the agent only evaluates before signing.`
+  )
+}
+
+async function copyText(label: string, text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    if (connectCopyStatus) connectCopyStatus.textContent = `${label} copied.`
+    addMessage('guard', `${label} copied to clipboard.`)
+  } catch {
+    if (connectCopyStatus) {
+      connectCopyStatus.textContent = 'Clipboard blocked — select the text and copy manually.'
+    }
+  }
+}
+
 async function callGate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch('/api/gate', {
     method: 'POST',
@@ -159,6 +296,7 @@ async function callGate(payload: Record<string, unknown>): Promise<Record<string
   }
   return data
 }
+
 function setBrain(label: string, live: boolean) {
   if (!brainBadge) return
   brainBadge.textContent = label
@@ -375,16 +513,16 @@ async function enforceOnHost() {
       policyId,
       ownerId,
       ownerToken: token,
+      policy: p as MandatePolicy,
     })
     const backend = String(data.backend || 'site')
     addMessage(
       'guard',
-      `LIVE · policy on server gate (${backend}).\n\npolicyId=${policyId}\nownerId=${ownerId}${
-        token ? `\nownerToken saved in this browser` : ''
-      }\n\nSpend scenarios now call the server. ALLOW includes a real allow-receipt (jti).`
+      `LIVE · policy on server gate (${backend}).\n\npolicyId=${policyId}\n\nNext: click “Connect your agent” (right rail) — copy the instruction into your agent. Limits stay here; the agent only asks AllowLatch before signing.`
     )
     setPhase('spend')
     addSpendChips()
+    openConnectPanel()
   } catch (err) {
     addMessage(
       'guard',
@@ -870,33 +1008,28 @@ btnDownloadPolicy.addEventListener('click', () => downloadPolicyJson())
 btnEnforceHost.addEventListener('click', () => {
   void enforceOnHost()
 })
-
-const EMBED_SNIPPET = `// In YOUR AgentKit agent - before any transfer/swap/x402 pay:
-// 1) npm i @openserv-labs/client
-// 2) copy src/sdk/assert-spend.ts (+ receipt helpers) from
-//    https://github.com/aspekt19/AllowLatch  OR depend on the repo
-// 3) set ALLOWLATCH_TRIGGER_URL from discoverServices() / host logs
-// 4) set WALLET_PRIVATE_KEY for x402 payer (agent wallet)
-
-import { assertSpend } from './assert-spend.js' // path after you copy the SDK file
-
-// NEVER call AgentKit transfer until this resolves with ALLOW + receipt
-const { receipt } = await assertSpend({
-  triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
-  intent: {
-    action: 'transfer',
-    amountUsd: 5,
-    toAddress: '0x…', // destination
-    symbol: 'USDC',
-  },
+btnConnectAgent?.addEventListener('click', () => openConnectPanel())
+btnCopyAgentInstruction?.addEventListener('click', () => {
+  void copyText('Agent instruction', buildAgentInstruction())
+})
+btnCopyAgentCode?.addEventListener('click', () => {
+  void copyText('Code snippet', buildAgentCodeSnippet())
+})
+btnCopyAgentMcp?.addEventListener('click', () => {
+  void copyText('MCP config', buildAgentMcpConfig())
 })
 
-// Then sign / execute only with this receipt (or call AllowLatch execute_gated_transfer).
-console.log('allowed', receipt?.jti)
+const EMBED_SNIPPET = `import { assertSpend } from 'allowlatch'
+// npm i allowlatch — set ALLOWLATCH_TRIGGER_URL + WALLET_PRIVATE_KEY (x402 payer)
 
-// Apply mandate once via https://allowlatch.vercel.app → Enforce · $0.025
-// Full guide: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+const { receipt } = await assertSpend({
+  policyId: process.env.ALLOWLATCH_POLICY_ID || 'default',
+  triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL,
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+  intent: { action: 'transfer', amountUsd: 5, toAddress: '0x…', symbol: 'USDC' },
+})
+// Sign only after ALLOW + receipt. Prefer createGatedAgentKit.
+// Set rules on https://allowlatch.vercel.app → Go live → Connect your agent
 `
 
 const btnCopyEmbed = document.querySelector<HTMLButtonElement>('#btn-copy-embed-snippet')
@@ -925,12 +1058,16 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\nHow to use this page:\n1. Load example or write a mandate → Draft.\n2. Apply the draft.\n3. Click “Go live (server gate)” — policy + ledger move to the server; ALLOW returns a real receipt.\n4. Click spend scenarios (ALLOW / DENY / ESCALATE).\n\nLater, your own agent uses npm i allowlatch + OpenServ x402 ($0.025).'
+  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → Draft → Apply.\n2. Go live (server gate).\n3. Connect your agent — paste the instruction into Cursor / AgentKit / OpenServ.\n4. Try spend scenarios here to verify.\n\nYou set rules on this site. The agent only asks AllowLatch before signing.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)
 hosted = loadHosted()
+if (hosted?.policy && !policy) {
+  policy = hosted.policy
+}
 updateGateModeUi()
+renderConnectPanel()
 void refreshGateHealth()
 renderPolicy()
 renderLedger()

@@ -6,11 +6,11 @@ You do **not** run a server. You do **not** need API keys, `.env`, or CDP secret
 
 1. Open https://allowlatch.vercel.app → **Try AllowLatch now**
 2. Load example mandate → **Draft** → **Apply**
-3. Click **Go live (server gate)** — policy is stored on the site gate; ALLOW issues real allow-receipts
-4. Click spend scenarios — live ALLOW / DENY / ESCALATE
+3. Click **Go live (server gate)** — policy on server gate + real allow-receipts
+4. Click **Connect your agent** — copy instruction / code / MCP into your agent
+5. Click spend scenarios here to verify ALLOW / DENY / ESCALATE
 
-Draft/explain use `/api/copilot` (SERV). Apply/evaluate use `/api/gate` (deterministic engine + receipt).  
-Your own agent later still uses OpenServ x402 **AllowLatch Gate** (`npm i allowlatch`) — see below.
+Rules stay on AllowLatch. The agent only calls `assertSpend` before signing ($0.025 x402 on OpenServ for production agents).
 
 ## What you say to your own agent
 

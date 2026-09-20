@@ -284,6 +284,9 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
                     <button type="button" class="btn-policy-action" id="btn-enforce-host">
                       Go live (server gate)
                     </button>
+                    <button type="button" class="btn-policy-action is-hidden" id="btn-connect-agent">
+                      Connect your agent
+                    </button>
                     <button type="button" class="btn-policy-action" id="btn-download-policy">
                       Demo snapshot (browser only)
                     </button>
@@ -291,10 +294,33 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
                   </div>
                   <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
                     <strong id="gate-mode-label">Mode: browser demo</strong>
-                    — draft is free. <em>Go live</em> turns on the server gate (receipts). Your own
-                    agent later: <code>npm i allowlatch</code> · OpenServ x402 ($0.025).
-                    <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED</a>.
+                    — draft is free. <em>Go live</em>, then <em>Connect your agent</em> so rules stay on
+                    this site and the agent only asks AllowLatch before signing.
                   </p>
+                </div>
+
+                <div class="rail-block connect-panel is-hidden" id="connect-panel" aria-label="Connect your agent">
+                  <div class="rail-head">
+                    <h3 class="rail-title">Connect your agent</h3>
+                    <span class="rail-status" id="connect-policy-id">—</span>
+                  </div>
+                  <p class="muted tight">
+                    Rules live here. Paste the instruction into your agent (Cursor, OpenServ, AgentKit…).
+                    It must call AllowLatch before every spend — not invent ALLOW.
+                  </p>
+                  <pre class="connect-pre" id="connect-instruction" tabindex="0"></pre>
+                  <div class="connect-actions">
+                    <button type="button" class="btn-policy-action" id="btn-copy-agent-instruction">
+                      Copy instruction
+                    </button>
+                    <button type="button" class="btn-policy-action" id="btn-copy-agent-code">
+                      Copy code snippet
+                    </button>
+                    <button type="button" class="btn-policy-action" id="btn-copy-agent-mcp">
+                      Copy MCP config
+                    </button>
+                  </div>
+                  <p class="muted tight" id="connect-copy-status" aria-live="polite"></p>
                 </div>
 
                 <div class="rail-block">

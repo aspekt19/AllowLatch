@@ -1013,6 +1013,29 @@ button {
   background: var(--accent-soft);
 }
 
+.connect-panel .connect-pre {
+  margin: 10px 0 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-soft);
+}
+
+.connect-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .policy-export-hint a {
   color: var(--accent-ink);
 }
