@@ -219,9 +219,9 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
             <p class="eyebrow">Use it here</p>
             <h2 id="gate-title">Try AllowLatch now</h2>
             <p class="section-lead">
-              1) Write a mandate → 2) Apply the draft (free in-browser) → 3) <strong>Go live</strong>
-              ($0.025 stores policy on the hosted Gate) → 4) Click spend scenarios to see live
-              ALLOW / DENY / ESCALATE. No agent required for this path.
+              1) Write a mandate → 2) Apply the draft → 3) <strong>Go live</strong> (stores policy on
+              the server gate + issues real allow-receipts) → 4) Click spend scenarios for live
+              ALLOW / DENY / ESCALATE. No agent required.
             </p>
             <p class="muted tight" id="gate-health">Checking hosted Gate…</p>
           </div>
@@ -282,7 +282,7 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
                   </div>
                   <div class="policy-actions is-hidden" id="policy-actions">
                     <button type="button" class="btn-policy-action" id="btn-enforce-host">
-                      Go live on Gate · $0.025
+                      Go live (server gate)
                     </button>
                     <button type="button" class="btn-policy-action" id="btn-download-policy">
                       Demo snapshot (browser only)
@@ -291,9 +291,8 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
                   </div>
                   <p class="muted tight policy-export-hint is-hidden" id="policy-export-hint">
                     <strong id="gate-mode-label">Mode: browser demo</strong>
-                    — draft is free. <em>Go live</em> stores the policy on the hosted Gate ($0.025);
-                    spend chips then hit the live gate. Agents:
-                    <code>npm i allowlatch</code> ·
+                    — draft is free. <em>Go live</em> turns on the server gate (receipts). Your own
+                    agent later: <code>npm i allowlatch</code> · OpenServ x402 ($0.025).
                     <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED</a>.
                   </p>
                 </div>

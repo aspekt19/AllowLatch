@@ -1,6 +1,7 @@
 /**
- * Product path from the website: apply / evaluate against hosted AllowLatch Gate (x402).
- * Operator subsidizes the $0.025 payer key — rate-limited per IP.
+ * Product path from the website: apply / evaluate.
+ * Default: durable-enough site gate on Vercel (engine + receipt).
+ * Optional: OpenServ x402 when ALLOWLATCH_GATE_BACKEND=openserv.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
@@ -11,12 +12,13 @@ import {
   checkRateLimit,
   clientIp,
 } from '../src/http/abuse-guard.js'
+import { MandatePolicySchema, SpendIntentSchema } from '../src/policy/schema.js'
+import { siteGateApply, siteGateConfigured, siteGateEvaluate } from '../src/web/site-gate.js'
 import {
   gateProxyConfigured,
   hostApplyPolicy,
   hostEvaluateIntent,
 } from '../src/web/gate-proxy.js'
-import { MandatePolicySchema, SpendIntentSchema } from '../src/policy/schema.js'
 
 export const config = {
   maxDuration: 60,
@@ -37,6 +39,12 @@ const EvaluateSchema = z.object({
 })
 
 const BodySchema = z.discriminatedUnion('action', [ApplySchema, EvaluateSchema])
+
+function backend(): 'site' | 'openserv' {
+  const raw = (process.env.ALLOWLATCH_GATE_BACKEND || 'site').trim().toLowerCase()
+  if (raw === 'openserv') return 'openserv'
+  return 'site'
+}
 
 function setCors(res: VercelResponse, origin: string | undefined) {
   const allowed = allowedCopilotOrigins()
@@ -64,11 +72,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'GET') {
+    const mode = backend()
     res.status(200).json({
       ok: true,
-      configured: gateProxyConfigured(),
-      priceUsd: '0.025',
-      note: 'POST { action: apply|evaluate } — hosted OpenServ Gate via x402',
+      backend: mode,
+      configured:
+        mode === 'openserv' ? gateProxyConfigured() : siteGateConfigured(),
+      priceUsd: mode === 'openserv' ? '0.025' : '0',
+      note:
+        mode === 'openserv'
+          ? 'POST apply|evaluate via OpenServ x402'
+          : 'POST apply|evaluate on site gate (engine + receipt). Free to try from the website.',
     })
     return
   }
@@ -84,11 +98,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
-  if (!gateProxyConfigured()) {
+  const mode = backend()
+  if (mode === 'openserv' && !gateProxyConfigured()) {
     res.status(503).json({
       ok: false,
-      error:
-        'Live gate proxy not configured (need ALLOWLATCH_TRIGGER_URL + WALLET_PRIVATE_KEY on Vercel)',
+      error: 'OpenServ gate proxy not configured',
+    })
+    return
+  }
+  if (mode === 'site' && !siteGateConfigured()) {
+    res.status(503).json({
+      ok: false,
+      error: 'Site gate needs ALLOWLATCH_RECEIPT_SECRET or SERV_API_KEY',
     })
     return
   }
@@ -96,8 +117,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ip = clientIp(
     req as unknown as { headers?: Record<string, unknown>; socket?: { remoteAddress?: string } }
   )
-  // Stricter than copilot — each call costs ~$0.025
-  const rate = checkRateLimit(`gate:${ip}`, Number(process.env.ALLOWLATCH_GATE_RATE_MAX || 8))
+  const rateMax = mode === 'openserv' ? Number(process.env.ALLOWLATCH_GATE_RATE_MAX || 8) : 40
+  const rate = checkRateLimit(`gate:${ip}`, rateMax)
   if (!rate.ok) {
     res.setHeader('Retry-After', '60')
     res.status(rate.status).json({ ok: false, error: rate.error })
@@ -127,6 +148,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...body.policy,
         ownerId: body.ownerId,
       })
+
+      if (mode === 'site') {
+        const applied = siteGateApply({
+          policyId: body.policyId,
+          ownerId: body.ownerId,
+          ownerToken: body.ownerToken,
+          policy,
+        })
+        res.status(200).json({
+          ok: true,
+          action: 'apply',
+          backend: 'site',
+          ...applied,
+        })
+        return
+      }
+
       const result = await hostApplyPolicy({
         policyId: body.policyId,
         ownerId: body.ownerId,
@@ -136,11 +174,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(200).json({
         ok: true,
         action: 'apply',
+        backend: 'openserv',
         policyId: body.policyId,
         ownerId: body.ownerId,
         result,
         ownerToken:
           typeof result.ownerToken === 'string' ? result.ownerToken : body.ownerToken ?? null,
+      })
+      return
+    }
+
+    if (mode === 'site') {
+      const evaluated = siteGateEvaluate({
+        policyId: body.policyId,
+        intent: body.intent,
+      })
+      res.status(200).json({
+        ok: true,
+        action: 'evaluate',
+        backend: 'site',
+        policyId: body.policyId,
+        decision: evaluated.decision,
+        result: evaluated.result,
+        receipt: evaluated.receipt,
       })
       return
     }
@@ -153,6 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({
       ok: true,
       action: 'evaluate',
+      backend: 'openserv',
       policyId: body.policyId,
       decision: decision || null,
       result,
@@ -160,8 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    const failClosed = /DENY|unreachable|payment|not JSON|not configured/i.test(message)
-    res.status(failClosed ? 502 : 500).json({
+    res.status(502).json({
       ok: false,
       error: message,
       failClosed: true,

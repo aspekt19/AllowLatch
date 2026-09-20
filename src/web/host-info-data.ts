@@ -92,7 +92,7 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
     note:
-      'You never run npm run dev. Discover AllowLatch Gate on OpenServ (or use paywall/triggerUrl here), pay $0.025, get allow-receipt. allowlatch.vercel.app is the demo UI only.',
+      'Website: draft + Go live uses /api/gate (server engine + receipts). Your agent: discover AllowLatch Gate on OpenServ, pay $0.025 x402. You never run npm run dev.',
   }
 }
 
@@ -121,6 +121,6 @@ export function getHostInfo(): HostInfo {
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
     note:
-      'You never run npm run dev. Discover AllowLatch Gate on OpenServ (or use paywall/triggerUrl here), pay $0.025, get allow-receipt. allowlatch.vercel.app is the demo UI only.',
+      'Website: draft + Go live uses /api/gate (server engine + receipts). Your agent: discover AllowLatch Gate on OpenServ, pay $0.025 x402. You never run npm run dev.',
   }
 }
