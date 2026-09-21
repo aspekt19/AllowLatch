@@ -222,31 +222,29 @@ code {
   content: "";
   position: absolute;
   inset: 0;
-  /* Keep brand/CTA on clean paper; reveal turnstile to the right of copy. */
+  /* Brand/CTA on clean paper; turnstile reads in the right half. */
   background:
     linear-gradient(
       90deg,
-      rgba(244, 246, 248, 0.98) 0%,
-      rgba(244, 246, 248, 0.96) 28%,
-      rgba(244, 246, 248, 0.82) 46%,
-      rgba(244, 246, 248, 0.28) 68%,
-      rgba(244, 246, 248, 0.45) 100%
+      rgba(244, 246, 248, 1) 0%,
+      rgba(244, 246, 248, 0.98) 36%,
+      rgba(244, 246, 248, 0.88) 48%,
+      rgba(244, 246, 248, 0.25) 64%,
+      rgba(244, 246, 248, 0.4) 100%
     ),
-    linear-gradient(180deg, rgba(244, 246, 248, 0.15) 0%, rgba(244, 246, 248, 0.7) 78%, var(--paper) 100%);
+    linear-gradient(180deg, rgba(244, 246, 248, 0.12) 0%, rgba(244, 246, 248, 0.65) 78%, var(--paper) 100%);
 }
 
 .hero-diagram {
-  width: 118%;
+  width: 100%;
   height: 100%;
-  max-width: none;
   object-fit: cover;
-  object-position: 62% 50%;
-  transform: translateX(8%);
+  object-position: 58% 50%;
   opacity: 1;
 }
 
 .hero-arm {
-  transform-origin: 624px 309px;
+  transform-origin: 764px 309px;
   animation: arm-breathe 5.5s var(--ease) infinite;
 }
 
@@ -1506,10 +1504,8 @@ button {
   }
 
   .hero-diagram {
-    width: 130%;
-    transform: translateX(12%);
-    object-position: 70% 50%;
-    opacity: 0.5;
+    object-position: 72% 50%;
+    opacity: 0.48;
   }
 
   .section {
