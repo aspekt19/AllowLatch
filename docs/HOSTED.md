@@ -1,4 +1,8 @@
-# Hosted AllowLatch (users run nothing)
+# Hosted AllowLatch (OpenServ fallback)
+
+> **Primary product path is always-on Vercel** `/api/gate` with native Base USDC x402.
+> This document is for the **optional OpenServ** keep-alive only.
+
 
 End users and their agents **never** run `npm run dev`, never set `SERV_API_KEY`, and never deploy this repo.
 

@@ -232,11 +232,11 @@ import { assertSpend, createGatedAgentKit } from 'allowlatch'</code></pre>
             <li>
               <span class="install-tag">OpenServ</span>
               <div>
-                <h3>Discover + x402</h3>
+                <h3>OpenServ (optional fallback)</h3>
                 <p>
-                  Agent finds <strong>AllowLatch Gate</strong>, pays <strong>$0.025</strong> per call
-                  (or evaluate packs). No clone. Requires the hosted gate process to be online —
-                  check <a href="/api/host-info">/api/host-info</a>; timeout → DENY.
+                  Marketplace discover + x402 if the always-on site gate is unreachable.
+                  Primary path is <code>/api/gate</code> ($0.025 USDC on Base). Check
+                  <a href="/api/host-info">/api/host-info</a>.
                 </p>
                 <pre class="install-code" tabindex="0"><code>const services = await client.payments.discoverServices()
 const gate = services.find((s) => /allowlatch/i.test(s.name))
@@ -250,16 +250,16 @@ await client.payments.payWorkflow({ triggerUrl: gate.webhookUrl, input: { prompt
               <p class="eyebrow">Paste to your agent</p>
               <button type="button" class="btn btn-solid" id="btn-copy-owner-prompt">Copy prompt</button>
             </div>
-            <pre class="agent-prompt" id="owner-agent-prompt" tabindex="0">Connect to AllowLatch Gate on OpenServ (discover /allowlatch/i or https://allowlatch.vercel.app/api/host-info).
+            <pre class="agent-prompt" id="owner-agent-prompt" tabindex="0">Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Connect pack).
+Primary gateUrl: https://allowlatch.vercel.app/api/gate (always-on; agents pay $0.025 USDC x402 on Base).
 I do not run a host and I will not give you SERV_API_KEY.
 
-Set my spending mandate, then apply it on the gate:
-«Agent wallet $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap router allowed. Ask me above $8. No meme coins.»
-
-Before every transfer, swap, or x402 payment: call AllowLatch assertSpend / evaluate_intent.
-- ALLOW + single-use allow-receipt (jti) → only then may you sign.
-- DENY, ESCALATE (ask me), timeout, or malformed response → do not sign (fail-closed).
-Never invent ALLOW. Prefer createGatedAgentKit so raw AgentKit cannot bypass the latch.</pre>
+Set my spending mandate on the site, then before every transfer/swap:
+assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent }).
+- ALLOW + allow-receipt (jti) → only then may you sign.
+- DENY, ESCALATE (ask me), timeout → do not sign (fail-closed).
+OpenServ triggerUrl is optional fallback only.
+Never invent ALLOW. Prefer createGatedAgentKit.</pre>
             <p class="muted tight" id="owner-prompt-copy-status" aria-live="polite"></p>
           </div>
 

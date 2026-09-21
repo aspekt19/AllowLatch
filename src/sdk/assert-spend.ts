@@ -91,20 +91,23 @@ function parseGateJson(text: string): Record<string, unknown> {
 
 /**
  * Call AllowLatch and refuse to proceed without ALLOW + valid receipt.
- * Prefer always-on `gateUrl` (Vercel /api/gate) when you applied on the website.
- * OpenServ x402 (`triggerUrl`) is the paid marketplace path when the host is online.
+ *
+ * Primary: always-on Vercel `/api/gate` with native Base USDC x402 ($0.025).
+ * Fallback: OpenServ x402 (`triggerUrl` / `workflowId`) when site gate fails or is skipped.
  */
 export async function assertSpend(args: {
   intent: SpendIntent
   policyId?: string
-  /** Always-on website gate — https://allowlatch.vercel.app/api/gate */
+  /** Always-on website gate (default: https://allowlatch.vercel.app/api/gate) */
   gateUrl?: string
   /** HMAC session from website Go live (survives Vercel cold starts). */
   sessionSeal?: string
-  /** OpenServ x402 trigger URL (from discoverServices().webhookUrl) */
+  /** OpenServ x402 trigger URL — fallback / optional marketplace path */
   triggerUrl?: string
   workflowId?: number
-  /** Payer wallet — required for programmatic x402 (OpenServ path) */
+  /** Skip site gate and use OpenServ only */
+  preferOpenServ?: boolean
+  /** Payer wallet — pays site-gate x402 and/or OpenServ x402 */
   walletPrivateKey?: string
   /** If true, throw unless decision===allow and receipt verifies (default true). */
   requireReceipt?: boolean
@@ -112,71 +115,116 @@ export async function assertSpend(args: {
   const intent = SpendIntentSchema.parse(args.intent)
   const policyId = args.policyId ?? 'default'
   const requireReceipt = args.requireReceipt !== false
-  const privateKey = args.walletPrivateKey ?? process.env.WALLET_PRIVATE_KEY
+  const privateKey = args.walletPrivateKey ?? process.env.WALLET_PRIVATE_KEY ?? process.env.AGENT_PRIVATE_KEY
   const gateUrl =
     args.gateUrl?.trim() ||
     process.env.ALLOWLATCH_GATE_URL?.trim() ||
-    ''
+    'https://allowlatch.vercel.app/api/gate'
+  const preferOpenServ =
+    args.preferOpenServ === true ||
+    process.env.ALLOWLATCH_PREFER_OPENSERV === '1'
 
   let raw: unknown
+  let usedSiteGate = false
 
-  if (gateUrl) {
-    try {
-      const res = await fetch(gateUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          action: 'evaluate',
-          policyId,
-          intent,
-          sessionSeal: args.sessionSeal || process.env.ALLOWLATCH_SESSION_SEAL || undefined,
-        }),
-      })
-      raw = await res.json()
-      if (!res.ok || (raw as { ok?: boolean }).ok === false) {
-        denyClosed(
-          `site gate HTTP ${res.status}: ${String((raw as { error?: string }).error || 'error')}`
-        )
-      }
-    } catch (err) {
+  async function callSiteGate(): Promise<unknown> {
+    if (!privateKey?.trim()) {
+      denyClosed('walletPrivateKey required to pay site-gate x402 ($0.025 USDC on Base)')
+    }
+    const { wrapFetchWithPayment } = await import('x402-fetch')
+    const { privateKeyToAccount } = await import('viem/accounts')
+    let pk = privateKey.trim()
+    if (!pk.startsWith('0x')) pk = `0x${pk}`
+    const account = privateKeyToAccount(pk as `0x${string}`)
+    // x402-fetch accepts a viem LocalAccount / wallet client; cast for SignerWallet typing.
+    const paidFetch = wrapFetchWithPayment(
+      fetch,
+      account as unknown as Parameters<typeof wrapFetchWithPayment>[1],
+      50_000n
+    )
+    const res = await paidFetch(gateUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'evaluate',
+        policyId,
+        intent,
+        sessionSeal: args.sessionSeal || process.env.ALLOWLATCH_SESSION_SEAL || undefined,
+      }),
+    })
+    const body = await res.json()
+    if (res.status === 402) {
       denyClosed(
-        `site gate unreachable — ${err instanceof Error ? err.message : String(err)}`
+        `site gate payment required/failed: ${JSON.stringify(body).slice(0, 400)}`
       )
     }
-  } else {
-    if (!args.workflowId && !args.triggerUrl) {
-      denyClosed(
-        'assertSpend requires gateUrl (always-on /api/gate) or triggerUrl/workflowId (OpenServ x402)'
+    if (!res.ok || (body as { ok?: boolean }).ok === false) {
+      throw new Error(
+        `site gate HTTP ${res.status}: ${String((body as { error?: string }).error || 'error')}`
       )
     }
+    return body
+  }
 
+  async function callOpenServ(): Promise<unknown> {
+    if (!args.workflowId && !args.triggerUrl && !process.env.ALLOWLATCH_TRIGGER_URL?.trim()) {
+      denyClosed('OpenServ fallback needs triggerUrl or workflowId')
+    }
+    const triggerUrl =
+      args.triggerUrl?.trim() || process.env.ALLOWLATCH_TRIGGER_URL?.trim() || ''
     const client = new PlatformClient()
     const prompt = buildEvaluatePrompt(policyId, intent)
-    const payOpts = privateKey?.trim() ? { privateKey: privateKey.trim() } : {}
+    const payOpts = privateKey?.trim()
+      ? { privateKey: privateKey.trim().startsWith('0x') ? privateKey.trim() : `0x${privateKey.trim()}` }
+      : {}
+    if (args.workflowId) {
+      return client.payments.payWorkflow({
+        workflowId: args.workflowId,
+        input: { prompt },
+        ...payOpts,
+      })
+    }
+    return client.payments.payWorkflow({
+      triggerUrl,
+      input: { prompt },
+      ...payOpts,
+    })
+  }
 
+  if (!preferOpenServ) {
     try {
-      if (args.workflowId) {
-        raw = await client.payments.payWorkflow({
-          workflowId: args.workflowId,
-          input: { prompt },
-          ...payOpts,
-        })
-      } else {
-        raw = await client.payments.payWorkflow({
-          triggerUrl: args.triggerUrl!,
-          input: { prompt },
-          ...payOpts,
-        })
+      raw = await callSiteGate()
+      usedSiteGate = true
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const canFallback =
+        Boolean(args.triggerUrl || args.workflowId || process.env.ALLOWLATCH_TRIGGER_URL?.trim())
+      if (!canFallback) denyClosed(`site gate unreachable — ${msg}`)
+      try {
+        raw = await callOpenServ()
+        usedSiteGate = false
+      } catch (err2) {
+        denyClosed(
+          `site gate failed (${msg}); OpenServ fallback failed — ${
+            err2 instanceof Error ? err2.message : String(err2)
+          }`
+        )
       }
+    }
+  } else {
+    try {
+      raw = await callOpenServ()
     } catch (err) {
       denyClosed(
-        `gate unreachable or payment failed — ${err instanceof Error ? err.message : String(err)}`
+        `OpenServ gate unreachable or payment failed — ${
+          err instanceof Error ? err.message : String(err)
+        }`
       )
     }
   }
 
-  const text = gateUrl ? JSON.stringify(raw) : extractGateText(raw)
-  const parsed = gateUrl
+  const text = usedSiteGate ? JSON.stringify(raw) : extractGateText(raw)
+  const parsed = usedSiteGate
     ? (raw as Record<string, unknown>)
     : parseGateJson(text)
 

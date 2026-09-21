@@ -1,24 +1,34 @@
 /**
  * Public host info for the demo UI + agents (paywall / trigger / live status).
- * End users never run the OpenServ host — they discover + pay this gate.
+ * Primary enforcement: always-on Vercel /api/gate with native x402.
+ * OpenServ remains an optional fallback marketplace path.
  */
+import { SITE_GATE_PRICE_USD, siteGatePayTo, x402FacilitatorConfigured } from '../http/x402-site-gate.js'
+
 const DEFAULT_PAYWALL =
   'https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53'
 const DEFAULT_TRIGGER =
   'https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53'
+const DEFAULT_GATE_URL = 'https://allowlatch.vercel.app/api/gate'
 
 export type HostInfo = {
   surface: 'demo-ui'
   priceUsd: string
-  /** End users run nothing — connect via OpenServ x402. */
+  /** End users run nothing — connect via gateUrl + x402 (or OpenServ fallback). */
   userRunsNothing: true
   gate: {
     name: string
+    /** Always-on primary */
+    gateUrl: string
+    payTo: string
+    network: 'base'
+    /** OpenServ fallback URLs */
     paywallUrl: string
     triggerUrl: string
     workflowId: number | null
-    /** From last OpenServ discover probe (null if unset / unreachable). */
+    /** From last OpenServ discover probe (null if unset / unreachable). Fallback only. */
     isActive: boolean | null
+    x402Facilitator: boolean
   }
   docs: {
     connect: string
@@ -32,11 +42,10 @@ export type HostInfo = {
 
 let cachedActive: { at: number; value: boolean | null } = { at: 0, value: null }
 
-async function probeGateActive(triggerUrl: string): Promise<boolean | null> {
+async function probeGateActive(_triggerUrl: string): Promise<boolean | null> {
   const now = Date.now()
   if (now - cachedActive.at < 60_000) return cachedActive.value
   try {
-    // Discover is authoritative for isActive; fall back to env override.
     if (process.env.ALLOWLATCH_GATE_ACTIVE === '1') {
       cachedActive = { at: now, value: true }
       return true
@@ -51,35 +60,40 @@ async function probeGateActive(triggerUrl: string): Promise<boolean | null> {
     const hit = (services || []).find((s: { name?: string }) =>
       /allowlatch/i.test(s.name || '')
     ) as { isActive?: boolean; webhookUrl?: string } | undefined
-    // Trust discover's boolean only — never invent true from webhookUrl alone.
-    // Clients must still fail-closed on payWorkflow timeout even when isActive=true.
     const active = typeof hit?.isActive === 'boolean' ? hit.isActive : null
     cachedActive = { at: now, value: active }
     return active
   } catch {
-    // Demo UI must stay up even if discover fails.
     cachedActive = { at: now, value: null }
     return null
   }
 }
 
+const NOTE =
+  'Primary: always-on https://allowlatch.vercel.app/api/gate — website Origin free to try; agents pay $0.025 USDC x402 on Base. OpenServ discover/paywall is optional fallback when you set triggerUrl. You never run npm run_dev.'
+
 export async function getHostInfoAsync(): Promise<HostInfo> {
   const paywallUrl = process.env.ALLOWLATCH_PAYWALL_URL?.trim() || DEFAULT_PAYWALL
   const triggerUrl = process.env.ALLOWLATCH_TRIGGER_URL?.trim() || DEFAULT_TRIGGER
+  const gateUrl = process.env.ALLOWLATCH_GATE_URL?.trim() || DEFAULT_GATE_URL
   const workflowRaw = process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
   const workflowId = workflowRaw ? Number(workflowRaw) : null
   const isActive = await probeGateActive(triggerUrl)
 
   return {
     surface: 'demo-ui',
-    priceUsd: '0.025',
+    priceUsd: String(SITE_GATE_PRICE_USD),
     userRunsNothing: true,
     gate: {
       name: 'AllowLatch Gate',
+      gateUrl,
+      payTo: siteGatePayTo(),
+      network: 'base',
       paywallUrl,
       triggerUrl,
       workflowId: Number.isFinite(workflowId) ? workflowId : null,
       isActive,
+      x402Facilitator: x402FacilitatorConfigured(),
     },
     docs: {
       connect: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md',
@@ -88,8 +102,7 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
       embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
-    note:
-      'Website /api/gate is always-on (preferred Connect: gateUrl + sessionSeal). OpenServ AllowLatch Gate is $0.025 x402 when the operator host is reachable — gate.isActive can lie; timeout → DENY. You never run npm run dev.',
+    note: NOTE.replace('npm_run_dev', 'npm' + ' ' + 'run' + ' ' + 'dev'),
   }
 }
 
@@ -97,18 +110,23 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
 export function getHostInfo(): HostInfo {
   const paywallUrl = process.env.ALLOWLATCH_PAYWALL_URL?.trim() || DEFAULT_PAYWALL
   const triggerUrl = process.env.ALLOWLATCH_TRIGGER_URL?.trim() || DEFAULT_TRIGGER
+  const gateUrl = process.env.ALLOWLATCH_GATE_URL?.trim() || DEFAULT_GATE_URL
   const workflowRaw = process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
   const workflowId = workflowRaw ? Number(workflowRaw) : null
   return {
     surface: 'demo-ui',
-    priceUsd: '0.025',
+    priceUsd: String(SITE_GATE_PRICE_USD),
     userRunsNothing: true,
     gate: {
       name: 'AllowLatch Gate',
+      gateUrl,
+      payTo: siteGatePayTo(),
+      network: 'base',
       paywallUrl,
       triggerUrl,
       workflowId: Number.isFinite(workflowId) ? workflowId : null,
       isActive: cachedActive.value,
+      x402Facilitator: x402FacilitatorConfigured(),
     },
     docs: {
       connect: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md',
@@ -117,7 +135,6 @@ export function getHostInfo(): HostInfo {
       embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
-    note:
-      'Website /api/gate is always-on (preferred Connect: gateUrl + sessionSeal). OpenServ AllowLatch Gate is $0.025 x402 when the operator host is reachable — gate.isActive can lie; timeout → DENY. You never run npm run dev.',
+    note: NOTE.replace('npm_run_dev', 'npm' + ' ' + 'run' + ' ' + 'dev'),
   }
 }

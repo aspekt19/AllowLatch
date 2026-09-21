@@ -6,73 +6,42 @@
 
 You help a human whose agent has a Base wallet (AgentKit or similar). They will **not** give you `SERV_API_KEY` or ask you to run this repo.
 
-**No applied MandatePolicy → no rules → every spend DENY (fail-closed).**  
-Local JSON / offline drafts are **not** production enforcement.
+**No applied MandatePolicy → no rules → every spend DENY (fail-closed).**
 
-### Two surfaces (do not confuse them)
+### Surfaces
 
-| Surface | URL / entry | Who pays | Always on? |
-|---------|-------------|----------|------------|
-| **Website gate** | https://allowlatch.vercel.app → Go live → `/api/gate` | Free | **Yes** (Vercel). Browser keeps `sessionSeal` across cold starts. **Preferred Connect path.** |
-| **OpenServ Gate** | Discover `/allowlatch/i` · `$0.025` x402 | Agent wallet | Only while the operator host process is reachable. `gate.isActive` can lie — timeout → DENY. |
+| Surface | Entry | Price | Always on? |
+|---------|-------|-------|------------|
+| **Primary gate** | `POST https://allowlatch.vercel.app/api/gate` | Website Origin **free**; agents **$0.025 USDC x402** on Base | **Yes** (Vercel) |
+| **OpenServ fallback** | discover `/allowlatch/i` · triggerUrl | $0.025 x402 | Only while operator host is reachable |
 
-Check: `GET https://allowlatch.vercel.app/api/host-info`  
-Still **fail-closed**: network / timeout / malformed → treat as DENY, never sign.
+`assertSpend` defaults to the primary gate and can fall back to OpenServ if `triggerUrl` is set.
 
-### Install paths (pick one)
+### Install
 
-1. **Site Connect pack** — https://allowlatch.vercel.app → Draft → Go live → **Connect your agent** (`gateUrl` + `sessionSeal`).
-2. **npm** — `npm i allowlatch` → `assertSpend({ gateUrl, sessionSeal, … })` or OpenServ `triggerUrl`.
-3. **MCP** — `npx allowlatch-mcp` (set `ALLOWLATCH_GATE_URL` / `ALLOWLATCH_SESSION_SEAL`).
-4. **Agent skill (any LLM)** — [`skills/allowlatch/SKILL.md`](https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md) — Cursor, Claude, Codex, OpenServ, custom. Same markdown everywhere.
-5. **OpenServ x402** — `discoverServices()` → `/allowlatch/i` → `payWorkflow` when the host is online.
+1. Site Connect pack — https://allowlatch.vercel.app/#install (`gateUrl` + `sessionSeal` + payer key)
+2. `npm i allowlatch` → `assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent })`
+3. MCP / skill (any LLM) — [`skills/allowlatch/SKILL.md`](https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md)
+4. OpenServ — optional fallback only
 
-Public card: https://allowlatch.vercel.app/api/host-info  
-Install UI: https://allowlatch.vercel.app/#install  
-Live Base case: https://allowlatch.vercel.app/#case
+### Before every spend
 
-### What to do before every spend
+1. `assertSpend` with Connect pack fields (pays $0.025 on Base unless website Origin).
+2. **ALLOW + allow-receipt (`jti`)** → then sign.
+3. **DENY / ESCALATE / timeout** → do not sign.
 
-1. Prefer Connect pack `gateUrl` + `sessionSeal` (always-on), or OpenServ `triggerUrl` when paid path is live.
-2. Ensure a MandatePolicy is applied (site Go live or `apply_policy`).
-3. Call `assertSpend` / `evaluate_intent` with the exact intent JSON.
-4. **ALLOW + allow-receipt (`jti`)** → only then may you sign / `execute_gated_transfer`.
-5. **DENY / ESCALATE / timeout / bad JSON** → do not sign. On ESCALATE ask the human.
-6. Prefer `createGatedAgentKit` so raw AgentKit cannot bypass the latch.
+### Live case
 
-### Pricing
-
-- Website `/api/gate`: free always-on evaluate + receipts (after Go live).
-- OpenServ x402: **$0.025** per call when the hosted agent process is up.
-- `buy_evaluate_pack`: same $0.025 mints fixed credits (default 3 ≈ $0.008/check).
-
-### Live case (Base mainnet · verified)
-
-Paid OpenServ path (when host online): assertSpend → receipt → USDC transfer  
-https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16  
-Fees to operator `0xa91841F98fd15e3f590e2681d7122ec04bc7F677`.  
-Website `/api/gate` independently verified ALLOW / DENY / ESCALATE + receipts on Vercel.
-
-**Ops:** OpenServ Cloud containers can sleep/502 — operator runs `npm run deploy:host` (retries) or the root `Dockerfile` on Railway/Fly. Website gate does not depend on that.
+https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16
 
 ### Docs
 
-- CONNECT: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
-- EMBED: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
-- HOSTED (operators): https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
-- SECURITY: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
-- Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
-- Skill (any LLM): https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md
-
-### Capabilities (host)
-
-draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet_permissions · evaluate_intent · buy_evaluate_pack · explain_decision · execute_gated_transfer · list_audit · reset_daily_ledger
+- CONNECT · EMBED · HOSTED · MONETIZE · SECURITY on GitHub
+- Machine card: https://allowlatch.vercel.app/agent.json
 
 ### Invariants
 
-- Allow/deny/escalate is deterministic code — never LLM judgment.
-- SERV drafts/explains; never changes the verdict.
-- Execute requires verified single-use allow-receipt (or escalate + humanApproved).
+- Decisions are deterministic code — never LLM judgment.
 - Fail-closed: timeout / network / malformed → DENY.
-- End users never run `npm run dev` or set `SERV_API_KEY`.
+- End users never run `npm run_dev` or set `SERV_API_KEY`.
 - AllowLatch does not custody funds.

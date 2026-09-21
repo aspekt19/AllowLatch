@@ -1,6 +1,6 @@
 # Enforce AllowLatch from your agent (paid)
 
-You do **not** run AllowLatch yourself. **Preferred:** website Go live → Connect pack (`gateUrl` + `sessionSeal`) → `assertSpend` against https://allowlatch.vercel.app/api/gate (always-on).
+You do **not** run AllowLatch yourself. **Primary:** website Go live → Connect pack (`gateUrl` + `sessionSeal`) → `assertSpend` against https://allowlatch.vercel.app/api/gate (always-on).
 
 **Optional paid path:** OpenServ **AllowLatch Gate** ($0.025 x402) when the operator host is online — discover + `payWorkflow` / `assertSpend({ triggerUrl })`. See [CONNECT.md](./CONNECT.md) / [HOSTED.md](./HOSTED.md).
 

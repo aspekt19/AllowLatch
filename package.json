@@ -82,6 +82,7 @@
   "dependencies": {
     "@coinbase/agentkit": "^0.10.4",
     "@coinbase/cdp-sdk": "^1.56.0",
+    "@coinbase/x402": "^0.6.6",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
@@ -93,6 +94,8 @@
     "graphql": "^17.0.2",
     "openai": "^7.15.0",
     "viem": "^2.56.5",
+    "x402": "^0.6.6",
+    "x402-fetch": "^0.7.0",
     "zod": "^3.25.67"
   },
   "devDependencies": {

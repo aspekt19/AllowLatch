@@ -1,7 +1,8 @@
 /**
  * Product path from the website: apply / evaluate.
- * Default: durable-enough site gate on Vercel (engine + receipt).
- * Optional: OpenServ x402 when ALLOWLATCH_GATE_BACKEND=openserv.
+ * Always-on Vercel site gate (engine + receipt) with native Base USDC x402 for agents.
+ * Browser Origin on allowlatch.vercel.app stays free to try.
+ * OpenServ x402 remains optional fallback (ALLOWLATCH_GATE_BACKEND=openserv or assertSpend triggerUrl).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
@@ -12,6 +13,12 @@ import {
   checkRateLimit,
   clientIp,
 } from '../src/http/abuse-guard.js'
+import {
+  enforceSiteGateX402,
+  SITE_GATE_PRICE_USD,
+  siteGatePayTo,
+  x402FacilitatorConfigured,
+} from '../src/http/x402-site-gate.js'
 import { MandatePolicySchema, SpendIntentSchema } from '../src/policy/schema.js'
 import { siteGateApply, siteGateConfigured, siteGateEvaluate } from '../src/web/site-gate.js'
 import {
@@ -54,9 +61,15 @@ function setCors(res: VercelResponse, origin: string | undefined) {
   if (origin && allowed.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Vary', 'Origin')
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*')
   }
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET')
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, X-PAYMENT, X-Payment, Payment-Signature'
+  )
+  res.setHeader('Access-Control-Expose-Headers', 'X-PAYMENT-RESPONSE')
   res.setHeader('Access-Control-Max-Age', '600')
 }
 
@@ -66,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') {
     const o = checkOrigin(origin)
-    if (!o.ok) {
+    if (!o.ok && origin) {
       res.status(o.status).json({ ok: false, error: o.error })
       return
     }
@@ -81,11 +94,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       backend: mode,
       configured:
         mode === 'openserv' ? gateProxyConfigured() : siteGateConfigured(),
-      priceUsd: mode === 'openserv' ? '0.025' : '0',
+      priceUsd: String(SITE_GATE_PRICE_USD),
+      payTo: siteGatePayTo(),
+      x402:
+        mode === 'site'
+          ? {
+              network: 'base',
+              asset: 'USDC',
+              amountUsd: SITE_GATE_PRICE_USD,
+              freeForWebsiteOrigin: true,
+              facilitator: x402FacilitatorConfigured(),
+            }
+          : { via: 'openserv' },
       note:
         mode === 'openserv'
-          ? 'POST apply|evaluate via OpenServ x402'
-          : 'POST apply|evaluate on site gate (engine + receipt). Free to try from the website.',
+          ? 'POST apply|evaluate via OpenServ x402 (fallback)'
+          : 'POST apply|evaluate on always-on site gate. Website Origin free; agents pay $0.025 USDC x402 on Base.',
     })
     return
   }
@@ -96,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const o = checkOrigin(origin)
-  if (!o.ok) {
+  if (!o.ok && origin) {
     res.status(o.status).json({ ok: false, error: o.error })
     return
   }
@@ -145,6 +169,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  let settlement: string | undefined
+  if (mode === 'site') {
+    const host =
+      (typeof req.headers['x-forwarded-host'] === 'string'
+        ? req.headers['x-forwarded-host']
+        : typeof req.headers.host === 'string'
+          ? req.headers.host
+          : 'allowlatch.vercel.app') || 'allowlatch.vercel.app'
+    const proto =
+      typeof req.headers['x-forwarded-proto'] === 'string'
+        ? req.headers['x-forwarded-proto']
+        : 'https'
+    const resource = `${proto}://${host}/api/gate`
+    const paid = await enforceSiteGateX402({
+      origin,
+      headers: req.headers as Record<string, unknown>,
+      resource,
+    })
+    if (!paid.ok) {
+      res.status(paid.status).json(paid.body)
+      return
+    }
+    settlement = paid.settlement
+  }
+
   try {
     if (body.action === 'apply') {
       const policy = MandatePolicySchema.parse({
@@ -165,6 +214,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ok: true,
           action: 'apply',
           backend: 'site',
+          priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+          settlement: settlement ?? null,
           ...appliedRest,
         })
         return
@@ -204,6 +255,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         result: evaluated.result,
         receipt: evaluated.receipt,
         sessionSeal: evaluated.sessionSeal,
+        priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        settlement: settlement ?? null,
       })
       return
     }

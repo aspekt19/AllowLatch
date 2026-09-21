@@ -1,7 +1,7 @@
 {
   "name": "AllowLatch",
   "version": "0.1.0",
-  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). NL mandates → strict policy → ALLOW/DENY/ESCALATE + allow-receipt. Fail-closed clients. Prefer hybrid Spend Permissions + createGatedAgentKit (middleware alone is not custody-grade). End users need no API keys. OpenServ x402 + Coinbase AgentKit.",
+  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Always-on Vercel /api/gate with native x402 ($0.025). OpenServ optional fallback. Fail-closed clients. Prefer createGatedAgentKit.",
   "homepage": "https://allowlatch.vercel.app",
   "repository": "https://github.com/aspekt19/AllowLatch",
   "documentation": "https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md",
@@ -18,14 +18,20 @@
       "paywallUrl": "https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53",
       "triggerUrl": "https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53",
       "hostInfo": "https://allowlatch.vercel.app/api/host-info",
-      "failClosed": "timeout / network / malformed → DENY; check gate.isActive but still fail-closed on hang"
+      "failClosed": "timeout / network / malformed → DENY; check gate.isActive but still fail-closed on hang",
+      "role": "optional-fallback",
+      "note": "Use when site gate fails or ALLOWLATCH_PREFER_OPENSERV=1. Host keep-alive required."
     },
     "websiteGate": {
       "url": "https://allowlatch.vercel.app/api/gate",
-      "actions": ["apply", "evaluate"],
-      "priceUsd": "0",
+      "actions": [
+        "apply",
+        "evaluate"
+      ],
+      "priceUsd": "0.025",
+      "freeForWebsiteOrigin": true,
       "sessionSeal": "HMAC blob returned on apply/evaluate — client must send it back to survive Vercel cold starts",
-      "note": "Always-on preferred Connect path after website Go live. assertSpend({ gateUrl, sessionSeal }). OpenServ x402 remains the paid marketplace path when the host is online."
+      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base. assertSpend({ gateUrl, sessionSeal, walletPrivateKey }). OpenServ is optional fallback."
     }
   },
   "agentSkill": {
@@ -90,6 +96,12 @@
     "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],
-  "stacks": ["Base", "USDC", "Coinbase AgentKit", "OpenServ", "SERV Reasoning"],
+  "stacks": [
+    "Base",
+    "USDC",
+    "Coinbase AgentKit",
+    "OpenServ",
+    "SERV Reasoning"
+  ],
   "httpGate": "npm run http:gate - POST /v1/evaluate, /v1/execute (framework-agnostic)"
 }

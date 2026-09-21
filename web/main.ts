@@ -169,12 +169,10 @@ async function refreshGateHealth() {
 }
 
 function buildAgentInstruction(): string {
-  const p = hosted?.policy || policy
   const policyId = hosted?.policyId || 'default'
   const ownerId = hosted?.ownerId || browserOwnerId()
   const ownerToken = hosted?.ownerToken
   const sessionSeal = hosted?.sessionSeal
-  const policyJson = p ? JSON.stringify(p) : '{}'
   const gateUrl = `${location.origin}/api/gate`
   return [
     'You are my spending agent. AllowLatch holds my rules — do not invent allow/deny.',
@@ -182,24 +180,21 @@ function buildAgentInstruction(): string {
     `policyId: ${policyId}`,
     `ownerId: ${ownerId}`,
     ownerToken ? `ownerToken: ${ownerToken}` : null,
-    `Always-on gateUrl: ${gateUrl}`,
+    `Primary gateUrl (always-on · agents pay $0.025 USDC x402 on Base): ${gateUrl}`,
     sessionSeal ? `sessionSeal: ${sessionSeal}` : null,
-    `OpenServ trigger (paid x402, when host online): ${cachedTriggerUrl}`,
-    `Paywall (human pay): ${cachedPaywallUrl}`,
+    `OpenServ trigger (optional fallback only): ${cachedTriggerUrl}`,
+    `Paywall (OpenServ human UI, optional): ${cachedPaywallUrl}`,
     '',
     'Preferred (always-on, already applied via Go live):',
     '1) npm i allowlatch',
-    '2) Before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, intent })',
+    '2) Before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, walletPrivateKey, intent })',
+    '   — native Base USDC x402 ($0.025), then ALLOW + receipt.',
     '',
-    'Optional paid marketplace (OpenServ $0.025 when gate.isActive and payWorkflow works):',
-    `apply_policy for policyId=${policyId} on OpenServ if you need x402 there`,
-    `ownerId=${ownerId}`,
-    ownerToken ? `ownerToken=${ownerToken}` : null,
-    policyJson,
+    'Optional fallback if site gate fails: pass triggerUrl (OpenServ) as well.',
     '',
     'Before EVERY transfer/swap/x402 payment:',
-    '- Prefer gateUrl/sessionSeal from this Connect pack (Vercel site gate — always on).',
-    '- Or assertSpend({ policyId, triggerUrl, walletPrivateKey, intent }) for OpenServ x402.',
+    '- Prefer gateUrl/sessionSeal + walletPrivateKey (Vercel site gate — always on).',
+    '- OpenServ triggerUrl only as fallback.',
     '- On DENY or timeout → stop (fail-closed). On ESCALATE → ask me. On ALLOW → keep allow-receipt jti, then sign.',
     '- Never call a raw wallet signer in parallel. Prefer createGatedAgentKit / allowLatchActionProvider.',
     '',
@@ -219,11 +214,12 @@ const POLICY_ID = ${JSON.stringify(policyId)}
 const GATE_URL = process.env.ALLOWLATCH_GATE_URL || ${JSON.stringify(`${location.origin}/api/gate`)}
 const SESSION_SEAL = process.env.ALLOWLATCH_SESSION_SEAL || ${JSON.stringify(seal)}
 
-// Always-on website gate (preferred after Go live on allowlatch.vercel.app)
+// Always-on site gate — agents pay $0.025 USDC x402 on Base
 const { receipt } = await assertSpend({
   policyId: POLICY_ID,
   gateUrl: GATE_URL,
   sessionSeal: SESSION_SEAL || undefined,
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer
   intent: {
     action: 'transfer',
     amountUsd: 5,
@@ -233,9 +229,8 @@ const { receipt } = await assertSpend({
 })
 // Only then sign. receipt.jti is single-use.
 
-// Optional paid OpenServ x402 when the hosted gate is online:
-// const TRIGGER = process.env.ALLOWLATCH_TRIGGER_URL || ${JSON.stringify(cachedTriggerUrl)}
-// await assertSpend({ policyId: POLICY_ID, triggerUrl: TRIGGER, walletPrivateKey: process.env.WALLET_PRIVATE_KEY, intent })
+// Optional OpenServ fallback:
+// await assertSpend({ policyId: POLICY_ID, triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL, preferOpenServ: true, walletPrivateKey: process.env.WALLET_PRIVATE_KEY, intent })
 `
 }
 
