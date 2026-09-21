@@ -238,8 +238,23 @@ code {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 70% 50%;
+  object-position: 78% 50%;
   opacity: 1;
+  /* Hard separation: diagram only lives where copy isn't. */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 46%,
+    rgba(0, 0, 0, 0.35) 54%,
+    #000 62%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 46%,
+    rgba(0, 0, 0, 0.35) 54%,
+    #000 62%
+  );
 }
 
 .hero-arm {
@@ -1511,8 +1526,22 @@ button {
   }
 
   .hero-diagram {
-    object-position: 82% 50%;
-    opacity: 0.42;
+    object-position: 88% 50%;
+    opacity: 0.55;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 38%,
+      rgba(0, 0, 0, 0.4) 50%,
+      #000 60%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 38%,
+      rgba(0, 0, 0, 0.4) 50%,
+      #000 60%
+    );
   }
 
   .hero-copy {
