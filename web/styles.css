@@ -238,22 +238,22 @@ code {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 78% 50%;
+  object-position: 82% 50%;
   opacity: 1;
-  /* Hard separation: diagram only lives where copy isn't. */
+  /* Hard separation past the brand/CTA column on wide desktops. */
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0%,
-    transparent 46%,
-    rgba(0, 0, 0, 0.35) 54%,
-    #000 62%
+    transparent 60%,
+    rgba(0, 0, 0, 0.45) 68%,
+    #000 76%
   );
   mask-image: linear-gradient(
     90deg,
     transparent 0%,
-    transparent 46%,
-    rgba(0, 0, 0, 0.35) 54%,
-    #000 62%
+    transparent 60%,
+    rgba(0, 0, 0, 0.45) 68%,
+    #000 76%
   );
 }
 
