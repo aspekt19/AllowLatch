@@ -222,49 +222,43 @@ code {
   content: "";
   position: absolute;
   inset: 0;
-  /* Brand/CTA on clean paper; turnstile reads in the right half. */
   background:
     linear-gradient(
       90deg,
       rgba(244, 246, 248, 1) 0%,
-      rgba(244, 246, 248, 0.98) 36%,
-      rgba(244, 246, 248, 0.88) 48%,
-      rgba(244, 246, 248, 0.25) 64%,
-      rgba(244, 246, 248, 0.4) 100%
+      rgba(244, 246, 248, 0.98) 42%,
+      rgba(244, 246, 248, 0.78) 54%,
+      rgba(244, 246, 248, 0.18) 68%,
+      rgba(244, 246, 248, 0.35) 100%
     ),
-    linear-gradient(180deg, rgba(244, 246, 248, 0.12) 0%, rgba(244, 246, 248, 0.65) 78%, var(--paper) 100%);
+    linear-gradient(180deg, rgba(244, 246, 248, 0.1) 0%, rgba(244, 246, 248, 0.6) 78%, var(--paper) 100%);
 }
 
 .hero-diagram {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 58% 50%;
+  object-position: 70% 50%;
   opacity: 1;
 }
 
 .hero-arm {
-  transform-origin: 764px 309px;
+  transform-origin: 844px 309px;
   animation: arm-breathe 5.5s var(--ease) infinite;
-}
-
-@keyframes arm-breathe {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  45% {
-    transform: rotate(-8deg);
-  }
-  55% {
-    transform: rotate(-8deg);
-  }
 }
 
 .hero-copy {
   position: relative;
   z-index: 1;
-  max-width: 38rem;
+  max-width: 36rem;
+  /* Soft paper wash — not a card — so type never fights the diagram. */
+  padding: 8px 48px 12px 0;
+  background: linear-gradient(
+    90deg,
+    var(--paper) 0%,
+    var(--paper) 72%,
+    rgba(244, 246, 248, 0) 100%
+  );
   animation: rise 0.7s var(--ease) both;
 }
 
@@ -1504,8 +1498,19 @@ button {
   }
 
   .hero-diagram {
-    object-position: 72% 50%;
-    opacity: 0.48;
+    object-position: 82% 50%;
+    opacity: 0.42;
+  }
+
+  .hero-copy {
+    max-width: 100%;
+    padding-right: 24px;
+    background: linear-gradient(
+      90deg,
+      var(--paper) 0%,
+      var(--paper) 85%,
+      rgba(244, 246, 248, 0) 100%
+    );
   }
 
   .section {
