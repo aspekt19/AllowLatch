@@ -3,7 +3,6 @@
  * Env: ALLOWLATCH_TURSO_DATABASE_URL (+ ALLOWLATCH_TURSO_AUTH_TOKEN) or TURSO_*.
  * When unset, site-gate stays on memory + sessionSeal (demo-grade).
  */
-import { createClient, type Client } from '@libsql/client'
 import { createHash, randomUUID } from 'node:crypto'
 import {
   MandatePolicySchema,
@@ -18,51 +17,46 @@ import {
   verifyAllowReceipt,
   type AllowReceipt,
 } from '../billing/receipt.js'
+import {
+  tursoAuthToken,
+  tursoConfigured,
+  tursoDatabaseUrl,
+} from './site-gate-durable-config.js'
+
+export { tursoConfigured } from './site-gate-durable-config.js'
 
 export type DurableRow = {
   policyId: string
   ownerId: string
   ownerTokenHash: string
-  /** Encrypted-at-rest not required — hash only stored; plaintext token never in DB. */
   policy: MandatePolicy
   ledger: SpendLedger
   seq: number
   updatedAt: number
 }
 
-let client: Client | null = null
+type LibsqlClient = {
+  execute: (arg: { sql: string; args?: unknown[] }) => Promise<{
+    rows: Record<string, unknown>[]
+    rowsAffected: number
+  }>
+  executeMultiple: (sql: string) => Promise<unknown>
+}
+
+let client: LibsqlClient | null = null
 let ready: Promise<void> | null = null
-
-export function tursoConfigured(): boolean {
-  return Boolean(
-    process.env.ALLOWLATCH_TURSO_DATABASE_URL?.trim() ||
-      process.env.TURSO_DATABASE_URL?.trim()
-  )
-}
-
-function dbUrl(): string {
-  return (
-    process.env.ALLOWLATCH_TURSO_DATABASE_URL?.trim() ||
-    process.env.TURSO_DATABASE_URL?.trim() ||
-    ''
-  )
-}
-
-function dbAuth(): string | undefined {
-  return (
-    process.env.ALLOWLATCH_TURSO_AUTH_TOKEN?.trim() ||
-    process.env.TURSO_AUTH_TOKEN?.trim() ||
-    undefined
-  )
-}
 
 export function hashOwnerToken(token: string): string {
   return createHash('sha256').update(`al-owner:${token}`).digest('hex')
 }
 
-async function getClient(): Promise<Client> {
+async function getClient(): Promise<LibsqlClient> {
   if (!client) {
-    client = createClient({ url: dbUrl(), authToken: dbAuth() })
+    const { createClient } = await import('@libsql/client')
+    client = createClient({
+      url: tursoDatabaseUrl(),
+      authToken: tursoAuthToken(),
+    }) as unknown as LibsqlClient
   }
   if (!ready) {
     ready = (async () => {

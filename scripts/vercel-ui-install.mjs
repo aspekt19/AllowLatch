@@ -17,6 +17,7 @@ writeFileSync(
         '@fontsource/instrument-serif': '^5.3.0',
         '@openserv-labs/client': '^2.5.3',
         '@coinbase/x402': '^0.6.6',
+        '@libsql/client': '^0.14.0',
         '@vercel/analytics': '^2.0.1',
         '@vercel/node': '^5.3.26',
         dotenv: '^17.4.2',

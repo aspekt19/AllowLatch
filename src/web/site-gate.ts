@@ -469,4 +469,4 @@ export function siteGateConfigured(): boolean {
   return Boolean(sealSecret())
 }
 
-export { tursoConfigured }
+export { tursoConfigured } from './site-gate-durable-config.js'

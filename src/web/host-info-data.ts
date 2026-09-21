@@ -8,7 +8,7 @@ import {
   siteGatePayToSync,
   x402FacilitatorConfiguredSync,
 } from '../http/x402-site-gate-config.js'
-import { tursoConfigured } from './site-gate-durable.js'
+import { tursoConfigured } from './site-gate-durable-config.js'
 
 const DEFAULT_PAYWALL =
   'https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53'
