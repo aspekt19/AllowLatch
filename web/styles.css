@@ -244,16 +244,16 @@ code {
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent 0%,
-    transparent 60%,
-    rgba(0, 0, 0, 0.45) 68%,
-    #000 76%
+    transparent 66%,
+    rgba(0, 0, 0, 0.5) 74%,
+    #000 82%
   );
   mask-image: linear-gradient(
     90deg,
     transparent 0%,
-    transparent 60%,
-    rgba(0, 0, 0, 0.45) 68%,
-    #000 76%
+    transparent 66%,
+    rgba(0, 0, 0, 0.5) 74%,
+    #000 82%
   );
 }
 
