@@ -50,7 +50,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/policy/engine.test.ts src/policy/engine.property.test.ts src/store/fs-store.test.ts src/auth/policy-eip712.test.ts",
+    "test": "tsx --test src/policy/engine.test.ts src/policy/engine.property.test.ts src/policy/local-compile.test.ts src/store/fs-store.test.ts src/auth/policy-eip712.test.ts",
     "mcp": "tsx src/mcp/server.ts",
     "reasoning:ping": "tsx src/demo/reasoning-ping.ts",
     "reasoning:compile": "tsx src/demo/reasoning-compile.ts",

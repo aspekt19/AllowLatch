@@ -150,6 +150,97 @@ export const DecisionExplanationSchema = z.object({
 
 export type DecisionExplanation = z.infer<typeof DecisionExplanationSchema>
 
+/**
+ * LLM / OpenAI structured-output schemas — no ZodDefault.
+ * SERV + zodResponseFormat reject `.default()` (error on e.g. `$.risk`).
+ * Always re-parse LLM output with MandatePolicySchema / PolicyDraftSchema / DecisionExplanationSchema.
+ */
+export const MandatePolicyLlmSchema = z.object({
+  version: z.literal('1.0'),
+  name: z.string().min(1).max(80),
+  ownerId: z.string().min(1).max(120).nullable().optional(),
+  agentId: z.string().min(1).max(120).nullable().optional(),
+  chain: z.enum(['base', 'base-sepolia']),
+  currency: z.literal('USDC'),
+  capital: z.object({
+    agentWalletBudgetUsd: z.number().nonnegative(),
+    maxNotionalUsdPerDay: z.number().positive(),
+    maxPerOrderUsd: z.number().positive(),
+    maxTransactionsPerHour: z.number().int().positive(),
+    maxGasUsdPerDay: z.number().nonnegative().nullable().optional(),
+  }),
+  universe: z.object({
+    allowedSymbols: z.array(z.string()),
+    deniedSymbols: z.array(z.string()),
+    allowedAddresses: z.array(z.string()),
+    deniedAddresses: z.array(z.string()),
+    allowedContracts: z.array(z.string()),
+    deniedContracts: z.array(z.string()),
+    allowedTokenAddresses: z.array(z.string()),
+    deniedTokenAddresses: z.array(z.string()),
+    allowedFunctionSelectors: z.array(z.string()),
+    deniedFunctionSelectors: z.array(z.string()),
+  }),
+  actions: z.object({
+    allowSwap: z.boolean(),
+    allowTransfer: z.boolean(),
+    allowX402Pay: z.boolean(),
+  }),
+  risk: z.object({
+    maxSlippageBps: z.number().int().nonnegative().nullable().optional(),
+    emergencyStop: z.boolean(),
+  }),
+  escalation: z.object({
+    requireHumanConfirmAboveUsd: z.number().nonnegative(),
+  }),
+})
+
+export const PolicyDraftLlmSchema = z.object({
+  policy: MandatePolicyLlmSchema,
+  conflicts: z.array(z.string()),
+  assumptions: z.array(z.string()),
+  questions: z.array(z.string()),
+  readyToApply: z.boolean(),
+  summary: z.string().min(1).max(400),
+})
+
+export const DecisionExplanationLlmSchema = z.object({
+  headline: z.string().min(1).max(160),
+  explanation: z.string().min(1).max(800),
+  suggestedMandateChanges: z.array(z.string()),
+  revisable: z.boolean(),
+})
+
+/** Normalize nullable LLM fields then apply runtime defaults via MandatePolicySchema. */
+export function finalizeMandatePolicy(raw: unknown): MandatePolicy {
+  const llm = MandatePolicyLlmSchema.parse(raw)
+  return MandatePolicySchema.parse({
+    ...llm,
+    ownerId: llm.ownerId ?? undefined,
+    agentId: llm.agentId ?? undefined,
+    capital: {
+      ...llm.capital,
+      maxGasUsdPerDay: llm.capital.maxGasUsdPerDay ?? undefined,
+    },
+    risk: {
+      emergencyStop: llm.risk.emergencyStop,
+      ...(llm.risk.maxSlippageBps != null ? { maxSlippageBps: llm.risk.maxSlippageBps } : {}),
+    },
+  })
+}
+
+export function finalizePolicyDraft(raw: unknown): PolicyDraft {
+  const llm = PolicyDraftLlmSchema.parse(raw)
+  return PolicyDraftSchema.parse({
+    ...llm,
+    policy: finalizeMandatePolicy(llm.policy),
+  })
+}
+
+export function finalizeDecisionExplanation(raw: unknown): DecisionExplanation {
+  return DecisionExplanationSchema.parse(DecisionExplanationLlmSchema.parse(raw))
+}
+
 /** Example starter policy for demos. */
 export const DEMO_POLICY: MandatePolicy = {
   version: '1.0',

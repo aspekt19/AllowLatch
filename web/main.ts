@@ -1049,6 +1049,21 @@ btnCopyEmbed?.addEventListener('click', async () => {
   }
 })
 
+const ownerPromptEl = document.querySelector<HTMLPreElement>('#owner-agent-prompt')
+const btnCopyOwnerPrompt = document.querySelector<HTMLButtonElement>('#btn-copy-owner-prompt')
+const ownerPromptCopyStatus = document.querySelector<HTMLElement>('#owner-prompt-copy-status')
+btnCopyOwnerPrompt?.addEventListener('click', async () => {
+  const text = ownerPromptEl?.textContent?.trim() ?? ''
+  try {
+    await navigator.clipboard.writeText(text)
+    if (ownerPromptCopyStatus) ownerPromptCopyStatus.textContent = 'Prompt copied — paste into your agent chat.'
+  } catch {
+    if (ownerPromptCopyStatus) {
+      ownerPromptCopyStatus.textContent = 'Clipboard blocked — select the prompt and copy manually.'
+    }
+  }
+})
+
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -1058,7 +1073,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → Draft → Apply.\n2. Go live (server gate).\n3. Connect your agent — paste the instruction into Cursor / AgentKit / OpenServ.\n4. Try spend scenarios here to verify.\n\nYou set rules on this site. The agent only asks AllowLatch before signing.'
+  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → Draft → Apply.\n2. Go live (server gate).\n3. Connect your agent — or use Install (SDK / MCP / skill / OpenServ x402).\n4. No policy applied → every spend is DENY.\n\nYou set rules. The agent only asks AllowLatch before signing. See Live case for a real paid Base USDC run.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

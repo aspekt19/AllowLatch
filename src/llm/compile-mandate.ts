@@ -5,8 +5,10 @@
  * The gate in engine.ts still owns allow/deny/escalate.
  */
 import {
-  MandatePolicySchema,
-  PolicyDraftSchema,
+  MandatePolicyLlmSchema,
+  PolicyDraftLlmSchema,
+  finalizeMandatePolicy,
+  finalizePolicyDraft,
   type MandatePolicy,
   type PolicyDraft,
 } from '../policy/schema.js'
@@ -41,7 +43,10 @@ const POLICY_RULES = `MandatePolicy constraints:
 - agentWalletBudgetUsd is a HARD lifetime ledger ceiling (not soft metadata)
 - requireHumanConfirmAboveUsd ≤ maxPerOrderUsd; if "ask above $X", use X; else slightly below maxPerOrderUsd
 - Defaults if omitted: agentWalletBudgetUsd 200, maxNotionalUsdPerDay 40, maxPerOrderUsd 10, maxTransactionsPerHour 20; actions true unless forbidden
-- Prefer tighter limits when ambiguous; leave arrays empty rather than guessing`
+- Prefer tighter limits when ambiguous; leave arrays empty rather than guessing
+- Preserve fractional dollar amounts exactly (e.g. $0.10 → 0.1, not 10)
+- If wallet budget is stated but no daily cap, set maxNotionalUsdPerDay = agentWalletBudgetUsd
+- "only transfer" / "no swaps" / "no other contracts" → allowSwap=false, allowX402Pay=false`
 
 export const DRAFT_SYSTEM_PROMPT = `You are AllowLatch Policy Copilot for AI agent wallets on Base (USDC).
 
@@ -79,15 +84,11 @@ const DRAFT_SHADOW =
 const COMPILE_SHADOW =
   'Valid MandatePolicy only: chain=base, currency=USDC, version=1.0; numeric caps conservative; no invented tickers or addresses; requireHumanConfirmAboveUsd ≤ maxPerOrderUsd.'
 
-function normalizeDraft(raw: PolicyDraft): PolicyDraft {
-  const policy = MandatePolicySchema.parse(raw.policy)
-  const questions = raw.questions ?? []
-  const readyToApply = questions.length === 0 ? raw.readyToApply : false
-  return PolicyDraftSchema.parse({
-    ...raw,
-    policy,
-    readyToApply,
-  })
+function normalizeDraft(raw: unknown): PolicyDraft {
+  const draft = finalizePolicyDraft(raw)
+  const questions = draft.questions ?? []
+  const readyToApply = questions.length === 0 ? draft.readyToApply : false
+  return { ...draft, readyToApply }
 }
 
 /** Full Policy Copilot draft (preferred entry for new UX). */
@@ -105,7 +106,7 @@ Mandate:
 """
 ${text}
 """`,
-    schema: PolicyDraftSchema,
+    schema: PolicyDraftLlmSchema,
     schemaName: 'policy_draft',
     model: resolveCompileModel(),
     reasoningEffort: 'medium',
@@ -138,7 +139,7 @@ Owner revision:
 """
 ${revision}
 """`,
-    schema: PolicyDraftSchema,
+    schema: PolicyDraftLlmSchema,
     schemaName: 'policy_draft',
     model: resolveCompileModel(),
     reasoningEffort: 'medium',
@@ -167,7 +168,7 @@ Mandate:
 """
 ${text}
 """`,
-    schema: MandatePolicySchema,
+    schema: MandatePolicyLlmSchema,
     schemaName: 'mandate_policy',
     model: resolveCompileModel(),
     reasoningEffort: 'medium',
@@ -178,5 +179,5 @@ ${text}
     },
   })
 
-  return { policy: MandatePolicySchema.parse(data), meta }
+  return { policy: finalizeMandatePolicy(data), meta }
 }

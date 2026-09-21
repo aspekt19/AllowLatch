@@ -375,7 +375,13 @@ agent.addCapability({
     })
     return JSON.stringify(
       {
-        ...result,
+        decision: result.decision,
+        reasons: result.reasons,
+        policyName: result.policyName,
+        remainingDailyUsd: result.remainingDailyUsd,
+        remainingLifetimeUsd: result.remainingLifetimeUsd,
+        intent: args.intent,
+        intentHash: receipt?.intentHash ?? null,
         ledger,
         receipt,
         packCreditsRemaining,

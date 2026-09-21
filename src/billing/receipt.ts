@@ -93,13 +93,30 @@ export function issueAllowReceipt(args: {
   if (args.evaluation.decision !== 'allow') return null
   const issuedAt = Math.floor(Date.now() / 1000)
   const ttl = args.ttlSec ?? Number(process.env.ALLOWLATCH_RECEIPT_TTL_SEC || 120)
+  const intentHash = hashAction(args.intent)
+  if (process.env.ALLOWLATCH_DEBUG_RECEIPT === '1') {
+    console.error(
+      '[receipt] issue',
+      intentHash,
+      JSON.stringify({
+        action: args.intent.action,
+        amountUsd: args.intent.amountUsd,
+        symbol: args.intent.symbol,
+        tokenAddress: args.intent.tokenAddress,
+        toAddress: args.intent.toAddress,
+        chainId: args.intent.chainId,
+        networkId: args.intent.networkId,
+        calldataHash: args.intent.calldataHash,
+      })
+    )
+  }
   const body: Omit<AllowReceipt, 'sig'> = {
     v: 1,
     decision: 'allow',
     policyId: args.policyId,
     jti: args.jti ?? randomUUID(),
     policyHash: hashPolicy(args.policy),
-    intentHash: hashAction(args.intent),
+    intentHash,
     chain: args.policy.chain,
     calldataHash: args.intent.calldataHash?.trim().toLowerCase(),
     issuedAt,

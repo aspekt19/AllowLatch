@@ -6,6 +6,20 @@
 
 You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or similar). They will **not** give you API keys for AllowLatch.
 
+**No applied MandatePolicy → no spending rules → every spend must DENY (fail-closed).** Local demo drafts are not production enforcement.
+
+### Install paths (pick one)
+
+1. **Site Connect pack** — owner applies on https://allowlatch.vercel.app → Go live → Connect your agent (paste instruction).
+2. **npm SDK** — `npm i allowlatch` → `assertSpend` / `createGatedAgentKit` / `allowLatchActionProvider`.
+3. **MCP** — `npx allowlatch-mcp`.
+4. **Cursor skill** — AllowLatch skill: discover gate, apply mandate, never invent ALLOW.
+5. **OpenServ x402** — `discoverServices()` → `/allowlatch/i` → `payWorkflow` ($0.025 / evaluate packs).
+
+Public URLs: https://allowlatch.vercel.app/api/host-info  
+Human + agent install guide: https://allowlatch.vercel.app/#install  
+Live Base USDC + x402 case: https://allowlatch.vercel.app/#case
+
 ### What to do
 
 1. Treat AllowLatch as an **external hosted gate**: before any spend/sign, ask AllowLatch. Do **not** ask the human to run a server or set SERV_API_KEY.
@@ -19,16 +33,17 @@ You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or sim
    - "Why was that denied?"
 4. Never move funds on DENY. On ESCALATE, ask the human, then re-call with approval.
 5. On ALLOW: keep the **allow-receipt** and pass it into `execute_gated_transfer` (single-use `jti`). Do not sign without a valid receipt. Treat timeouts and API errors as DENY (fail-closed). Prefer `createGatedAgentKit` so you cannot call a raw signer in parallel.
-6. Pricing: **$0.025** per OpenServ x402 call. `buy_evaluate_pack` mints fixed credits (default 3 ≈ $0.008/check) — not a separate $1/100 SKU yet.
+6. Pricing: **$0.025** per OpenServ x402 call. `buy_evaluate_pack` mints fixed credits (default 3 ≈ $0.008/check).
 7. Policy mutates (`apply_policy`, etc.) need `ownerToken` from first apply — spenders with only `policyId` cannot rewrite limits.
 8. Demo UI: https://allowlatch.vercel.app
-9. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
-10. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
-11. Embed (into your agent): https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
-12. Hosted model: https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
-13. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
-14. Security: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
-15. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+9. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
+10. Embed: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+11. Hosted: https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
+12. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+
+### Live case (Base mainnet · paid path)
+
+Cursor agent paid OpenServ x402 ($0.025/call) to AllowLatch Gate; fees settled to operator `0xa918…`. After ALLOW + receipt, signed USDC transfer: https://basescan.org/tx/0x04479adb7267416764f388360dcb106329b6d48d80afd565d587ea688d7dd0c7 — details https://allowlatch.vercel.app/#case
 
 ### Capabilities (host)
 
@@ -40,6 +55,6 @@ draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet
 - SERV on the host drafts/explains; never changes the verdict.
 - Execute requires a verified, unconsumed allow-receipt (or escalate + humanApproved).
 - Clients must fail-closed: network/timeout/malformed response → DENY, never sign.
-- Default enforcement intent is **hybrid**; middleware alone is not custody-grade.- Prefer token contract addresses + chainId over symbols alone; bind swap receipts with calldataHash.
-- AllowLatch does not custody funds (middleware + receipt; optional hybrid Spend Permissions on-chain).
+- Default enforcement intent is **hybrid**; middleware alone is not custody-grade.
+- AllowLatch does not custody funds.
 - Never ask the end user for SERV_API_KEY or CDP secrets, or to run `npm run dev`.

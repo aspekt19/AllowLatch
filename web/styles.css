@@ -469,6 +469,242 @@ button {
   max-width: 28ch;
 }
 
+.how-rule {
+  margin: 36px 0 0;
+  max-width: 62ch;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+/* Install */
+.audience-split {
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px 56px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.audience-col h3 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.path-steps {
+  margin: 0;
+  padding: 0 0 0 1.15rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.path-steps li + li {
+  margin-top: 10px;
+}
+
+.install-paths {
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.install-paths > li {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 20px 28px;
+  padding: 26px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: start;
+}
+
+.install-tag {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  padding-top: 4px;
+}
+
+.install-paths h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.install-paths p {
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  max-width: 54ch;
+}
+
+.install-code {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  overflow-x: auto;
+}
+
+.install-code code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.agent-prompt-block {
+  margin-top: 48px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.agent-prompt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.agent-prompt-head .eyebrow {
+  margin: 0;
+}
+
+.agent-prompt {
+  margin: 0;
+  padding: 20px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.install-docs {
+  margin: 28px 0 0;
+}
+
+/* Case study */
+.case {
+  background: linear-gradient(180deg, var(--paper) 0%, color-mix(in srgb, var(--accent-soft) 35%, var(--paper)) 100%);
+}
+
+.case-timeline {
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.case-timeline > li {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+  max-width: 68ch;
+}
+
+.case-step {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.case-timeline h3 {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.case-timeline p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.case-timeline blockquote {
+  margin: 0 0 12px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.case-verdicts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.case-verdicts li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.tag-allow,
+.tag-deny,
+.tag-escalate {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.tag-allow {
+  color: var(--allow);
+  background: var(--allow-bg);
+}
+
+.tag-deny {
+  color: var(--deny);
+  background: var(--deny-bg);
+}
+
+.tag-escalate {
+  color: var(--escalate);
+  background: var(--escalate-bg);
+}
+
+.case-cta {
+  margin: 36px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* AgentKit */
 .agentkit {
   background: linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
@@ -592,6 +828,7 @@ button {
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
   background: #fafbfc;
+  flex-shrink: 0;
 }
 
 .chrome-dots {
@@ -645,13 +882,17 @@ button {
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.78fr);
+  /* Cap height so the chat scrolls inside instead of stretching the page */
+  height: min(70dvh, 640px);
+  max-height: min(70dvh, 640px);
   min-height: 0;
 }
 
 .console {
   display: flex;
   flex-direction: column;
-  min-height: 560px;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   border-right: 1px solid var(--line);
   background: var(--surface);
@@ -711,8 +952,11 @@ button {
 }
 
 .messages {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 18px 16px 22px;
   display: flex;
   flex-direction: column;
@@ -847,6 +1091,7 @@ button {
   display: grid;
   gap: 12px;
   background: #f7f8fa;
+  flex-shrink: 0;
 }
 
 .composer textarea {
@@ -928,6 +1173,10 @@ button {
 .rail {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #fafbfc;
 }
 
@@ -1193,9 +1442,15 @@ button {
 @media (max-width: 960px) {
   .section-grid,
   .agentkit-layout,
-  .pricing-layout {
+  .pricing-layout,
+  .audience-split {
     grid-template-columns: 1fr;
     gap: 28px;
+  }
+
+  .install-paths > li {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .pipeline {
@@ -1213,12 +1468,14 @@ button {
 
   .workspace {
     grid-template-columns: 1fr;
+    height: min(78dvh, 700px);
+    max-height: min(78dvh, 700px);
   }
 
   .console {
     border-right: none;
     border-bottom: 1px solid var(--line);
-    min-height: 480px;
+    min-height: 0;
   }
 }
 

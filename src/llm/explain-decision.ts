@@ -3,9 +3,10 @@
  * Does not change allow/deny — only clarifies and suggests mandate edits.
  */
 import {
-  DecisionExplanationSchema,
+  DecisionExplanationLlmSchema,
   EvaluationResultSchema,
   MandatePolicySchema,
+  finalizeDecisionExplanation,
   type DecisionExplanation,
   type EvaluationResult,
   type MandatePolicy,
@@ -54,7 +55,7 @@ ${JSON.stringify(params.policy, null, 2)}
 
 Evaluation JSON:
 ${JSON.stringify(params.evaluation, null, 2)}`,
-    schema: DecisionExplanationSchema,
+    schema: DecisionExplanationLlmSchema,
     schemaName: 'decision_explanation',
     model: explainModel(),
     reasoningEffort: 'low',
@@ -69,7 +70,7 @@ ${JSON.stringify(params.evaluation, null, 2)}`,
   })
 
   return {
-    explanation: DecisionExplanationSchema.parse(data),
+    explanation: finalizeDecisionExplanation(data),
     meta,
   }
 }

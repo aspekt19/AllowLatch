@@ -21,7 +21,8 @@
         </a>
         <nav class="nav-links" aria-label="Primary">
           <a href="#how">How it works</a>
-          <a href="#agentkit">Embed</a>
+          <a href="#install">Install</a>
+          <a href="#case">Live case</a>
           <a href="#pricing">Pricing</a>
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
           <a class="nav-cta" href="#gate">Try the gate</a>
@@ -76,9 +77,9 @@
           </p>
           <div class="hero-cta">
             <a class="btn btn-solid" href="#gate">Open the live gate</a>
-            <a class="btn btn-line" href="#agentkit">Embed in your agent</a>
+            <a class="btn btn-line" href="#install">Install paths</a>
           </div>
-          <p class="hero-meta">No end-user API keys · Fail-closed · Base / USDC · Hybrid recommended</p>
+          <p class="hero-meta">No end-user API keys · No policy → no spend · Base / USDC</p>
         </div>
       </section>
 
@@ -115,7 +116,7 @@
             <li>
               <span class="pipeline-idx">01</span>
               <h3>Owner mandate</h3>
-              <p>Limits, symbols, addresses, escalate threshold - in natural language.</p>
+              <p>Limits, symbols, addresses, escalate threshold — in natural language.</p>
             </li>
             <li>
               <span class="pipeline-idx">02</span>
@@ -125,32 +126,253 @@
             <li>
               <span class="pipeline-idx">03</span>
               <h3>engine.ts gate</h3>
-              <p>Deterministic ALLOW / DENY / ESCALATE. Ledger + audit on the host.</p>
+              <p>Deterministic ALLOW / DENY / ESCALATE. No policy applied → every spend is DENY.</p>
             </li>
             <li>
               <span class="pipeline-idx">04</span>
               <h3>Receipt, then sign</h3>
-              <p>Single-use <code>jti</code>. AgentKit (or your wallet stack) signs only after ALLOW.</p>
+              <p>Single-use <code>jti</code>. AgentKit signs only after ALLOW. Timeout → DENY.</p>
             </li>
           </ol>
+          <p class="how-rule muted">
+            <strong>Rule:</strong> only an applied MandatePolicy counts. Local demo drafts and offline
+            heuristics are not production enforcement. If you never Apply / Go live, there are
+            <em>no</em> spending rules — and the agent must not move funds.
+          </p>
+        </div>
+      </section>
+
+      <section class="section install" id="install" aria-labelledby="install-title">
+        <div class="shell">
+          <div class="section-intro section-intro-wide">
+            <p class="eyebrow">Install</p>
+            <h2 id="install-title">How you (and your agent) connect.</h2>
+            <p class="section-lead">
+              You do not run a server. You do not need <code>SERV_API_KEY</code>. Pick any path —
+              all of them end at the same hosted gate before every spend.
+            </p>
+          </div>
+
+          <div class="audience-split">
+            <div class="audience-col">
+              <h3>For you (human)</h3>
+              <ol class="path-steps">
+                <li>Open this site → write a mandate → <strong>Draft</strong> → review.</li>
+                <li><strong>Go live</strong> — policy stored on the server gate + real receipts.</li>
+                <li><strong>Connect your agent</strong> — copy instruction, code, or MCP.</li>
+                <li>Or tell your agent in chat: “Connect to AllowLatch Gate on OpenServ and apply my mandate.”</li>
+              </ol>
+            </div>
+            <div class="audience-col">
+              <h3>For your agent</h3>
+              <ol class="path-steps">
+                <li>Discover <strong>AllowLatch Gate</strong> (<code>/allowlatch/i</code>) or read
+                  <a href="/api/host-info">/api/host-info</a>.</li>
+                <li>Apply the owner’s MandatePolicy once (<code>apply_policy</code> / paywall).</li>
+                <li>Before <em>every</em> transfer / swap / x402 pay: <code>assertSpend</code> (or gated kit).</li>
+                <li>ALLOW + receipt → may sign. DENY / ESCALATE / timeout → do not sign.</li>
+              </ol>
+            </div>
+          </div>
+
+          <ul class="install-paths" aria-label="Installation paths">
+            <li>
+              <span class="install-tag">Site</span>
+              <div>
+                <h3>Try + Connect pack</h3>
+                <p>
+                  Fastest for owners: mandate here → Go live → paste Connect instruction into Cursor,
+                  Claude, or any AgentKit bot.
+                </p>
+                <a href="#gate">Open the gate ↓</a>
+              </div>
+            </li>
+            <li>
+              <span class="install-tag">npm</span>
+              <div>
+                <h3>SDK · <code>allowlatch</code></h3>
+                <p>
+                  <code>assertSpend</code>, <code>createGatedAgentKit</code> (preferred — gate baked into
+                  signing), <code>allowLatchActionProvider</code> for AgentKit.
+                </p>
+                <pre class="install-code" tabindex="0"><code>npm i allowlatch
+import { assertSpend, createGatedAgentKit } from 'allowlatch'</code></pre>
+              </div>
+            </li>
+            <li>
+              <span class="install-tag">MCP</span>
+              <div>
+                <h3>Model Context Protocol</h3>
+                <p>Cursor / Claude Desktop tools that call the same remote gate.</p>
+                <pre class="install-code" tabindex="0"><code>npx allowlatch-mcp
+# or: npm run mcp  (from the repo)</code></pre>
+              </div>
+            </li>
+            <li>
+              <span class="install-tag">Skill</span>
+              <div>
+                <h3>Cursor Agent Skill</h3>
+                <p>
+                  Drop the AllowLatch skill into the agent store so the agent discovers the gate,
+                  applies your mandate, and never invents ALLOW.
+                </p>
+                <a
+                  href="https://github.com/aspekt19/AllowLatch/blob/main/.cursor/skills/allowlatch/SKILL.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  >Skill source →</a
+                >
+              </div>
+            </li>
+            <li>
+              <span class="install-tag">OpenServ</span>
+              <div>
+                <h3>Discover + x402</h3>
+                <p>
+                  Agent finds the service, pays <strong>$0.025</strong> per call (or evaluate packs).
+                  No clone, no <code>npm run dev</code>.
+                </p>
+                <pre class="install-code" tabindex="0"><code>const services = await client.payments.discoverServices()
+const gate = services.find((s) => /allowlatch/i.test(s.name))
+await client.payments.payWorkflow({ triggerUrl: gate.webhookUrl, input: { prompt } })</code></pre>
+              </div>
+            </li>
+          </ul>
+
+          <div class="agent-prompt-block" id="for-agents">
+            <div class="agent-prompt-head">
+              <p class="eyebrow">Paste to your agent</p>
+              <button type="button" class="btn btn-solid" id="btn-copy-owner-prompt">Copy prompt</button>
+            </div>
+            <pre class="agent-prompt" id="owner-agent-prompt" tabindex="0">Connect to AllowLatch Gate on OpenServ (discover /allowlatch/i or https://allowlatch.vercel.app/api/host-info).
+I do not run a host and I will not give you SERV_API_KEY.
+
+Set my spending mandate, then apply it on the gate:
+«Agent wallet $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap router allowed. Ask me above $8. No meme coins.»
+
+Before every transfer, swap, or x402 payment: call AllowLatch assertSpend / evaluate_intent.
+- ALLOW + single-use allow-receipt (jti) → only then may you sign.
+- DENY, ESCALATE (ask me), timeout, or malformed response → do not sign (fail-closed).
+Never invent ALLOW. Prefer createGatedAgentKit so raw AgentKit cannot bypass the latch.</pre>
+            <p class="muted tight" id="owner-prompt-copy-status" aria-live="polite"></p>
+          </div>
+
+          <p class="install-docs muted">
+            Docs:
+            <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md" target="_blank" rel="noreferrer">CONNECT</a>
+            ·
+            <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED</a>
+            ·
+            <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md" target="_blank" rel="noreferrer">HOSTED</a>
+            ·
+            <a href="https://github.com/aspekt19/AllowLatch/blob/main/llms.txt" target="_blank" rel="noreferrer">llms.txt</a>
+          </p>
+        </div>
+      </section>
+
+      <section class="section case" id="case" aria-labelledby="case-title">
+        <div class="shell">
+          <div class="section-intro section-intro-wide">
+            <p class="eyebrow">Live case · Base mainnet · Sept 2026</p>
+            <h2 id="case-title">Real x402 fees. Real USDC transfer.</h2>
+            <p class="section-lead">
+              End-to-end as a user agent: discover AllowLatch Gate → pay $0.025 → ALLOW + receipt →
+              only then sign on Base.
+            </p>
+          </div>
+
+          <ol class="case-timeline">
+            <li>
+              <span class="case-step">01 · Fund</span>
+              <h3>Owner tops up the agent wallet</h3>
+              <p>
+                Spender <code>0x36fe…3645</code> received USDC + gas ETH on Base (top-ups including
+                <a
+                  href="https://basescan.org/tx/0x6e95397c24c2aea98b4645d5654adb308187ad6c6b92069296be82fcab4a1816"
+                  target="_blank"
+                  rel="noreferrer"
+                  >0x6e95…1816</a
+                >).
+              </p>
+            </li>
+            <li>
+              <span class="case-step">02 · Mandate</span>
+              <h3>Rules in plain language</h3>
+              <blockquote>
+                Budget $0.16 USDC on Base. Max $0.10 per transfer. Escalate above $0.05. Only transfer
+                to <code>0x5cc0…6205</code>. No swaps, no other contracts.
+              </blockquote>
+              <p class="muted tight">
+                No applied MandatePolicy → every spend DENY (fail-closed). Local drafts are not
+                production enforcement.
+              </p>
+            </li>
+            <li>
+              <span class="case-step">03 · Paid gate</span>
+              <h3>OpenServ x402 · $0.025 per call</h3>
+              <p>
+                Hosted <strong>AllowLatch Gate</strong> online. Agent paid with its own USDC;
+                settlement to operator <code>0xa918…F677</code> (seen rising to <strong>0.25 USDC</strong>
+                across the session). Path: <code>payWorkflow</code> / <code>assertSpend</code> — not a
+                local <code>engine.ts</code> bypass.
+              </p>
+            </li>
+            <li>
+              <span class="case-step">04 · Verdicts</span>
+              <h3>What the turnstile returned</h3>
+              <ul class="case-verdicts">
+                <li>
+                  <span class="tag-allow">ALLOW</span>
+                  $0.04 after paid assertSpend + receipt → signed
+                  <a
+                    href="https://basescan.org/tx/0x04479adb7267416764f388360dcb106329b6d48d80afd565d587ea688d7dd0c7"
+                    target="_blank"
+                    rel="noreferrer"
+                    >tx 0x0447…d0c7</a
+                  >
+                </li>
+                <li>
+                  <span class="tag-escalate">ESCALATE</span>
+                  $0.08 → <strong>not signed</strong> (above $0.05 human confirm)
+                </li>
+                <li>
+                  <span class="tag-deny">DENY</span>
+                  wrong destination / over max → <strong>not signed</strong>
+                </li>
+              </ul>
+            </li>
+            <li>
+              <span class="case-step">05 · Result</span>
+              <h3>Product invariants held</h3>
+              <p>
+                LLM never overrode the verdict. Fees hit the operator wallet. Signature only after
+                ALLOW + allow-receipt. Same flow your agent should use via Install below.
+              </p>
+            </li>
+          </ol>
+
+          <p class="case-cta">
+            <a class="btn btn-solid" href="#gate">Try the gate on this site</a>
+            <a class="btn btn-line" href="#install">Install paths for your agent</a>
+          </p>
         </div>
       </section>
 
       <section class="section agentkit" id="agentkit" aria-labelledby="agentkit-title">
         <div class="shell agentkit-layout">
           <div class="agentkit-copy">
-            <p class="eyebrow">Integration</p>
-            <h2 id="agentkit-title">Keep your agent. Add the latch.</h2>
+            <p class="eyebrow">SDK snippet</p>
+            <h2 id="agentkit-title">One call before every signature.</h2>
             <p class="section-lead">
-              AllowLatch is the gate, not a replacement repo. Wire
-              <code>createGatedAgentKit</code> (preferred) or <code>assertSpend</code> so the agent
-              cannot call a raw signer in parallel. <code>walletPrivateKey</code> in the snippet is
-              only the <strong>x402 payer</strong> — not necessarily the CDP signer.
+              Prefer <code>createGatedAgentKit</code> so the agent cannot call a raw signer in parallel.
+              <code>walletPrivateKey</code> here is only the <strong>x402 payer</strong> — not necessarily
+              the CDP / AgentKit signer.
             </p>
             <div class="agentkit-actions">
               <button type="button" class="btn btn-solid" id="btn-copy-embed-snippet">
                 Copy embed snippet
               </button>
+              <a class="btn btn-line" href="#install">All install paths</a>
               <a
                 class="btn btn-line"
                 href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md"
@@ -160,13 +382,16 @@
               >
             </div>
             <p class="agentkit-note muted" id="agentkit-copy-status" aria-live="polite">
-              Snippet drops into your AgentKit project. Demo Codespaces is optional - not a fork target.
+              Full paths (MCP, skill, OpenServ discover) are in Install above.
             </p>
           </div>
-          <pre class="agentkit-code" tabindex="0"><code>// walletPrivateKey = x402 payer only
-await assertSpend({ intent, triggerUrl, walletPrivateKey })
-// ALLOW + receipt → then sign via gated adapter
-// timeout / DENY → refuse (fail-closed)</code></pre>
+          <pre class="agentkit-code" tabindex="0"><code>import { assertSpend } from 'allowlatch'
+// walletPrivateKey = x402 payer only
+const { receipt } = await assertSpend({
+  intent, triggerUrl, walletPrivateKey,
+})
+// ALLOW + receipt → then AgentKit / execute_gated_transfer
+// DENY / timeout → refuse (fail-closed)</code></pre>
         </div>
       </section>
 
@@ -361,9 +586,11 @@ await assertSpend({ intent, triggerUrl, walletPrivateKey })
           <span class="foot-year">© 2026</span>
         </div>
         <div class="foot-links">
+          <a href="#install">Install</a>
+          <a href="#case">Live case</a>
           <a href="https://github.com/aspekt19/AllowLatch" target="_blank" rel="noreferrer">GitHub</a>
-          <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md" target="_blank" rel="noreferrer">Product</a>
-          <a href="https://docs.openserv.ai/serv-reasoning/" target="_blank" rel="noreferrer">SERV</a>
+          <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md" target="_blank" rel="noreferrer">Connect</a>
+          <a href="https://github.com/aspekt19/AllowLatch/blob/main/llms.txt" target="_blank" rel="noreferrer">llms.txt</a>
           <span>Does not custody funds</span>
         </div>
       </div>
