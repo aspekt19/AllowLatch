@@ -247,6 +247,19 @@ code {
   animation: arm-breathe 5.5s var(--ease) infinite;
 }
 
+@keyframes arm-breathe {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  45% {
+    transform: rotate(-8deg);
+  }
+  55% {
+    transform: rotate(-8deg);
+  }
+}
+
 .hero-copy {
   position: relative;
   z-index: 1;
