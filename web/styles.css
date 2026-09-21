@@ -36,6 +36,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* Stop iOS from inflating text blocks that have no <pre> (Site, Skill). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
@@ -532,6 +535,13 @@ button {
   padding-top: 4px;
 }
 
+.install-paths > li > div {
+  font-size: 0.95rem;
+  min-width: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 .install-paths h3 {
   margin: 0 0 8px;
   font-size: 1.05rem;
@@ -542,7 +552,7 @@ button {
 .install-paths p {
   margin: 0 0 10px;
   color: var(--ink-soft);
-  font-size: 0.95rem;
+  font-size: 1em;
   max-width: 54ch;
 }
 
@@ -1451,6 +1461,10 @@ button {
   .install-paths > li {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .install-paths p {
+    max-width: none;
   }
 
   .pipeline {
