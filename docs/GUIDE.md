@@ -12,7 +12,7 @@
 
 | Surface | Who | Price | Always on? |
 |---------|-----|-------|------------|
-| **Primary — Vercel `/api/gate`** | Humans on the website + agents via Connect | Website **browser** free to try (same-site fetch). Agents pay **$0.025 USDC** (native x402 on Base) | **Yes** (session-scoped seal — not SQLite durable ledger) |
+| **Primary — Vercel `/api/gate`** | Humans on the website + agents via Connect | Website **browser** free to try (same-site fetch). Agents pay **$0.025 USDC** (native x402 on Base) | **Yes** — set `ALLOWLATCH_TURSO_*` for durable multi-instance ledger; otherwise memory+seal demo |
 | **Fallback — OpenServ** | Optional marketplace path | **$0.025** x402 | Only while the operator OpenServ host is reachable |
 
 Public status: `GET https://allowlatch.vercel.app/api/host-info`  

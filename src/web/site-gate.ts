@@ -1,11 +1,11 @@
 /**
  * Website product gate — deterministic engine + allow-receipt on Vercel.
- * Sessions survive cold starts via HMAC-signed sessionSeal held by the browser.
  *
- * Honest limits (see docs/SECURITY.md):
- * - Seal is integrity-protected, not encrypted; never put ownerToken in the seal.
- * - Seal carries ledger for cold-start demos — not a durable multi-instance ledger.
- * - Monotonic `seq` rejects stale seals when a fresher session is still in memory.
+ * Backends:
+ * - Durable (Turso): shared ledger + atomic jti — set ALLOWLATCH_TURSO_DATABASE_URL
+ * - Memory + sessionSeal: demo / cold-start without Turso (not multi-instance safe)
+ *
+ * See docs/SECURITY.md.
  */
 import { createHmac, createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import {
@@ -16,16 +16,20 @@ import {
   type SpendLedger,
 } from '../policy/schema.js'
 import { commitIntent, evaluateIntent, freshLedger } from '../policy/engine.js'
-import { issueAllowReceipt } from '../billing/receipt.js'
+import { issueAllowReceipt, type AllowReceipt } from '../billing/receipt.js'
+import {
+  durableApply,
+  durableConsume,
+  durableEvaluate,
+  tursoConfigured,
+} from './site-gate-durable.js'
 
 type Session = {
   policyId: string
   ownerId: string
-  /** Server/browser-only — never encoded into sessionSeal. */
   ownerToken: string
   policy: MandatePolicy
   ledger: SpendLedger
-  /** Monotonic revision — refuse older seals when a newer session is known. */
   seq: number
   updatedAt: number
 }
@@ -66,18 +70,31 @@ function signSealPayload(payload: string): string {
   return createHmac('sha256', sealSecret()).update(payload).digest('hex')
 }
 
-/** Public seal for agents / cold starts — no ownerToken plaintext. */
-export function encodeSessionSeal(session: Session): string {
-  const body = {
-    v: 2 as const,
-    policyId: session.policyId,
-    ownerId: session.ownerId,
-    ownerTokenHash: hashOwnerToken(session.ownerToken),
-    policy: session.policy,
-    ledger: session.ledger,
-    seq: session.seq,
-    updatedAt: session.updatedAt,
-  }
+/** v2 = memory seal with ledger; v3 = durable reference (no ledger in client). */
+export function encodeSessionSeal(
+  session: Session,
+  opts?: { durable?: boolean }
+): string {
+  const body = opts?.durable
+    ? {
+        v: 3 as const,
+        durable: true as const,
+        policyId: session.policyId,
+        ownerId: session.ownerId,
+        ownerTokenHash: hashOwnerToken(session.ownerToken),
+        seq: session.seq,
+        updatedAt: session.updatedAt,
+      }
+    : {
+        v: 2 as const,
+        policyId: session.policyId,
+        ownerId: session.ownerId,
+        ownerTokenHash: hashOwnerToken(session.ownerToken),
+        policy: session.policy,
+        ledger: session.ledger,
+        seq: session.seq,
+        updatedAt: session.updatedAt,
+      }
   const payload = Buffer.from(JSON.stringify(body), 'utf8').toString('base64url')
   const sig = signSealPayload(payload)
   return `${payload}.${sig}`
@@ -87,12 +104,12 @@ type DecodedSeal = {
   policyId: string
   ownerId: string
   ownerTokenHash: string
-  /** Present only for legacy v1 seals — never re-encode. */
   legacyOwnerToken?: string
-  policy: MandatePolicy
-  ledger: SpendLedger
+  policy?: MandatePolicy
+  ledger?: SpendLedger
   seq: number
   updatedAt: number
+  durable?: boolean
 }
 
 export function decodeSessionSeal(seal: string | undefined): DecodedSeal | null {
@@ -110,6 +127,7 @@ export function decodeSessionSeal(seal: string | undefined): DecodedSeal | null 
   try {
     const raw = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
       v?: number
+      durable?: boolean
       policyId?: string
       ownerId?: string
       ownerToken?: string
@@ -121,9 +139,19 @@ export function decodeSessionSeal(seal: string | undefined): DecodedSeal | null 
     }
     if (!raw.policyId || !raw.ownerId) return null
     if (typeof raw.updatedAt !== 'number' || Date.now() - raw.updatedAt > TTL_MS) return null
-    const policy = MandatePolicySchema.parse(raw.policy)
-    const ledger = SpendLedgerSchema.parse(raw.ledger ?? freshLedger())
     const seq = typeof raw.seq === 'number' && raw.seq >= 0 ? raw.seq : 0
+
+    if (raw.v === 3) {
+      if (!raw.ownerTokenHash || raw.ownerTokenHash.length < 32) return null
+      return {
+        policyId: raw.policyId,
+        ownerId: raw.ownerId,
+        ownerTokenHash: raw.ownerTokenHash,
+        seq,
+        updatedAt: raw.updatedAt,
+        durable: true,
+      }
+    }
 
     if (raw.v === 2) {
       if (!raw.ownerTokenHash || raw.ownerTokenHash.length < 32) return null
@@ -131,22 +159,21 @@ export function decodeSessionSeal(seal: string | undefined): DecodedSeal | null 
         policyId: raw.policyId,
         ownerId: raw.ownerId,
         ownerTokenHash: raw.ownerTokenHash,
-        policy,
-        ledger,
+        policy: MandatePolicySchema.parse(raw.policy),
+        ledger: SpendLedgerSchema.parse(raw.ledger ?? freshLedger()),
         seq,
         updatedAt: raw.updatedAt,
       }
     }
 
-    // Legacy v1: accept once, strip token on next encode.
     if (raw.v === 1 && raw.ownerToken) {
       return {
         policyId: raw.policyId,
         ownerId: raw.ownerId,
         ownerTokenHash: hashOwnerToken(raw.ownerToken),
         legacyOwnerToken: raw.ownerToken,
-        policy,
-        ledger,
+        policy: MandatePolicySchema.parse(raw.policy),
+        ledger: SpendLedgerSchema.parse(raw.ledger ?? freshLedger()),
         seq,
         updatedAt: raw.updatedAt,
       }
@@ -158,16 +185,11 @@ export function decodeSessionSeal(seal: string | undefined): DecodedSeal | null 
 }
 
 function materializeFromSeal(sealed: DecodedSeal, existing?: Session): Session {
-  const ownerToken =
-    sealed.legacyOwnerToken ||
-    existing?.ownerToken ||
-    // Evaluate-only path without prior apply in this process: placeholder.
-    // Mutates still require matching ownerTokenHash via apply().
-    `seal-only:${sealed.policyId}`
-
-  if (existing?.ownerToken && hashOwnerToken(existing.ownerToken) !== sealed.ownerTokenHash) {
-    // Prefer in-memory owner identity when hash matches a known session.
+  if (!sealed.policy || !sealed.ledger) {
+    throw new Error('sessionSeal missing policy/ledger — durable gate must be configured')
   }
+  const ownerToken =
+    sealed.legacyOwnerToken || existing?.ownerToken || `seal-only:${sealed.policyId}`
 
   return {
     policyId: sealed.policyId,
@@ -183,10 +205,7 @@ function materializeFromSeal(sealed: DecodedSeal, existing?: Session): Session {
   }
 }
 
-function resolveSession(args: {
-  policyId: string
-  sessionSeal?: string
-}): Session {
+function resolveSession(args: { policyId: string; sessionSeal?: string }): Session {
   prune()
   const sealed = decodeSessionSeal(args.sessionSeal)
   const current = sessions.get(args.policyId)
@@ -195,7 +214,9 @@ function resolveSession(args: {
     if (sealed.policyId !== args.policyId) {
       throw new Error('sessionSeal policyId mismatch')
     }
-    // Freshness: never roll ledger back when this process already has a newer seq.
+    if (sealed.durable) {
+      throw new Error('durable sessionSeal requires Turso-backed site gate')
+    }
     if (current && current.seq > sealed.seq) {
       throw new Error(
         'stale sessionSeal (ledger moved forward) — use the latest seal from the previous evaluate response'
@@ -217,13 +238,17 @@ function resolveSession(args: {
   return current
 }
 
-export function siteGateApply(args: {
+export function siteGateDurable(): boolean {
+  return tursoConfigured()
+}
+
+export async function siteGateApply(args: {
   policyId: string
   ownerId: string
   ownerToken?: string
   policy: MandatePolicy
   sessionSeal?: string
-}): {
+}): Promise<{
   ok: true
   policyId: string
   ownerId: string
@@ -231,15 +256,46 @@ export function siteGateApply(args: {
   mode: 'site-gate'
   policy: MandatePolicy
   sessionSeal: string
-} {
-  prune()
+  durable: boolean
+}> {
   const policy = MandatePolicySchema.parse({
     ...args.policy,
     ownerId: args.ownerId,
   })
+
+  if (tursoConfigured()) {
+    const applied = await durableApply({
+      policyId: args.policyId,
+      ownerId: args.ownerId,
+      ownerToken: args.ownerToken,
+      policy,
+    })
+    const session: Session = {
+      policyId: applied.policyId,
+      ownerId: applied.ownerId,
+      ownerToken: applied.ownerToken,
+      policy: applied.policy,
+      ledger: applied.ledger,
+      seq: applied.seq,
+      updatedAt: Date.now(),
+    }
+    sessions.set(session.policyId, session)
+    return {
+      ok: true,
+      policyId: applied.policyId,
+      ownerId: applied.ownerId,
+      ownerToken: applied.ownerToken,
+      mode: 'site-gate',
+      policy: applied.policy,
+      sessionSeal: encodeSessionSeal(session, { durable: true }),
+      durable: true,
+    }
+  }
+
+  prune()
   const sealed = decodeSessionSeal(args.sessionSeal)
   const existing =
-    (sealed && sealed.policyId === args.policyId
+    (sealed && sealed.policyId === args.policyId && !sealed.durable
       ? materializeFromSeal(sealed, sessions.get(args.policyId))
       : null) || sessions.get(args.policyId)
 
@@ -289,28 +345,87 @@ export function siteGateApply(args: {
     mode: 'site-gate',
     policy,
     sessionSeal: encodeSessionSeal(session),
+    durable: false,
   }
 }
 
-export function siteGateEvaluate(args: {
+export async function siteGateEvaluate(args: {
   policyId: string
   intent: SpendIntent
   sessionSeal?: string
-}): {
+}): Promise<{
   ok: true
   mode: 'site-gate'
   decision: 'allow' | 'deny' | 'escalate'
-  result: ReturnType<typeof evaluateIntent> & { receipt?: ReturnType<typeof issueAllowReceipt> }
-  receipt: ReturnType<typeof issueAllowReceipt> | null
+  result: ReturnType<typeof evaluateIntent> & { receipt?: AllowReceipt }
+  receipt: AllowReceipt | null
   sessionSeal: string
-} {
+  durable: boolean
+}> {
+  if (tursoConfigured()) {
+    const evaluated = await durableEvaluate({
+      policyId: args.policyId,
+      intent: args.intent,
+    })
+    const known = sessions.get(args.policyId)
+    const sealed = decodeSessionSeal(args.sessionSeal)
+    const placeholderPolicy = MandatePolicySchema.parse({
+      version: '1.0',
+      name: 'durable',
+      chain: 'base',
+      currency: 'USDC',
+      capital: {
+        agentWalletBudgetUsd: 0,
+        maxNotionalUsdPerDay: 1,
+        maxPerOrderUsd: 1,
+        maxTransactionsPerHour: 1,
+      },
+      universe: {
+        allowedSymbols: [],
+        deniedSymbols: [],
+        allowedAddresses: [],
+        deniedAddresses: [],
+        allowedContracts: [],
+        deniedContracts: [],
+        allowedTokenAddresses: [],
+        deniedTokenAddresses: [],
+        allowedFunctionSelectors: [],
+        deniedFunctionSelectors: [],
+      },
+      actions: { allowSwap: false, allowTransfer: true, allowX402Pay: false },
+      risk: { emergencyStop: false },
+      escalation: { requireHumanConfirmAboveUsd: 0 },
+    })
+    const sealSession: Session = known
+      ? { ...known, seq: evaluated.seq, updatedAt: Date.now() }
+      : {
+          policyId: args.policyId,
+          ownerId: sealed?.ownerId || 'durable',
+          ownerToken: `durable:${args.policyId}`,
+          policy: placeholderPolicy,
+          ledger: freshLedger(),
+          seq: evaluated.seq,
+          updatedAt: Date.now(),
+        }
+    if (known) sessions.set(args.policyId, sealSession)
+    return {
+      ok: true,
+      mode: 'site-gate',
+      decision: evaluated.decision,
+      result: evaluated.result,
+      receipt: evaluated.receipt,
+      sessionSeal: encodeSessionSeal(sealSession, { durable: true }),
+      durable: true,
+    }
+  }
+
   const session = resolveSession({
     policyId: args.policyId,
     sessionSeal: args.sessionSeal,
   })
 
   const evaluation = evaluateIntent(session.policy, args.intent, session.ledger)
-  let receipt: ReturnType<typeof issueAllowReceipt> | null = null
+  let receipt: AllowReceipt | null = null
 
   if (evaluation.decision === 'allow') {
     receipt = issueAllowReceipt({
@@ -332,9 +447,26 @@ export function siteGateEvaluate(args: {
     result: { ...evaluation, receipt: receipt ?? undefined },
     receipt,
     sessionSeal: encodeSessionSeal(session),
+    durable: false,
   }
+}
+
+export async function siteGateConsume(args: {
+  policyId: string
+  receipt: unknown
+  intent?: SpendIntent
+}): Promise<{ ok: true; jti: string; durable: boolean }> {
+  if (!tursoConfigured()) {
+    throw new Error(
+      'siteGateConsume requires durable Turso backend (ALLOWLATCH_TURSO_DATABASE_URL)'
+    )
+  }
+  const out = await durableConsume(args)
+  return { ok: true, jti: out.jti, durable: true }
 }
 
 export function siteGateConfigured(): boolean {
   return Boolean(sealSecret())
 }
+
+export { tursoConfigured }

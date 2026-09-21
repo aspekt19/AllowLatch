@@ -30,6 +30,7 @@ OpenServ x402 (fallback) settles to the OpenServ trigger payout wallet.
 - `SERV_API_KEY` — Copilot only; temporary receipt fallback warns in production
 - `CDP_API_KEY_ID` + `CDP_API_KEY_SECRET` — Coinbase x402 facilitator (verify/settle)
 - `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO` — payee on Base
+- `ALLOWLATCH_TURSO_DATABASE_URL` + `ALLOWLATCH_TURSO_AUTH_TOKEN` — **durable** shared ledger for `/api/gate` (recommended for anything beyond demo)
 - Optional: `ALLOWLATCH_SITE_GATE_X402=0` — disable paywall (dev only)
 
 ## Do not

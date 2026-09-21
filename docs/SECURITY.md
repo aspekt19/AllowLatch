@@ -88,20 +88,22 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 
 ## Vercel site gate (`/api/gate`) — honest limits
 
-The always-on website path is **session-scoped**, not the same machine as the SQLite operator executor.
-
 | Property | Behavior |
 |----------|----------|
-| Persistence | `sessionSeal` (HMAC) + in-memory `Map` — survives cold starts only if the client returns the latest seal |
-| `ownerToken` | Returned on apply to the **browser**; **not** embedded in `sessionSeal` (v2). Never paste `ownerToken` into agent Connect packs |
-| Freshness | Monotonic `seq` rejects rolling the ledger back when this process already has a newer seal |
-| Multi-instance races | Two concurrent evaluates on different Vercel isolates can still both ALLOW against the same old seal — **not** custody-grade atomic caps |
+| **Durable mode** | Set `ALLOWLATCH_TURSO_DATABASE_URL` (+ `ALLOWLATCH_TURSO_AUTH_TOKEN`). Shared ledger + unique `jti` across isolates. Seal is **v3 reference** (no ledger in client). `POST action=consume` settles a receipt after use. |
+| **Demo mode** (no Turso) | `sessionSeal` (HMAC) + in-memory `Map` — survives cold starts only if the client returns the latest seal. **Not** multi-instance safe. |
+| `ownerToken` | Returned on apply to the **browser**; **not** embedded in `sessionSeal` (v2/v3). Never paste `ownerToken` into agent Connect packs |
+| Freshness (demo) | Monotonic `seq` rejects rolling the ledger back when this process already has a newer seal |
+| Multi-instance races | **Fixed in durable mode.** In demo mode two concurrent evaluates on different isolates can both ALLOW against the same old seal |
 | Free website calls | Same-site browser `Sec-Fetch-*` + allowlisted Origin — **UX convenience**, not a cryptographic paywall. Agents without those signals pay x402 |
 | Receipt secret | Prefer dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is supported for ops continuity but is poor secret hygiene |
+| Budget vs settlement | On ALLOW the daily/lifetime ledger is reserved when the receipt is issued (conservative). Durable `consume` marks `jti` settled for replay protection at the execute boundary |
 
-For durable daily/lifetime caps + atomic `jti` consume, use the SQLite host (`npm run http:gate` / OpenServ operator) or a future shared store. Treat the public site gate as **always-on demo + agent smoke path** with small balances.
+Prefer durable Turso for any balance you care about. Treat demo mode as **always-on smoke path** with small balances. SQLite operator host (`npm run http:gate`) remains the local atomic alternative.
 
 Escalate + `humanApproved` on HTTP `/v1/execute` requires `ownerToken` (or operator) — the spender cannot self-approve.
+
+Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 
 ## Threat model (summary)
 

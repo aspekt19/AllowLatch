@@ -10,16 +10,19 @@ import { DEMO_POLICY } from '../policy/schema.js'
 
 before(() => {
   process.env.ALLOWLATCH_RECEIPT_SECRET = 'test-site-gate-receipt-secret'
+  delete process.env.ALLOWLATCH_TURSO_DATABASE_URL
+  delete process.env.TURSO_DATABASE_URL
 })
 
 describe('site-gate sessionSeal', () => {
-  it('omits ownerToken from seal payload (v2)', () => {
-    const applied = siteGateApply({
+  it('omits ownerToken from seal payload (v2)', async () => {
+    const applied = await siteGateApply({
       policyId: 'seal-v2-a',
       ownerId: 'owner-a',
       policy: DEMO_POLICY,
     })
     assert.ok(applied.ownerToken)
+    assert.equal(applied.durable, false)
     const [payload] = applied.sessionSeal.split('.')
     const raw = JSON.parse(Buffer.from(payload!, 'base64url').toString('utf8')) as Record<
       string,
@@ -31,9 +34,9 @@ describe('site-gate sessionSeal', () => {
     assert.ok(String(raw.ownerTokenHash).length >= 32)
   })
 
-  it('rejects stale seal after ledger advances', () => {
+  it('rejects stale seal after ledger advances', async () => {
     const policyId = 'seal-stale-a'
-    const applied = siteGateApply({
+    const applied = await siteGateApply({
       policyId,
       ownerId: 'owner-b',
       policy: {
@@ -47,7 +50,7 @@ describe('site-gate sessionSeal', () => {
     })
     const staleSeal = applied.sessionSeal
 
-    const allowed = siteGateEvaluate({
+    const allowed = await siteGateEvaluate({
       policyId,
       sessionSeal: staleSeal,
       intent: {
@@ -61,7 +64,7 @@ describe('site-gate sessionSeal', () => {
     assert.equal(allowed.decision, 'allow')
     assert.notEqual(allowed.sessionSeal, staleSeal)
 
-    assert.throws(
+    await assert.rejects(
       () =>
         siteGateEvaluate({
           policyId,
@@ -78,8 +81,8 @@ describe('site-gate sessionSeal', () => {
     )
   })
 
-  it('decode rejects tampered payload', () => {
-    const applied = siteGateApply({
+  it('decode rejects tampered payload', async () => {
+    const applied = await siteGateApply({
       policyId: 'seal-tamper',
       ownerId: 'owner-c',
       policy: DEMO_POLICY,
@@ -91,5 +94,23 @@ describe('site-gate sessionSeal', () => {
     raw.ownerId = 'attacker'
     const evil = `${Buffer.from(JSON.stringify(raw)).toString('base64url')}.${sig}`
     assert.equal(decodeSessionSeal(evil), null)
+  })
+
+  it('encodeSessionSeal is deterministic for same session fields', async () => {
+    const applied = await siteGateApply({
+      policyId: 'seal-det',
+      ownerId: 'owner-d',
+      policy: DEMO_POLICY,
+    })
+    const again = encodeSessionSeal({
+      policyId: applied.policyId,
+      ownerId: applied.ownerId,
+      ownerToken: applied.ownerToken,
+      policy: applied.policy,
+      ledger: decodeSessionSeal(applied.sessionSeal)!.ledger!,
+      seq: decodeSessionSeal(applied.sessionSeal)!.seq,
+      updatedAt: decodeSessionSeal(applied.sessionSeal)!.updatedAt,
+    })
+    assert.equal(again, applied.sessionSeal)
   })
 })

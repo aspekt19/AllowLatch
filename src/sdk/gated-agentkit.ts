@@ -21,6 +21,14 @@ export type GatedGateConfig =
       ownerToken?: string
     }
   | {
+      /** Always-on Vercel /api/gate via assertSpend (x402). Prefer over chat-only prompts. */
+      kind: 'site'
+      gateUrl?: string
+      sessionSeal?: string
+      walletPrivateKey?: string
+      policyId?: string
+    }
+  | {
       kind: 'openserv'
       triggerUrl?: string
       workflowId?: number
@@ -268,20 +276,28 @@ export async function createGatedAgentKit(args?: {
   const policyId = args?.policyId ?? 'default'
   const gate: GatedGateConfig =
     args?.gate ??
-    (process.env.ALLOWLATCH_TRIGGER_URL?.trim() || process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
+    (process.env.ALLOWLATCH_GATE_URL?.trim() || process.env.ALLOWLATCH_SESSION_SEAL?.trim()
       ? {
-          kind: 'openserv',
-          triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL?.trim(),
-          workflowId: process.env.ALLOWLATCH_WORKFLOW_ID
-            ? Number(process.env.ALLOWLATCH_WORKFLOW_ID)
-            : undefined,
+          kind: 'site',
+          gateUrl: process.env.ALLOWLATCH_GATE_URL?.trim(),
+          sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL?.trim(),
           walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
-          executeOnHost: process.env.ALLOWLATCH_EXECUTE_ON_HOST === '1',
+          policyId,
         }
-      : {
-          kind: 'http',
-          baseUrl: process.env.ALLOWLATCH_HTTP_URL?.trim() || 'http://127.0.0.1:8787',
-        })
+      : process.env.ALLOWLATCH_TRIGGER_URL?.trim() || process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
+        ? {
+            kind: 'openserv',
+            triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL?.trim(),
+            workflowId: process.env.ALLOWLATCH_WORKFLOW_ID
+              ? Number(process.env.ALLOWLATCH_WORKFLOW_ID)
+              : undefined,
+            walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+            executeOnHost: process.env.ALLOWLATCH_EXECUTE_ON_HOST === '1',
+          }
+        : {
+            kind: 'http',
+            baseUrl: process.env.ALLOWLATCH_HTTP_URL?.trim() || 'http://127.0.0.1:8787',
+          })
 
   const agent: GatedAgentKit = {
     policyId,
@@ -328,6 +344,32 @@ export async function createGatedAgentKit(args?: {
       const intent = SpendIntentSchema.parse(rawIntent)
       if (gate.kind === 'http') {
         return spendViaHttp(gate, policyId, intent, opts?.humanApproved)
+      }
+      if (gate.kind === 'site') {
+        const asserted = await assertSpend({
+          intent,
+          policyId: gate.policyId ?? policyId,
+          gateUrl: gate.gateUrl,
+          sessionSeal: gate.sessionSeal,
+          walletPrivateKey: gate.walletPrivateKey,
+          requireReceipt: true,
+        })
+        if (asserted.decision === 'escalate' && !opts?.humanApproved) {
+          throw new Error(
+            `AllowLatch ESCALATE: ask the human (never self-approve). ${JSON.stringify(asserted.evaluation).slice(0, 200)}`
+          )
+        }
+        if (asserted.decision !== 'allow') {
+          throw new Error(`AllowLatch ${asserted.decision}: refuse to sign`)
+        }
+        return {
+          decision: 'allow',
+          executed: false,
+          message:
+            'ALLOW + receipt verified via site gate. Sign externally only with this receipt (prefer hybrid Spend Permissions).',
+          receipt: asserted.receipt,
+          raw: asserted.raw,
+        }
       }
       return spendViaOpenServ(gate, policyId, intent, opts?.humanApproved)
     },

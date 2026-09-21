@@ -20,7 +20,13 @@ import {
   x402FacilitatorConfigured,
 } from '../src/http/x402-site-gate.js'
 import { MandatePolicySchema, SpendIntentSchema } from '../src/policy/schema.js'
-import { siteGateApply, siteGateConfigured, siteGateEvaluate } from '../src/web/site-gate.js'
+import {
+  siteGateApply,
+  siteGateConfigured,
+  siteGateConsume,
+  siteGateDurable,
+  siteGateEvaluate,
+} from '../src/web/site-gate.js'
 import {
   gateProxyConfigured,
   hostApplyPolicy,
@@ -48,7 +54,18 @@ const EvaluateSchema = z.object({
   sessionSeal: z.string().max(50_000).optional(),
 })
 
-const BodySchema = z.discriminatedUnion('action', [ApplySchema, EvaluateSchema])
+const ConsumeSchema = z.object({
+  action: z.literal('consume'),
+  policyId: z.string().min(1).max(80),
+  receipt: z.record(z.unknown()),
+  intent: SpendIntentSchema.optional(),
+})
+
+const BodySchema = z.discriminatedUnion('action', [
+  ApplySchema,
+  EvaluateSchema,
+  ConsumeSchema,
+])
 
 function backend(): 'site' | 'openserv' {
   const raw = (process.env.ALLOWLATCH_GATE_BACKEND || 'site').trim().toLowerCase()
@@ -89,9 +106,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'GET') {
     const mode = backend()
+    const durable = mode === 'site' && siteGateDurable()
     res.status(200).json({
       ok: true,
       backend: mode,
+      durable,
       configured:
         mode === 'openserv' ? gateProxyConfigured() : siteGateConfigured(),
       priceUsd: String(SITE_GATE_PRICE_USD),
@@ -109,7 +128,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       note:
         mode === 'openserv'
           ? 'POST apply|evaluate via OpenServ x402 (fallback)'
-          : 'POST apply|evaluate on always-on site gate. Browser same-site free to try; agents pay $0.025 USDC x402 on Base. sessionSeal is session-scoped (not SQLite durable).',
+          : durable
+            ? 'POST apply|evaluate|consume — Turso durable ledger (multi-instance safe). Browser same-site free; agents pay $0.025 USDC x402.'
+            : 'POST apply|evaluate — memory+sessionSeal (demo). Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402.',
     })
     return
   }
@@ -202,7 +223,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
 
       if (mode === 'site') {
-        const applied = siteGateApply({
+        const applied = await siteGateApply({
           policyId: body.policyId,
           ownerId: body.ownerId,
           ownerToken: body.ownerToken,
@@ -240,8 +261,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return
     }
 
+    if (body.action === 'consume') {
+      if (mode !== 'site') {
+        res.status(400).json({ ok: false, error: 'consume is site-gate only' })
+        return
+      }
+      const consumed = await siteGateConsume({
+        policyId: body.policyId,
+        receipt: body.receipt,
+        intent: body.intent,
+      })
+      res.status(200).json({
+        ok: true,
+        action: 'consume',
+        backend: 'site',
+        ...consumed,
+        priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        settlement: settlement ?? null,
+      })
+      return
+    }
+
     if (mode === 'site') {
-      const evaluated = siteGateEvaluate({
+      const evaluated = await siteGateEvaluate({
         policyId: body.policyId,
         intent: body.intent,
         sessionSeal: body.sessionSeal,
@@ -255,6 +297,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         result: evaluated.result,
         receipt: evaluated.receipt,
         sessionSeal: evaluated.sessionSeal,
+        durable: evaluated.durable,
         priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
         settlement: settlement ?? null,
       })

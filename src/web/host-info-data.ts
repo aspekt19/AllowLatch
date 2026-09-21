@@ -8,6 +8,7 @@ import {
   siteGatePayToSync,
   x402FacilitatorConfiguredSync,
 } from '../http/x402-site-gate-config.js'
+import { tursoConfigured } from './site-gate-durable.js'
 
 const DEFAULT_PAYWALL =
   'https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53'
@@ -26,6 +27,8 @@ export type HostInfo = {
     gateUrl: string
     payTo: string
     network: 'base'
+    /** Turso-backed shared ledger when configured on the deployment */
+    durable: boolean
     /** OpenServ fallback URLs */
     paywallUrl: string
     triggerUrl: string
@@ -84,6 +87,7 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
   const workflowRaw = process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
   const workflowId = workflowRaw ? Number(workflowRaw) : null
   const isActive = await probeGateActive(triggerUrl)
+  const durable = tursoConfigured()
 
   return {
     surface: 'demo-ui',
@@ -94,6 +98,7 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
       gateUrl,
       payTo: siteGatePayToSync(),
       network: 'base',
+      durable,
       paywallUrl,
       triggerUrl,
       workflowId: Number.isFinite(workflowId) ? workflowId : null,
@@ -108,7 +113,9 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
       embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
-    note: NOTE,
+    note: durable
+      ? NOTE + ' Durable Turso ledger enabled on this deployment.'
+      : NOTE + ' Durable Turso ledger not configured (memory+sessionSeal demo mode).',
   }
 }
 
@@ -119,6 +126,7 @@ export function getHostInfo(): HostInfo {
   const gateUrl = process.env.ALLOWLATCH_GATE_URL?.trim() || DEFAULT_GATE_URL
   const workflowRaw = process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
   const workflowId = workflowRaw ? Number(workflowRaw) : null
+  const durable = tursoConfigured()
   return {
     surface: 'demo-ui',
     priceUsd: String(SITE_GATE_PRICE_USD),
@@ -128,6 +136,7 @@ export function getHostInfo(): HostInfo {
       gateUrl,
       payTo: siteGatePayToSync(),
       network: 'base',
+      durable,
       paywallUrl,
       triggerUrl,
       workflowId: Number.isFinite(workflowId) ? workflowId : null,
@@ -142,6 +151,8 @@ export function getHostInfo(): HostInfo {
       embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
-    note: NOTE,
+    note: durable
+      ? NOTE + ' Durable Turso ledger enabled on this deployment.'
+      : NOTE + ' Durable Turso ledger not configured (memory+sessionSeal demo mode).',
   }
 }
