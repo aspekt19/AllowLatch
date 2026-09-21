@@ -9,11 +9,18 @@ import { exact } from 'x402/schemes'
 import type { PaymentRequirements } from 'x402/types'
 import { privateKeyToAccount } from 'viem/accounts'
 import { allowedCorsOrigins } from './abuse-guard.js'
+import {
+  DEFAULT_SITE_GATE_PAY_TO,
+  SITE_GATE_AMOUNT_ATOMIC,
+  USDC_BASE,
+  x402FacilitatorConfiguredSync,
+} from './x402-site-gate-config.js'
 
-export const SITE_GATE_PRICE_USD = 0.025
-/** $0.025 USDC with 6 decimals */
-export const SITE_GATE_AMOUNT_ATOMIC = '25000'
-export const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const
+export {
+  SITE_GATE_PRICE_USD,
+  SITE_GATE_AMOUNT_ATOMIC,
+  USDC_BASE,
+} from './x402-site-gate-config.js'
 
 export function siteGatePayTo(): `0x${string}` {
   const explicit = process.env.ALLOWLATCH_X402_PAY_TO?.trim()
@@ -25,8 +32,7 @@ export function siteGatePayTo(): `0x${string}` {
     const hex = (pk.startsWith('0x') ? pk : `0x${pk}`) as `0x${string}`
     return privateKeyToAccount(hex).address
   }
-  // Documented operator fee address (live Base settlements)
-  return '0xa91841F98fd15e3f590e2681d7122ec04bc7F677'
+  return DEFAULT_SITE_GATE_PAY_TO
 }
 
 export function buildSiteGateRequirements(resource: string): PaymentRequirements {
@@ -54,9 +60,7 @@ export function isSiteGateFreeOrigin(origin: string | undefined): boolean {
 }
 
 export function x402FacilitatorConfigured(): boolean {
-  return Boolean(
-    process.env.CDP_API_KEY_ID?.trim() && process.env.CDP_API_KEY_SECRET?.trim()
-  )
+  return x402FacilitatorConfiguredSync()
 }
 
 export type X402GateResult =
@@ -89,7 +93,6 @@ export async function enforceSiteGateX402(args: {
     return { ok: true, free: true }
   }
 
-  // Explicit opt-out for local/dev only
   if (process.env.ALLOWLATCH_SITE_GATE_X402 === '0') {
     return { ok: true, free: true }
   }

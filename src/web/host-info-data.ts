@@ -3,7 +3,11 @@
  * Primary enforcement: always-on Vercel /api/gate with native x402.
  * OpenServ remains an optional fallback marketplace path.
  */
-import { SITE_GATE_PRICE_USD, siteGatePayTo, x402FacilitatorConfigured } from '../http/x402-site-gate.js'
+import {
+  SITE_GATE_PRICE_USD,
+  siteGatePayToSync,
+  x402FacilitatorConfiguredSync,
+} from '../http/x402-site-gate-config.js'
 
 const DEFAULT_PAYWALL =
   'https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53'
@@ -87,13 +91,13 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
     gate: {
       name: 'AllowLatch Gate',
       gateUrl,
-      payTo: siteGatePayTo(),
+      payTo: siteGatePayToSync(),
       network: 'base',
       paywallUrl,
       triggerUrl,
       workflowId: Number.isFinite(workflowId) ? workflowId : null,
       isActive,
-      x402Facilitator: x402FacilitatorConfigured(),
+      x402Facilitator: x402FacilitatorConfiguredSync(),
     },
     docs: {
       connect: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md',
@@ -120,13 +124,13 @@ export function getHostInfo(): HostInfo {
     gate: {
       name: 'AllowLatch Gate',
       gateUrl,
-      payTo: siteGatePayTo(),
+      payTo: siteGatePayToSync(),
       network: 'base',
       paywallUrl,
       triggerUrl,
       workflowId: Number.isFinite(workflowId) ? workflowId : null,
       isActive: cachedActive.value,
-      x402Facilitator: x402FacilitatorConfigured(),
+      x402Facilitator: x402FacilitatorConfiguredSync(),
     },
     docs: {
       connect: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md',
