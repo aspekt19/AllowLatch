@@ -222,15 +222,26 @@ code {
   content: "";
   position: absolute;
   inset: 0;
+  /* Keep brand/CTA on clean paper; reveal turnstile to the right of copy. */
   background:
-    linear-gradient(90deg, rgba(244, 246, 248, 0.94) 0%, rgba(244, 246, 248, 0.72) 42%, rgba(244, 246, 248, 0.35) 70%, rgba(244, 246, 248, 0.55) 100%),
-    linear-gradient(180deg, rgba(244, 246, 248, 0.2) 0%, rgba(244, 246, 248, 0.75) 78%, var(--paper) 100%);
+    linear-gradient(
+      90deg,
+      rgba(244, 246, 248, 0.98) 0%,
+      rgba(244, 246, 248, 0.96) 28%,
+      rgba(244, 246, 248, 0.82) 46%,
+      rgba(244, 246, 248, 0.28) 68%,
+      rgba(244, 246, 248, 0.45) 100%
+    ),
+    linear-gradient(180deg, rgba(244, 246, 248, 0.15) 0%, rgba(244, 246, 248, 0.7) 78%, var(--paper) 100%);
 }
 
 .hero-diagram {
-  width: 100%;
+  width: 118%;
   height: 100%;
+  max-width: none;
   object-fit: cover;
+  object-position: 62% 50%;
+  transform: translateX(8%);
   opacity: 1;
 }
 
@@ -1495,7 +1506,10 @@ button {
   }
 
   .hero-diagram {
-    opacity: 0.55;
+    width: 130%;
+    transform: translateX(12%);
+    object-position: 70% 50%;
+    opacity: 0.5;
   }
 
   .section {
