@@ -42,7 +42,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 - **Host Copilot** — draft / revise / explain with host `SERV_API_KEY` (product path). Multipath + `serv_prompt_guard` + `serv_shadow_agent`.
 - **Deterministic gate** — allow/deny/escalate stays in `engine.ts` (never LLM).
-- **Connect** — end users need no keys; x402 pays the call.
+- **Connect** — end users need no keys; primary path is always-on `/api/gate` (native x402); OpenServ optional.
 - Optional BYO: [`src/owner/copilot.ts`](./src/owner/copilot.ts) if an owner wants their own Reasoning key.
 - Env: `SERV_API_KEY`, optional `SERV_MODEL` / `SERV_COMPILE_MODEL` / `SERV_REASONING_EFFORT`
 

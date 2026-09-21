@@ -74,7 +74,7 @@ async function probeGateActive(_triggerUrl: string): Promise<boolean | null> {
 }
 
 const NOTE =
-  'Primary: always-on https://allowlatch.vercel.app/api/gate — website Origin free to try; agents pay $0.025 USDC x402 on Base. OpenServ discover/paywall is optional fallback when you set triggerUrl. You never run npm run_dev.'
+  'Primary: always-on https://allowlatch.vercel.app/api/gate — website Origin free to try; agents pay $0.025 USDC x402 on Base. OpenServ discover/paywall is optional fallback when you set triggerUrl. End users never run the local OpenServ host.'
 
 export async function getHostInfoAsync(): Promise<HostInfo> {
   const paywallUrl = process.env.ALLOWLATCH_PAYWALL_URL?.trim() || DEFAULT_PAYWALL
@@ -101,12 +101,13 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
     },
     docs: {
       connect: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md',
+      guide: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/GUIDE.md',
       hosted: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md',
       monetize: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md',
       embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
-    note: NOTE.replace('npm_run_dev', 'npm' + ' ' + 'run' + ' ' + 'dev'),
+    note: NOTE,
   }
 }
 
@@ -134,11 +135,12 @@ export function getHostInfo(): HostInfo {
     },
     docs: {
       connect: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md',
+      guide: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/GUIDE.md',
       hosted: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md',
       monetize: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md',
       embed: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md',
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
-    note: NOTE.replace('npm_run_dev', 'npm' + ' ' + 'run' + ' ' + 'dev'),
+    note: NOTE,
   }
 }

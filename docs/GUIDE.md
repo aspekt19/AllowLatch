@@ -29,7 +29,7 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 5. **Connect your agent** — copy instruction / code / MCP
 6. Optional: **Install** (`#install`) and **Live case** (`#case`)
 
-You never set `SERV_API_KEY`, never run `npm run_dev`, never deploy this repo.
+You never set `SERV_API_KEY`, never run the local OpenServ host, never deploy this repo.
 
 ---
 

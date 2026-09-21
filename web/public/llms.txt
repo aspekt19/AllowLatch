@@ -45,5 +45,5 @@ https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da
 
 - Decisions are deterministic code — never LLM judgment.
 - Fail-closed: timeout / network / malformed → DENY.
-- End users never run `npm run_dev` or set `SERV_API_KEY`.
+- End users never run the local OpenServ host or set `SERV_API_KEY`.
 - AllowLatch does not custody funds.
