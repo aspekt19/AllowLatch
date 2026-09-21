@@ -1468,14 +1468,25 @@ button {
 
   .workspace {
     grid-template-columns: 1fr;
-    height: min(78dvh, 700px);
-    max-height: min(78dvh, 700px);
+    grid-template-rows: minmax(0, 1.75fr) minmax(0, 0.85fr);
+    height: min(84dvh, 780px);
+    max-height: min(84dvh, 780px);
+    overflow: hidden;
   }
 
   .console {
     border-right: none;
     border-bottom: 1px solid var(--line);
+    height: 100%;
     min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Own scrollport, shorter than the dialog, so policy scroll cannot move the send button. */
+  .rail {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 
@@ -1519,5 +1530,25 @@ button {
   .price-row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .workspace {
+    height: min(88dvh, 820px);
+    max-height: min(88dvh, 820px);
+  }
+
+  .composer textarea {
+    min-height: 88px;
+  }
+
+  .composer-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .composer-actions .btn-primary {
+    justify-self: end;
+    flex-shrink: 0;
   }
 }
