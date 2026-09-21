@@ -12,11 +12,11 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Architecture hardening | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
 | Wallet-native Spend Permissions | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) (hybrid / wallet_native done) |
 | Connect (end-user / other agents) | [`docs/CONNECT.md`](./docs/CONNECT.md) |
-| Hosted gate (operator keep-alive) | [`docs/HOSTED.md`](./docs/HOSTED.md) · `npm run deploy:openserv` |
+| Hosted gate (operator keep-alive) | [`docs/HOSTED.md`](./docs/HOSTED.md) · `npm run deploy:host` / `deploy:openserv` |
 | Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
 | Security / threat model / checklist | [`docs/SECURITY.md`](./docs/SECURITY.md) |
-| Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) |
+| Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) · site [`#install`](https://allowlatch.vercel.app/#install) / [`#case`](https://allowlatch.vercel.app/#case) |
 | Cursor skill | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |
 | Deterministic gate | [`src/policy/engine.ts`](./src/policy/engine.ts) |
@@ -49,8 +49,9 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 | Surface | Role |
 |---------|------|
-| **Hosted OpenServ Gate** | Production for everyone: discover + x402 — users run nothing ([HOSTED.md](./docs/HOSTED.md)) |
-| **Operator process** (`npm run deploy:openserv` / `dev`) | Keep the gate online (maintainers only) |
+| **Website gate** (`/api/gate`) | Always-on free apply/evaluate on Vercel — good for humans / demos |
+| **Hosted OpenServ Gate** | Production paid path: discover + x402 $0.025 ([HOSTED.md](./docs/HOSTED.md), [CONNECT.md](./docs/CONNECT.md)) |
+| **Operator process** (`npm run deploy:host` / `dev`) | Keep OpenServ webhook online (maintainers only; Fly can be flaky — prefer `dev` tunnel if cloud down) |
 | **HTTP gate** (`npm run http:gate`) | Local/dev evaluate/execute (no OpenServ) |
 | **WOW CLI** (`npm run wow`) | Theater: messy mandate → injection → gate → explain → AgentKit |
 | **Vite UI** (`npm run ui`) | Demo story; `/api/copilot` → live SERV when key set |
@@ -61,8 +62,9 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
 4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
-5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend`).
+5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend`). Trust `gate.isActive` only as a hint — still fail closed on hang/timeout.
 6. Product name is **AllowLatch**.
+7. Live proof (Base): agent USDC after receipt — e.g. [`0x3d9e46…`](https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16); fee to operator — check `host-info` / `#case` on the site.
 
 ## Verify
 

@@ -6,6 +6,8 @@ You do **not** run AllowLatch yourself. Production path uses the **hosted** Allo
 2. Apply policy once (paywall / `payWorkflow` / `apply_policy`)
 3. Before **every** spend: `assertSpend` / `evaluate` → ALLOW + single-use **receipt** (`jti`) → pass receipt into `execute_gated_transfer` → only then sign
 
+**Always-on free demo:** `POST https://allowlatch.vercel.app/api/gate` (`apply` / `evaluate`) — same engine, no x402. Agents needing enforcement receipts should use OpenServ x402 (operator must keep host alive — see [HOSTED.md](./HOSTED.md)).
+
 Local `npm run http:gate` is optional for **offline development** of your agent — not the end-user product.
 
 ## New agent with gate baked in (recommended)

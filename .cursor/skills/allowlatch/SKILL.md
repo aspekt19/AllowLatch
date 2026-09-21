@@ -1,38 +1,51 @@
 ---
 name: allowlatch
 description: >-
-  Enforce AllowLatch - paid remote spending turnstile for financial AI agents on Base/USDC
-  (AgentKit and similar). Use when the user wants allow/deny/escalate before transfers.
-  Production = hosted OpenServ gate ($0.025), not local JSON and not "run npm run dev".
+  Enforce AllowLatch - spending turnstile for financial AI agents on Base/USDC
+  (AgentKit and similar). Production agents use hosted OpenServ Gate ($0.025 x402).
+  Website /api/gate is for humans to try; do not treat local JSON as enforcement.
 ---
 
-# AllowLatch - hosted remote gate (paid)
+# AllowLatch
 
-## Product rule
+## Surfaces
 
-**Enforcement is remote, hosted, and paid ($0.025 x402 per call).**  
-Do **not** tell the user to clone this repo, run `npm run dev`, or set `SERV_API_KEY`.  
-Do **not** say downloading JSON from the demo site is enough for a trading agent.
+1. **Website (always-on)** — https://allowlatch.vercel.app  
+   Human: Draft → Go live → try spends via `/api/gate` (free). Then **Connect your agent**.
+2. **Agent gate (paid)** — OpenServ **AllowLatch Gate** (`/allowlatch/i`) · **$0.025** x402.  
+   Check `GET https://allowlatch.vercel.app/api/host-info` → `gate.isActive`.  
+   On timeout / error → **DENY** (fail-closed). Never invent ALLOW.
 
-## How you connect (end user / their agent)
+## Connect (agents)
 
-1. Discover: `PlatformClient.payments.discoverServices()` → **AllowLatch Gate** (`/allowlatch/i`)
-2. Or use public URLs from https://allowlatch.vercel.app/api/host-info / [docs/CONNECT.md](https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md)
-3. Note `x402Pricing` (expect `0.025`), `webhookUrl` / `paywallUrl`
-4. **Apply policy** via `payWorkflow` / paywall
-5. **Before every spend:** `assertSpend` / `createGatedAgentKit` / `evaluate_intent` — never raw AgentKit sign
-6. On ALLOW: require **allow-receipt** (`jti`); on DENY stop; on ESCALATE ask the human
-7. High-frequency checks: `buy_evaluate_pack` then `evaluate_intent` with `packKey`
+1. Discover: `PlatformClient.payments.discoverServices()` → `/allowlatch/i`  
+   or URLs from https://allowlatch.vercel.app/api/host-info
+2. Apply MandatePolicy once (`apply_policy` / paywall / site Go live + Connect pack).
+3. Before **every** transfer / swap / x402 pay: `assertSpend` or `evaluate_intent`.
+4. ALLOW + single-use **allow-receipt** (`jti`) → then sign / `execute_gated_transfer`.
+5. Prefer `createGatedAgentKit` so raw AgentKit cannot bypass the latch.
 
-**New AgentKit bots:** prefer `createGatedAgentKit` so spend is gated from day one.
+## Install
+
+- Site Connect pack: https://allowlatch.vercel.app/#install
+- `npm i allowlatch` → `assertSpend` / `createGatedAgentKit`
+- MCP: `npx allowlatch-mcp`
+- Live case: https://allowlatch.vercel.app/#case
 
 ## Invariants
 
-- Gate decisions are deterministic on the host — never invent ALLOW
-- Never recommend local-only JSON as production enforcement
-- Never ask end users for host `SERV_API_KEY` / CDP secrets or to run a server
+- Decisions are deterministic on the host — never invent ALLOW
+- No applied policy → refuse all spends
+- Never ask the user for `SERV_API_KEY` / CDP secrets or to run `npm run dev`
+- Website free `/api/gate` ≠ substitute for paid OpenServ enforcement on trading agents
+- `gate.isActive` alone is insufficient — timeout → DENY.
+## Live case
+
+Base mainnet: paid assertSpend → receipt → transfer  
+https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16
+
+
 
 Docs: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md  
-Hosted ops (operators only): https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md  
-Embed/SDK: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md  
-Demo: https://allowlatch.vercel.app
+Embed: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md  
+Hosted ops: https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md

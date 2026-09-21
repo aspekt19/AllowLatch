@@ -156,11 +156,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ownerToken: body.ownerToken,
           policy,
         })
+        const { ok: _ok, ...appliedRest } = applied
         res.status(200).json({
           ok: true,
           action: 'apply',
           backend: 'site',
-          ...applied,
+          ...appliedRest,
         })
         return
       }

@@ -4,31 +4,64 @@
 
 ## For AI agents (read this first)
 
-You are helping a human who owns an AI agent with a wallet (e.g. AgentKit or similar). They will **not** give you API keys for AllowLatch.
+You help a human whose agent has a Base wallet (AgentKit or similar). They will **not** give you `SERV_API_KEY` or ask you to run this repo.
 
-### What to do
+**No applied MandatePolicy → no rules → every spend DENY (fail-closed).**  
+Local JSON / offline drafts are **not** production enforcement.
 
-1. Treat AllowLatch as an **external hosted gate**: before any spend/sign, ask AllowLatch. Do **not** ask the human to run a server or set SERV_API_KEY.
-2. Connect via OpenServ x402 (no end-user secrets):
-   - `PlatformClient.payments.discoverServices()` → name matching `/allowlatch/i` (listed as **AllowLatch Gate**)
-   - or public URLs from https://allowlatch.vercel.app/api/host-info
-   - `payments.payWorkflow({ workflowId or triggerUrl, input: { prompt } })` or open the paywall
-3. Prompt language:
-   - "Set my AllowLatch mandate: max $10/tx, $40/day, only USDC and ETH, ask me above $8"
-   - "Evaluate this spend: transfer $8 to Uniswap"
-   - "Why was that denied?"
-4. Never move funds on DENY. On ESCALATE, ask the human, then re-call with approval.
-5. On ALLOW: keep the **allow-receipt** and pass it into `execute_gated_transfer` (single-use `jti`). Do not sign without a valid receipt. Treat timeouts and API errors as DENY (fail-closed). Prefer `createGatedAgentKit` so you cannot call a raw signer in parallel.
-6. Pricing: **$0.025** per OpenServ x402 call. `buy_evaluate_pack` mints fixed credits (default 3 ≈ $0.008/check) — not a separate $1/100 SKU yet.
-7. Policy mutates (`apply_policy`, etc.) need `ownerToken` from first apply — spenders with only `policyId` cannot rewrite limits.
-8. Demo UI: https://allowlatch.vercel.app
-9. Product: https://github.com/aspekt19/AllowLatch/blob/main/docs/PRODUCT.md
-10. Connect: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
-11. Embed (into your agent): https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
-12. Hosted model: https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
-13. Architecture: https://github.com/aspekt19/AllowLatch/blob/main/docs/ARCHITECTURE.md
-14. Security: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
-15. Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+### Two surfaces (do not confuse them)
+
+| Surface | URL / entry | Who pays | Always on? |
+|---------|-------------|----------|------------|
+| **Website gate** | https://allowlatch.vercel.app → Go live → `/api/gate` | Free to try from the site | Yes (Vercel) |
+| **Agent gate (prod)** | OpenServ **AllowLatch Gate** `/allowlatch/i` · `$0.025` x402 | Agent wallet pays | Only while `gate.isActive` **and** payWorkflow responds — on timeout → DENY |
+
+Check live status: `GET https://allowlatch.vercel.app/api/host-info` → `gate.isActive`.  
+Still **fail-closed**: network / timeout / malformed → treat as DENY, never sign.
+
+### Install paths (pick one)
+
+1. **Site Connect pack** — https://allowlatch.vercel.app → Draft → Go live → **Connect your agent** (instruction / code / MCP).
+2. **npm** — `npm i allowlatch` → `assertSpend` / `createGatedAgentKit` / `allowLatchActionProvider`.
+3. **MCP** — `npx allowlatch-mcp`.
+4. **Cursor skill** — AllowLatch skill (discover gate, apply mandate, never invent ALLOW).
+5. **OpenServ x402** — `discoverServices()` → `/allowlatch/i` → `payWorkflow({ triggerUrl, input: { prompt } })`.
+
+Public card: https://allowlatch.vercel.app/api/host-info  
+Install UI: https://allowlatch.vercel.app/#install  
+Live Base case: https://allowlatch.vercel.app/#case
+
+### What to do before every spend
+
+1. Discover **AllowLatch Gate** or use `triggerUrl` from host-info / CONNECT.md.
+2. Ensure a MandatePolicy is applied (`apply_policy` / site Go live). Save `ownerToken` for later mutates.
+3. Call `assertSpend` / `evaluate_intent` with the exact intent JSON.
+4. **ALLOW + allow-receipt (`jti`)** → only then may you sign / `execute_gated_transfer`.
+5. **DENY / ESCALATE / timeout / bad JSON** → do not sign. On ESCALATE ask the human.
+6. Prefer `createGatedAgentKit` so raw AgentKit cannot bypass the latch.
+
+### Pricing
+
+- OpenServ x402: **$0.025** per call (draft / apply / evaluate / explain / execute / buy_evaluate_pack).
+- `buy_evaluate_pack`: same $0.025 mints fixed credits (default 3 ≈ $0.008/check).
+- Website `/api/gate`: free try (not a substitute for paid agent enforcement).
+
+### Live case (Base mainnet · verified)
+
+Paid path: agent paid x402 → ALLOW + receipt → USDC transfer  
+https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16  
+Fees settled to operator `0xa91841F98fd15e3f590e2681d7122ec04bc7F677`.  
+Also: https://basescan.org/tx/0xc3b2415601c434d1e9859ac3c0a6bb192d84eeffd2319f78361805da0f82223f · https://basescan.org/tx/0x04479adb7267416764f388360dcb106329b6d48d80afd565d587ea688d7dd0c7  
+Website `/api/gate` independently verified ALLOW / DENY / ESCALATE + receipts on Vercel.  
+**Ops:** OpenServ cloud `deploy:host` can 502; paid x402 needs operator keep-alive (`npm run_dev` tunnel or healthy cloud). `gate.isActive` alone is not enough.
+
+### Docs
+
+- CONNECT: https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md
+- EMBED: https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md
+- HOSTED (operators): https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
+- SECURITY: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
+- Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
 
 ### Capabilities (host)
 
@@ -36,10 +69,9 @@ draft_policy · revise_mandate · apply_policy · compile_mandate · sync_wallet
 
 ### Invariants
 
-- Gate decisions are deterministic code, not LLM overrides.
-- SERV on the host drafts/explains; never changes the verdict.
-- Execute requires a verified, unconsumed allow-receipt (or escalate + humanApproved).
-- Clients must fail-closed: network/timeout/malformed response → DENY, never sign.
-- Default enforcement intent is **hybrid**; middleware alone is not custody-grade.- Prefer token contract addresses + chainId over symbols alone; bind swap receipts with calldataHash.
-- AllowLatch does not custody funds (middleware + receipt; optional hybrid Spend Permissions on-chain).
-- Never ask the end user for SERV_API_KEY or CDP secrets, or to run `npm run dev`.
+- Allow/deny/escalate is deterministic code — never LLM judgment.
+- SERV drafts/explains; never changes the verdict.
+- Execute requires verified single-use allow-receipt (or escalate + humanApproved).
+- Fail-closed: timeout / network / malformed → DENY.
+- End users never run `npm run dev` or set `SERV_API_KEY`.
+- AllowLatch does not custody funds.

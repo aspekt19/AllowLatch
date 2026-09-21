@@ -51,12 +51,9 @@ async function probeGateActive(triggerUrl: string): Promise<boolean | null> {
     const hit = (services || []).find((s: { name?: string }) =>
       /allowlatch/i.test(s.name || '')
     ) as { isActive?: boolean; webhookUrl?: string } | undefined
-    const active =
-      typeof hit?.isActive === 'boolean'
-        ? hit.isActive
-        : hit?.webhookUrl
-          ? true
-          : null
+    // Trust discover's boolean only — never invent true from webhookUrl alone.
+    // Clients must still fail-closed on payWorkflow timeout even when isActive=true.
+    const active = typeof hit?.isActive === 'boolean' ? hit.isActive : null
     cachedActive = { at: now, value: active }
     return active
   } catch {
@@ -92,7 +89,7 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
     note:
-      'Website: draft + Go live uses /api/gate (server engine + receipts). Your agent: discover AllowLatch Gate on OpenServ, pay $0.025 x402. You never run npm run dev.',
+      'Website: draft + Go live uses /api/gate (always-on Vercel engine + receipts, free to try). Agents: OpenServ AllowLatch Gate at $0.025 x402 — only while gate.isActive and payWorkflow responds; timeout → DENY. You never run npm run dev.',
   }
 }
 
@@ -121,6 +118,6 @@ export function getHostInfo(): HostInfo {
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
     note:
-      'Website: draft + Go live uses /api/gate (server engine + receipts). Your agent: discover AllowLatch Gate on OpenServ, pay $0.025 x402. You never run npm run dev.',
+      'Website: draft + Go live uses /api/gate (always-on Vercel engine + receipts, free to try). Agents: OpenServ AllowLatch Gate at $0.025 x402 — only while gate.isActive and payWorkflow responds; timeout → DENY. You never run npm run dev.',
   }
 }

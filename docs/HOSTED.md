@@ -73,7 +73,15 @@ Do **not** document Option C as the end-user path.
 ## After the gate is live
 
 1. Confirm `discoverServices()` returns AllowLatch Gate with `isActive: true` (or host-info says so).
-2. Set Vercel env `ALLOWLATCH_PAYWALL_URL` / `ALLOWLATCH_TRIGGER_URL` if they change after re-provision.
-3. Demo UI **Enforce** CTA uses the paywall URL from `/api/host-info`.
+2. **Also** run a real `payWorkflow` ping — discover can report active while the process is hung; clients must fail-closed on timeout.
+3. Set Vercel env `ALLOWLATCH_PAYWALL_URL` / `ALLOWLATCH_TRIGGER_URL` if they change after re-provision.
+4. Demo UI **Go live** uses `/api/gate` on Vercel (site backend by default — always-on). Agent enforcement still uses OpenServ x402.
+
+### Known ops notes
+
+- `npm run deploy:host` clones from GitHub into a slim Fly container (no AgentKit on disk) and `go-live continuous`.
+- If `createContainer` / `exec` returns **502/5xx**, retry later with backoff; fall back to `npm run dev` (tunnel) for paid-path demos. **Do not claim cloud keep-alive is healthy until a real `payWorkflow` succeeds.**
+- Stopping a laptop tunnel (`npm run dev`) takes the **paid** agent gate offline until cloud keep-alive is restored. The **website** `/api/gate` stays up on Vercel.
+- `gate.isActive: true` can still hang — clients must fail-closed on timeout.
 
 See [CONNECT.md](./CONNECT.md) (users) · [MONETIZE.md](./MONETIZE.md) · [EMBED.md](./EMBED.md) (builders).
