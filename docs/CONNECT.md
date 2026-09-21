@@ -1,5 +1,8 @@
 # Connect to AllowLatch (for humans & their agents)
 
+Full guide: [GUIDE.md](./GUIDE.md).
+
+
 You do **not** run a server. You do **not** need `SERV_API_KEY`.
 
 ## Two surfaces

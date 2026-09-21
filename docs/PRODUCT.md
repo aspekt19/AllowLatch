@@ -11,7 +11,7 @@ It is a **Policy Copilot + hard turnstile**:
 3. Before every spend, **deterministic code** returns allow / deny / escalate - the LLM never overrides the verdict.
 4. The spender agent may move funds **only after ALLOW** (or escalate + explicit human approval), typically via AgentKit/CDP or host `execute_gated_transfer`.
 
-End users need **no API keys**. Agents connect via OpenServ x402; the host holds SERV (+ optional CDP).
+End users need **no API keys**. Agents connect via always-on Vercel `/api/gate` (native x402); OpenServ is optional fallback. Operator holds SERV (+ CDP for facilitator).
 
 Live demo: https://allowlatch.vercel.app  
 Repo: https://github.com/aspekt19/AllowLatch
@@ -65,7 +65,8 @@ Wallet / AgentKit / CDP (after ALLOW)
 | Copilot | SERV Reasoning (host) | Mandate, conflicts, injection resistance, explain |
 | Gate | `src/policy/engine.ts` | Caps, symbols, addresses, velocity, escalate |
 | Execute | AgentKit / CDP (optional host) | Transaction only after green light |
-| Connect | OpenServ x402 (**AllowLatch Gate**) | Discovery + payment (no end-user keys) |
+| Connect | Vercel `/api/gate` + native x402 | Always-on discovery + payment (no end-user keys) |
+| Fallback | OpenServ x402 | Optional marketplace path |
 
 AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 pricing.
 
@@ -85,7 +86,7 @@ Chain focus: **Base**. Policy currency: **USDC**.
 
 Honest scope: AllowLatch is middleware authorization (+ receipt) **and**, by default (`ALLOWLATCH_ENFORCEMENT=hybrid`), mirrors daily USDC caps into Coinbase Spend Permissions when `ALLOWLATCH_SMART_ACCOUNT` is set. Middleware alone is not custody-grade if a signer can bypass the gate — put the gate in `createGatedAgentKit` / host execute. Policy mutates require `ownerToken` (spender `evaluate` cannot rewrite limits). See [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [SECURITY.md](./SECURITY.md).
 
-The public site (allowlatch.vercel.app) is the **demo UI** - production evaluate/execute/x402 runs on the OpenServ host. Details: [ARCHITECTURE.md](./ARCHITECTURE.md).
+The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (`/api/gate`). OpenServ is optional fallback. Details: [GUIDE.md](./GUIDE.md) · [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
@@ -116,7 +117,8 @@ The public site (allowlatch.vercel.app) is the **demo UI** - production evaluate
 | Generic HTTP gate | Done (`npm run http:gate`) |
 | Live UI `/api/copilot` + injection chips | Done |
 | WOW theater CLI | Done (`npm run wow`) |
-| OpenServ x402 connect | Done |
+| Always-on `/api/gate` + native x402 | Done |
+| OpenServ x402 fallback | Optional |
 | Wallet-native Spend Permissions | Done (hybrid/wallet_native via CDP) - [WALLET_NATIVE.md](./WALLET_NATIVE.md) |
 | EIP-712 owner sig on apply | Done (`src/auth/policy-eip712.ts`) |
 | Property tests (engine) | Done (`engine.property.test.ts`) |

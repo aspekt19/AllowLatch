@@ -6,8 +6,8 @@ AllowLatch is a **payment policy turnstile** for financial AI agents on Base (US
 
 | Surface | What it is |
 |---------|------------|
-| **https://allowlatch.vercel.app** | Demo UI + `/api/copilot` (SERV draft/revise/explain) + `/api/host-info` (public paywall/trigger). **Not** the x402 gate process itself. |
-| **AllowLatch Gate (OpenServ, hosted)** | Production path for everyone: discover `/allowlatch/i`, pay $0.025 / pack, evaluate, receipt, optional execute. **End users never run this.** |
+| **https://allowlatch.vercel.app** | Product UI + **always-on** `/api/gate` (native Base USDC x402 for agents) + `/api/copilot` + `/api/host-info`. |
+| **AllowLatch Gate (OpenServ)** | **Optional fallback:** discover `/allowlatch/i`, pay $0.025 when the operator host is reachable. **End users never run this.** |
 | **`npm run dev` / `deploy:openserv`** | Operator-only: keep the hosted gate process online. See [HOSTED.md](./HOSTED.md). |
 | **HTTP gate** (`npm run http:gate`) | Local/dev framework-agnostic API on loopback — optional for builders testing embeds. |
 

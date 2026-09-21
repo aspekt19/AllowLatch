@@ -4,12 +4,12 @@
 
 **Live demo:** https://allowlatch.vercel.app  
 **Repo:** https://github.com/aspekt19/AllowLatch  
-**Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
+**Guide:** [docs/GUIDE.md](./docs/GUIDE.md) · **Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
 **Security:** [docs/SECURITY.md](./docs/SECURITY.md) · [docs/AUDIT.md](./docs/AUDIT.md)
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user API keys — **you never run the host**. Discover **AllowLatch Gate** on OpenServ, pay **$0.025**/call or prepaid pack credits via `buy_evaluate_pack` (fixed credits per x402; default 3 ≈ $0.008/check). Default enforcement: **hybrid**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · Action provider: `allowLatchActionProvider()`.
+No end-user API keys — **you never run the host**. **Primary:** always-on https://allowlatch.vercel.app/api/gate (website free to try; agents pay **$0.025 USDC** x402 on Base). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
@@ -30,7 +30,8 @@ Tell your agent:
 | SERV Reasoning (host) | Draft / revise / explain - Multipath, prompt_guard, shadow |
 | Deterministic engine | Caps, allowlists, escalate - never LLM judgment |
 | Coinbase AgentKit | Signs USDC **only after ALLOW** |
-| OpenServ x402 | How other agents connect & pay |
+| Vercel `/api/gate` + native x402 | Always-on connect & pay for agents |
+| OpenServ x402 | Optional marketplace fallback |
 
 ## Scripts
 

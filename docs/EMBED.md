@@ -2,7 +2,7 @@
 
 You do **not** run AllowLatch yourself. **Primary:** website Go live → Connect pack (`gateUrl` + `sessionSeal`) → `assertSpend` against https://allowlatch.vercel.app/api/gate (always-on).
 
-**Optional paid path:** OpenServ **AllowLatch Gate** ($0.025 x402) when the operator host is online — discover + `payWorkflow` / `assertSpend({ triggerUrl })`. See [CONNECT.md](./CONNECT.md) / [HOSTED.md](./HOSTED.md).
+**Optional fallback:** OpenServ when site gate fails — `assertSpend({ triggerUrl, preferOpenServ: true })`. See [GUIDE.md](./GUIDE.md) · [HOSTED.md](./HOSTED.md).
 
 ```ts
 import { assertSpend } from 'allowlatch'
@@ -23,7 +23,7 @@ Coming from [Coinbase AgentKit](https://github.com/coinbase/agentkit)? **Keep yo
 
 1. Scaffold / keep your AgentKit + CDP project  
 2. Before every transfer: `assertSpend` / `createGatedAgentKit` → ALLOW + receipt, then sign  
-3. Apply a mandate once (demo UI **Enforce · $0.025** / paywall / `apply_policy`)
+3. Apply a mandate once (demo UI **Go live** / Connect pack / `apply_policy`)
 
 ```ts
 import { assertSpend } from 'allowlatch'

@@ -11,8 +11,8 @@ End users and their agents **never** run `npm run dev`, never set `SERV_API_KEY`
 | Role | Runs | Needs secrets? |
 |------|------|----------------|
 | **End user** | Nothing | No |
-| **Their agent** | Discover **AllowLatch Gate** → pay x402 ($0.025) | Only the agent's own wallet key for x402 payment |
-| **AllowLatch operator** (us) | One always-on OpenServ host | `SERV_API_KEY`, optional CDP, OpenServ deploy key |
+| **Their agent** | Prefer `/api/gate` native x402; OpenServ discover optional | Agent wallet key for x402 payment |
+| **AllowLatch operator** (us) | Vercel always-on (+ optional OpenServ host) | `SERV_API_KEY`, CDP facilitator keys, OpenServ deploy key if used |
 
 ```text
 You / your agent
@@ -81,7 +81,7 @@ Do **not** document Option C as the end-user path.
 1. Confirm `discoverServices()` returns AllowLatch Gate with `isActive: true` (or host-info says so).
 2. **Also** run a real `payWorkflow` ping — discover can report active while the process is hung; clients must fail-closed on timeout.
 3. Set Vercel env `ALLOWLATCH_PAYWALL_URL` / `ALLOWLATCH_TRIGGER_URL` if they change after re-provision.
-4. Demo UI **Go live** uses `/api/gate` on Vercel (site backend — always-on, sessionSeal survives cold starts). Agent enforcement still uses OpenServ x402.
+4. Demo UI **Go live** uses `/api/gate` on Vercel (always-on, sessionSeal). **Agent enforcement prefers `/api/gate` native x402**; OpenServ is fallback only.
 
 ### Known ops notes
 

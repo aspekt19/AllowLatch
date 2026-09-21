@@ -1,7 +1,7 @@
 {
   "name": "allowlatch",
   "version": "0.1.0",
-  "description": "Spending turnstile for financial AI agents on Base/USDC — assertSpend, gated AgentKit, MCP, OpenServ x402",
+  "description": "Spending turnstile for financial AI agents on Base/USDC \u2014 always-on /api/gate + native x402; OpenServ optional fallback",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

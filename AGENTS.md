@@ -8,6 +8,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 |------|------|
 | **Repo rules (stack, architecture, coding)** | [`.cursorrules`](./.cursorrules) |
 | Product overview & scripts | [README.md](./README.md) |
+| **Full guide (humans + agents)** | [`docs/GUIDE.md`](./docs/GUIDE.md) |
 | Product definition | [`docs/PRODUCT.md`](./docs/PRODUCT.md) |
 | Architecture hardening | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
 | Wallet-native Spend Permissions | [`docs/WALLET_NATIVE.md`](./docs/WALLET_NATIVE.md) (hybrid / wallet_native done) |
@@ -49,9 +50,9 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 | Surface | Role |
 |---------|------|
-| **Website gate** (`/api/gate`) | Always-on free apply/evaluate + receipts on Vercel (`sessionSeal`) — **preferred Connect path** |
-| **Hosted OpenServ Gate** | Paid marketplace path: discover + x402 $0.025 when operator host reachable ([HOSTED.md](./docs/HOSTED.md)) |
-| **Operator process** (`npm run deploy:host` / `dev`) | Keep OpenServ webhook online (maintainers only; containers can sleep/502 — see HOSTED.md) |
+| **Website gate** (`/api/gate`) | **Primary always-on** — website Origin free; agents pay $0.025 USDC x402 (`sessionSeal`) — see [GUIDE.md](./docs/GUIDE.md) |
+| **OpenServ Gate** | **Optional fallback** — discover + x402 when operator host reachable ([HOSTED.md](./docs/HOSTED.md)) |
+| **Operator process** (`npm run deploy:host` / `dev`) | OpenServ keep-alive only (optional; containers can sleep/502) |
 | **HTTP gate** (`npm run http:gate`) | Local/dev evaluate/execute (no OpenServ) |
 | **WOW CLI** (`npm run wow`) | Theater: messy mandate → injection → gate → explain → AgentKit |
 | **Vite UI** (`npm run ui`) | Demo story; `/api/copilot` → live SERV when key set |

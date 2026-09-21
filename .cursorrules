@@ -1,8 +1,12 @@
-# AllowLatch — OpenServ spending turnstile for Base AgentKit wallets
+# AllowLatch — spending turnstile for Base AgentKit wallets
 
 ## Project Overview
-AllowLatch is an OpenServ agent that turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
+AllowLatch turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
 It does **not** custody user funds. Deterministic policy evaluation must never be replaced by LLM judgment.
+
+**Primary always-on path:** Vercel `https://allowlatch.vercel.app/api/gate` (website free to try; agents pay $0.025 USDC x402 on Base).  
+**Optional fallback:** OpenServ discover / x402 when that host is up.  
+**Guide:** `docs/GUIDE.md`
 
 **Repo:** https://github.com/aspekt19/AllowLatch  
 **Product name:** AllowLatch.
@@ -68,8 +72,8 @@ web-dist/                  # Vite production build (Vercel output)
 ## Environment
 - Secrets only in `.env` — never commit `.env`, `.openserv.json`, CDP keys, or wallet private keys
 - **Host:** `SERV_API_KEY` for Copilot; optional `CDP_*` for live execute
-- End users: no SERV/CDP — connect via x402
-- OpenServ: filled by `provision()` (`WALLET_PRIVATE_KEY`, `OPENSERV_API_KEY`, …)
+- End users: no SERV/CDP — connect via always-on `/api/gate` (native x402); OpenServ optional
+- OpenServ: filled by `provision()` when using the fallback host (`WALLET_PRIVATE_KEY`, `OPENSERV_API_KEY`, …)
 - Execute mode: `ALLOWLATCH_EXECUTE_MODE=dry-run|live`
 
 ## Scripts
@@ -113,7 +117,7 @@ Behavioral rules to reduce over-engineering and unclear edits. Prefer caution ov
 
 ## Product positioning (for docs / pitches)
 - **Not** “first spending-limit product in the world”
-- **Yes** “OpenServ-native turnstile for AgentKit wallets on Base”: NL → policy → gate → optional execute
+- **Yes** “Always-on spending turnstile for AgentKit wallets on Base”: NL → policy → gate → optional execute (OpenServ-native Copilot optional)
 - Competitors may share the problem space (signed mandates, MCP guards); differentiate on SERV + AgentKit + dialog UX
 
 ## Frozen / out of scope (unless asked)

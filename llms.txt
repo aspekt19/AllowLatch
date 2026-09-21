@@ -36,6 +36,8 @@ https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da
 
 ### Docs
 
+- Full guide: https://github.com/aspekt19/AllowLatch/blob/main/docs/GUIDE.md
+
 - CONNECT · EMBED · HOSTED · MONETIZE · SECURITY on GitHub
 - Machine card: https://allowlatch.vercel.app/agent.json
 

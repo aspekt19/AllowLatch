@@ -265,6 +265,8 @@ Never invent ALLOW. Prefer createGatedAgentKit.</pre>
 
           <p class="install-docs muted">
             Docs:
+            <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/GUIDE.md" target="_blank" rel="noreferrer">GUIDE</a>
+            ·
             <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md" target="_blank" rel="noreferrer">CONNECT</a>
             ·
             <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/EMBED.md" target="_blank" rel="noreferrer">EMBED</a>
@@ -282,7 +284,7 @@ Never invent ALLOW. Prefer createGatedAgentKit.</pre>
             <p class="eyebrow">Live case · Base mainnet · Sept 2026</p>
             <h2 id="case-title">Real x402 fees. Real USDC transfer.</h2>
             <p class="section-lead">
-              End-to-end as a user agent: discover AllowLatch Gate → pay $0.025 → ALLOW + receipt →
+              End-to-end as a user agent: site Go live → assertSpend on /api/gate ($0.025) → ALLOW + receipt →
               only then sign on Base.
             </p>
           </div>
@@ -315,7 +317,7 @@ Never invent ALLOW. Prefer createGatedAgentKit.</pre>
             </li>
             <li>
               <span class="case-step">03 · Paid gate</span>
-              <h3>OpenServ x402 · $0.025 per call</h3>
+              <h3>Always-on gate · $0.025 per agent call</h3>
               <p>
                 Hosted <strong>AllowLatch Gate</strong> online. Agent paid with its own USDC;
                 settlement to operator <code>0xa918…F677</code> (seen rising to <strong>0.25 USDC</strong>
@@ -432,7 +434,7 @@ const { receipt } = await assertSpend({
               <div>
                 <h3>Evaluate pack credits</h3>
                 <p>
-                  Each paid <code>buy_evaluate_pack</code> ($0.025) mints fixed credits (default 3).
+                  Primary meter: native x402 on <code>/api/gate</code> ($0.025). OpenServ <code>buy_evaluate_pack</code> remains an optional fallback.
                   Client cannot choose the amount. Burn with <code>packKey</code> on evaluate.
                 </p>
               </div>
