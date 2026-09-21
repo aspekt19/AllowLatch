@@ -27,6 +27,7 @@ import {
   siteGateDurable,
   siteGateEvaluate,
 } from '../src/web/site-gate.js'
+import { durableRateLimit } from '../src/web/site-gate-durable.js'
 import {
   gateProxyConfigured,
   hostApplyPolicy,
@@ -171,6 +172,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Retry-After', '60')
     res.status(rate.status).json({ ok: false, error: rate.error })
     return
+  }
+  if (mode === 'site' && siteGateDurable()) {
+    try {
+      const shared = await durableRateLimit(`gate:${ip}`, rateMax)
+      if (!shared.ok) {
+        res.setHeader('Retry-After', '60')
+        res.status(429).json({
+          ok: false,
+          error: `Rate limit exceeded (${rateMax}/min). Try again shortly.`,
+        })
+        return
+      }
+    } catch {
+      res.status(503).json({
+        ok: false,
+        error: 'Gate rate limiter unavailable (fail-closed)',
+        failClosed: true,
+      })
+      return
+    }
   }
 
   const size = checkBodySize(req.body)

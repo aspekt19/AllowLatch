@@ -90,11 +90,11 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 
 | Property | Behavior |
 |----------|----------|
-| **Durable mode** | Set `ALLOWLATCH_TURSO_DATABASE_URL` (+ `ALLOWLATCH_TURSO_AUTH_TOKEN`). Shared ledger + unique `jti` across isolates. Seal is **v3 reference** (no ledger in client). `POST action=consume` settles a receipt after use. |
+| **Durable mode** | Set `ALLOWLATCH_TURSO_DATABASE_URL` (+ `ALLOWLATCH_TURSO_AUTH_TOKEN`). Shared ledger + unique `jti` across isolates. Ledger writes are compare-and-swap on `seq` inside a write transaction (a lost update cannot double-spend). Policy updates do not rewrite the ledger. Seal is **v3 reference** (no ledger in client). `POST action=consume` settles a receipt after use. |
 | **Demo mode** (no Turso) | `sessionSeal` (HMAC) + in-memory `Map` — survives cold starts only if the client returns the latest seal. **Not** multi-instance safe. |
 | `ownerToken` | Returned on apply to the **browser**; **not** embedded in `sessionSeal` (v2/v3). Never paste `ownerToken` into agent Connect packs |
 | Freshness (demo) | Monotonic `seq` rejects rolling the ledger back when this process already has a newer seal |
-| Multi-instance races | **Fixed in durable mode.** In demo mode two concurrent evaluates on different isolates can both ALLOW against the same old seal |
+| Multi-instance races | **Fixed in durable mode** via `seq` compare-and-swap. In demo mode two concurrent evaluates on different isolates can both ALLOW against the same old seal |
 | Free website calls | Same-site browser `Sec-Fetch-*` + allowlisted Origin — **UX convenience**, not a cryptographic paywall. Agents without those signals pay x402 |
 | Receipt secret | Prefer dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is supported for ops continuity but is poor secret hygiene |
 | Budget vs settlement | On ALLOW the daily/lifetime ledger is reserved when the receipt is issued (conservative). Durable `consume` marks `jti` settled for replay protection at the execute boundary |
@@ -120,7 +120,7 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 | Forged `apply_policy` | `ownerToken` and/or EIP-712 `ownerSig` over `policyHash`; optional `ALLOWLATCH_REQUIRE_OWNER_SIG` |
 | Spoofed free Origin | Free path also checks browser `Sec-Fetch-Site`; agents still 402 without payment |
 | Stale `sessionSeal` replay | Monotonic `seq` on site gate (same isolate); durable store still required for multi-instance |
-| API abuse | HTTP Bearer off-loopback; CORS + rate limits on demo `/api/copilot` |
+| API abuse | HTTP Bearer off-loopback; CORS + rate limits. Site gate counts limits in Turso (shared across isolates) and keys them by `x-vercel-forwarded-for` so a spoofed `X-Forwarded-For` does not rotate the bucket |
 
 Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. Pair with hybrid Spend Permissions and a low-balance hot wallet.
 

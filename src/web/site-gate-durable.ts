@@ -35,12 +35,25 @@ export type DurableRow = {
   updatedAt: number
 }
 
-type LibsqlClient = {
-  execute: (arg: { sql: string; args?: unknown[] }) => Promise<{
-    rows: Record<string, unknown>[]
-    rowsAffected: number
-  }>
+type SqlResult = {
+  rows: Record<string, unknown>[]
+  rowsAffected: number
+}
+
+type SqlExec = {
+  execute: (arg: { sql: string; args?: unknown[] }) => Promise<SqlResult>
+}
+
+type Tx = SqlExec & {
+  commit: () => Promise<void>
+  rollback: () => Promise<void>
+  close: () => void
+}
+
+type LibsqlClient = SqlExec & {
   executeMultiple: (sql: string) => Promise<unknown>
+  transaction: (mode?: 'write' | 'read' | 'deferred') => Promise<Tx>
+  close: () => void
 }
 
 let client: LibsqlClient | null = null
@@ -79,16 +92,107 @@ async function getClient(): Promise<LibsqlClient> {
           created_at INTEGER NOT NULL,
           settled_at INTEGER
         );
+        CREATE TABLE IF NOT EXISTS site_rate (
+          bucket TEXT PRIMARY KEY,
+          n INTEGER NOT NULL,
+          reset_at INTEGER NOT NULL
+        );
       `)
+      try {
+        await client!.execute({ sql: 'PRAGMA busy_timeout = 5000', args: [] })
+        await client!.execute({ sql: 'PRAGMA journal_mode = WAL', args: [] })
+      } catch {
+        /* remote Turso ignores local pragmas */
+      }
     })()
   }
   await ready
   return client
 }
 
-async function loadRow(policyId: string): Promise<DurableRow | null> {
+/** Test hook — drop the cached client so a file: URL can be swapped. */
+export function resetDurableClientForTests(): void {
+  try {
+    client?.close()
+  } catch {
+    /* ignore */
+  }
+  client = null
+  ready = null
+}
+
+async function endTx(tx: Tx, action: 'commit' | 'rollback'): Promise<void> {
+  try {
+    if (action === 'commit') await tx.commit()
+    else {
+      try {
+        await tx.rollback()
+      } catch {
+        /* transaction already aborted */
+      }
+    }
+  } finally {
+    try {
+      tx.close()
+    } catch {
+      /* already closed */
+    }
+  }
+}
+
+function isUniqueConflict(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+  return /UNIQUE|SQLITE_CONSTRAINT|constraint failed/i.test(message)
+}
+
+function isBusy(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err)
+  return /SQLITE_BUSY|database is locked|statements in progress/i.test(message)
+}
+
+const RETRY = Symbol('retry')
+
+async function withWriteTx<T>(
+  fn: (tx: Tx) => Promise<T | typeof RETRY>,
+  opts?: { retryUnique?: boolean }
+): Promise<T> {
   const c = await getClient()
-  const rs = await c.execute({
+  let last: unknown = new Error('concurrent write (fail-closed)')
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let tx: Tx
+    try {
+      tx = await c.transaction('write')
+    } catch (err) {
+      last = err
+      if (isBusy(err)) {
+        await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)))
+        continue
+      }
+      throw err
+    }
+    try {
+      const result = await fn(tx)
+      if (result === RETRY) {
+        await endTx(tx, 'rollback')
+        continue
+      }
+      await endTx(tx, 'commit')
+      return result as T
+    } catch (err) {
+      await endTx(tx, 'rollback')
+      last = err
+      if (isBusy(err) || (opts?.retryUnique && isUniqueConflict(err))) {
+        await new Promise((resolve) => setTimeout(resolve, 25 * (attempt + 1)))
+        continue
+      }
+      throw err
+    }
+  }
+  throw last instanceof Error ? last : new Error(String(last))
+}
+
+async function loadRowOn(db: SqlExec, policyId: string): Promise<DurableRow | null> {
+  const rs = await db.execute({
     sql: 'SELECT * FROM site_policies WHERE policy_id = ?',
     args: [policyId],
   })
@@ -105,28 +209,8 @@ async function loadRow(policyId: string): Promise<DurableRow | null> {
   }
 }
 
-async function upsertRow(row: DurableRow): Promise<void> {
-  const c = await getClient()
-  await c.execute({
-    sql: `INSERT INTO site_policies (policy_id, owner_id, owner_token_hash, policy_json, ledger_json, seq, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(policy_id) DO UPDATE SET
-            owner_id=excluded.owner_id,
-            owner_token_hash=excluded.owner_token_hash,
-            policy_json=excluded.policy_json,
-            ledger_json=excluded.ledger_json,
-            seq=excluded.seq,
-            updated_at=excluded.updated_at`,
-    args: [
-      row.policyId,
-      row.ownerId,
-      row.ownerTokenHash,
-      JSON.stringify(row.policy),
-      JSON.stringify(row.ledger),
-      row.seq,
-      row.updatedAt,
-    ],
-  })
+async function loadRow(policyId: string): Promise<DurableRow | null> {
+  return loadRowOn(await getClient(), policyId)
 }
 
 export async function durableApply(args: {
@@ -143,43 +227,77 @@ export async function durableApply(args: {
   seq: number
   durable: true
 }> {
-  const existing = await loadRow(args.policyId)
-  let ownerToken = args.ownerToken?.trim()
-  if (existing) {
-    if (existing.ownerId !== args.ownerId) {
-      throw new Error('ownerId does not match this policyId')
-    }
-    if (ownerToken && hashOwnerToken(ownerToken) !== existing.ownerTokenHash) {
-      throw new Error('ownerToken mismatch')
-    }
-    // Token only known to client — we store hash. Reuse provided token or mint new on first apply.
-    if (!ownerToken) {
-      throw new Error('ownerToken required to update durable site policy (server stores hash only)')
-    }
-  } else {
-    ownerToken = ownerToken || randomUUID().replace(/-/g, '')
-  }
-
   const policy = MandatePolicySchema.parse({ ...args.policy, ownerId: args.ownerId })
-  const row: DurableRow = {
-    policyId: args.policyId,
-    ownerId: args.ownerId,
-    ownerTokenHash: hashOwnerToken(ownerToken!),
-    policy,
-    ledger: existing?.ledger ?? freshLedger(),
-    seq: (existing?.seq ?? -1) + 1,
-    updatedAt: Date.now(),
-  }
-  await upsertRow(row)
-  return {
-    policyId: row.policyId,
-    ownerId: row.ownerId,
-    ownerToken: ownerToken!,
-    policy: row.policy,
-    ledger: row.ledger,
-    seq: row.seq,
-    durable: true as const,
-  }
+  let ownerToken = args.ownerToken?.trim() || ''
+
+  return withWriteTx(async (tx) => {
+    const existing = await loadRowOn(tx, args.policyId)
+    if (existing) {
+      if (existing.ownerId !== args.ownerId) {
+        throw new Error('ownerId does not match this policyId')
+      }
+      if (!ownerToken) {
+        throw new Error(
+          'ownerToken required to update durable site policy (server stores hash only)'
+        )
+      }
+      if (hashOwnerToken(ownerToken) !== existing.ownerTokenHash) {
+        throw new Error('ownerToken mismatch')
+      }
+      const now = Date.now()
+      const upd = await tx.execute({
+        sql: `UPDATE site_policies
+              SET owner_id=?, owner_token_hash=?, policy_json=?, seq=seq+1, updated_at=?
+              WHERE policy_id=? AND seq=? AND owner_token_hash=?`,
+        args: [
+          args.ownerId,
+          existing.ownerTokenHash,
+          JSON.stringify(policy),
+          now,
+          args.policyId,
+          existing.seq,
+          existing.ownerTokenHash,
+        ],
+      })
+      if (Number(upd.rowsAffected) !== 1) return RETRY
+      return {
+        policyId: args.policyId,
+        ownerId: args.ownerId,
+        ownerToken,
+        policy,
+        ledger: existing.ledger,
+        seq: existing.seq + 1,
+        durable: true as const,
+      }
+    }
+
+    const minted = ownerToken || randomUUID().replace(/-/g, '')
+    const now = Date.now()
+    const ledger = freshLedger()
+    await tx.execute({
+      sql: `INSERT INTO site_policies
+            (policy_id, owner_id, owner_token_hash, policy_json, ledger_json, seq, updated_at)
+            VALUES (?, ?, ?, ?, ?, 0, ?)`,
+      args: [
+        args.policyId,
+        args.ownerId,
+        hashOwnerToken(minted),
+        JSON.stringify(policy),
+        JSON.stringify(ledger),
+        now,
+      ],
+    })
+    ownerToken = minted
+    return {
+      policyId: args.policyId,
+      ownerId: args.ownerId,
+      ownerToken,
+      policy,
+      ledger,
+      seq: 0,
+      durable: true as const,
+    }
+  }, { retryUnique: true })
 }
 
 export async function durableEvaluate(args: {
@@ -192,67 +310,62 @@ export async function durableEvaluate(args: {
   seq: number
   durable: true
 }> {
-  const c = await getClient()
-  // Serialize per policy via read-modify-write; Turso serializes writes on the primary.
-  const existing = await loadRow(args.policyId)
-  if (!existing) {
-    throw new Error(
-      `Unknown policyId "${args.policyId}" on durable site gate — Go live again or apply first`
-    )
-  }
+  return withWriteTx(async (tx) => {
+    const existing = await loadRowOn(tx, args.policyId)
+    if (!existing) {
+      throw new Error(
+        `Unknown policyId "${args.policyId}" on durable site gate — Go live again or apply first`
+      )
+    }
 
-  const evaluation = evaluateIntent(existing.policy, args.intent, existing.ledger)
-  let receipt: AllowReceipt | null = null
-  let ledger = existing.ledger
-  let seq = existing.seq
+    const evaluation = evaluateIntent(existing.policy, args.intent, existing.ledger)
+    if (evaluation.decision !== 'allow') {
+      return {
+        decision: evaluation.decision,
+        result: evaluation,
+        receipt: null,
+        seq: existing.seq,
+        durable: true as const,
+      }
+    }
 
-  if (evaluation.decision === 'allow') {
-    receipt = issueAllowReceipt({
+    const ledger = commitIntent(existing.ledger, args.intent)
+    const seq = existing.seq + 1
+    const now = Date.now()
+    const upd = await tx.execute({
+      sql: `UPDATE site_policies SET ledger_json=?, seq=?, updated_at=?
+            WHERE policy_id=? AND seq=?`,
+      args: [JSON.stringify(ledger), seq, now, args.policyId, existing.seq],
+    })
+    if (Number(upd.rowsAffected) !== 1) return RETRY
+
+    const receipt = issueAllowReceipt({
       policy: existing.policy,
       policyId: existing.policyId,
       intent: args.intent,
       evaluation,
     })
-    if (!receipt) {
-      throw new Error('failed to issue allow-receipt')
-    }
-    ledger = commitIntent(existing.ledger, args.intent)
-    seq = existing.seq + 1
+    if (!receipt) throw new Error('failed to issue allow-receipt')
 
-    // Insert jti first — unique PK makes double-issue from races fail closed.
-    try {
-      await c.execute({
-        sql: `INSERT INTO site_receipts (jti, policy_id, intent_hash, status, receipt_json, created_at)
-              VALUES (?, ?, ?, 'authorized', ?, ?)`,
-        args: [
-          receipt.jti,
-          args.policyId,
-          receipt.intentHash,
-          JSON.stringify(receipt),
-          Date.now(),
-        ],
-      })
-    } catch (err) {
-      throw new Error(
-        `receipt jti conflict (fail-closed): ${err instanceof Error ? err.message : String(err)}`
-      )
-    }
-
-    await upsertRow({
-      ...existing,
-      ledger,
-      seq,
-      updatedAt: Date.now(),
+    await tx.execute({
+      sql: `INSERT INTO site_receipts (jti, policy_id, intent_hash, status, receipt_json, created_at)
+            VALUES (?, ?, ?, 'authorized', ?, ?)`,
+      args: [
+        receipt.jti,
+        args.policyId,
+        receipt.intentHash,
+        JSON.stringify(receipt),
+        now,
+      ],
     })
-  }
-
-  return {
-    decision: evaluation.decision,
-    result: { ...evaluation, receipt: receipt ?? undefined },
-    receipt,
-    seq,
-    durable: true,
-  }
+    return {
+      decision: 'allow' as const,
+      result: { ...evaluation, receipt },
+      receipt,
+      seq,
+      durable: true as const,
+    }
+  }, { retryUnique: true })
 }
 
 /**
@@ -291,10 +404,39 @@ export async function durableConsume(args: {
            WHERE jti = ? AND status = 'authorized'`,
     args: [Date.now(), receipt.jti],
   })
-  if (upd.rowsAffected !== 1) {
+  if (Number(upd.rowsAffected) !== 1) {
     throw new Error('receipt jti already settled or missing')
   }
   return { ok: true, jti: receipt.jti, durable: true }
+}
+
+const RATE_WINDOW_MS = 60_000
+
+/** Shared limiter for Vercel isolates. Fail closed if the caller treats a throw as deny. */
+export async function durableRateLimit(
+  key: string,
+  maxPerWindow: number
+): Promise<{ ok: true } | { ok: false }> {
+  const c = await getClient()
+  const now = Date.now()
+  const resetAt = now + RATE_WINDOW_MS
+  const rs = await c.execute({
+    sql: `INSERT INTO site_rate (bucket, n, reset_at) VALUES (?, 1, ?)
+          ON CONFLICT(bucket) DO UPDATE SET
+            n = CASE WHEN site_rate.reset_at <= ? THEN 1 ELSE site_rate.n + 1 END,
+            reset_at = CASE WHEN site_rate.reset_at <= ? THEN excluded.reset_at ELSE site_rate.reset_at END
+          RETURNING n`,
+    args: [key, resetAt, now, now],
+  })
+  const n = Number(rs.rows[0]?.n ?? 0)
+  if (Math.random() < 0.02) {
+    c.execute({
+      sql: 'DELETE FROM site_rate WHERE reset_at < ?',
+      args: [now - 5 * RATE_WINDOW_MS],
+    }).catch(() => undefined)
+  }
+  if (n > maxPerWindow) return { ok: false }
+  return { ok: true }
 }
 
 export async function durableHasPolicy(policyId: string): Promise<boolean> {

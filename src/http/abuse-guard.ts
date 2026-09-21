@@ -50,14 +50,25 @@ export function assertJsonBodySize(raw: string, max = GATE_MAX_BODY_BYTES): void
   }
 }
 
+function firstHeader(headers: Record<string, unknown> | undefined, name: string): string | undefined {
+  const raw = headers?.[name]
+  const value = typeof raw === 'string' ? raw : Array.isArray(raw) ? String(raw[0] ?? '') : ''
+  const hop = value.split(',')[0]?.trim()
+  return hop || undefined
+}
+
 export function clientIp(req: {
   headers?: Record<string, unknown>
   socket?: { remoteAddress?: string }
 }): string {
-  const xf = req.headers?.['x-forwarded-for']
-  if (typeof xf === 'string' && xf.trim()) return xf.split(',')[0]!.trim()
-  if (Array.isArray(xf) && xf[0]) return String(xf[0]).split(',')[0]!.trim()
-  return req.socket?.remoteAddress || 'unknown'
+  // Vercel strips client spoofing on this header. x-forwarded-for's left hop is attacker-controlled.
+  return (
+    firstHeader(req.headers, 'x-vercel-forwarded-for') ||
+    firstHeader(req.headers, 'x-real-ip') ||
+    firstHeader(req.headers, 'x-forwarded-for') ||
+    req.socket?.remoteAddress ||
+    'unknown'
+  )
 }
 
 export function checkOrigin(
