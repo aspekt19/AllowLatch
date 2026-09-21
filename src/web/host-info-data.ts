@@ -89,7 +89,7 @@ export async function getHostInfoAsync(): Promise<HostInfo> {
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
     note:
-      'Website: draft + Go live uses /api/gate (always-on Vercel engine + receipts, free to try). Agents: OpenServ AllowLatch Gate at $0.025 x402 — only while gate.isActive and payWorkflow responds; timeout → DENY. You never run npm run dev.',
+      'Website /api/gate is always-on (preferred Connect: gateUrl + sessionSeal). OpenServ AllowLatch Gate is $0.025 x402 when the operator host is reachable — gate.isActive can lie; timeout → DENY. You never run npm run dev.',
   }
 }
 
@@ -118,6 +118,6 @@ export function getHostInfo(): HostInfo {
       security: 'https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md',
     },
     note:
-      'Website: draft + Go live uses /api/gate (always-on Vercel engine + receipts, free to try). Agents: OpenServ AllowLatch Gate at $0.025 x402 — only while gate.isActive and payWorkflow responds; timeout → DENY. You never run npm run dev.',
+      'Website /api/gate is always-on (preferred Connect: gateUrl + sessionSeal). OpenServ AllowLatch Gate is $0.025 x402 when the operator host is reachable — gate.isActive can lie; timeout → DENY. You never run npm run dev.',
   }
 }

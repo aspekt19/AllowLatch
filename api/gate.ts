@@ -30,12 +30,15 @@ const ApplySchema = z.object({
   ownerId: z.string().min(1).max(120),
   ownerToken: z.string().optional(),
   policy: z.record(z.unknown()),
+  /** HMAC session blob — survives Vercel cold starts when sent back from the browser. */
+  sessionSeal: z.string().max(50_000).optional(),
 })
 
 const EvaluateSchema = z.object({
   action: z.literal('evaluate'),
   policyId: z.string().min(1).max(80),
   intent: SpendIntentSchema,
+  sessionSeal: z.string().max(50_000).optional(),
 })
 
 const BodySchema = z.discriminatedUnion('action', [ApplySchema, EvaluateSchema])
@@ -155,6 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ownerId: body.ownerId,
           ownerToken: body.ownerToken,
           policy,
+          sessionSeal: body.sessionSeal,
         })
         const { ok: _ok, ...appliedRest } = applied
         res.status(200).json({
@@ -189,6 +193,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const evaluated = siteGateEvaluate({
         policyId: body.policyId,
         intent: body.intent,
+        sessionSeal: body.sessionSeal,
       })
       res.status(200).json({
         ok: true,
@@ -198,6 +203,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         decision: evaluated.decision,
         result: evaluated.result,
         receipt: evaluated.receipt,
+        sessionSeal: evaluated.sessionSeal,
       })
       return
     }

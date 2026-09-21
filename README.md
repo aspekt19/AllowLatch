@@ -19,7 +19,7 @@ Tell your agent:
 
 > Connect to AllowLatch. Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, ask AllowLatch.
 
-- Cursor skill: `.cursor/skills/allowlatch`
+- Agent skill (any LLM): [`skills/allowlatch/SKILL.md`](./skills/allowlatch/SKILL.md) (Cursor mirror: `.cursor/skills/allowlatch`)
 - Demo UI: https://allowlatch.vercel.app
 - Connect: [docs/CONNECT.md](./docs/CONNECT.md) · Hosted ops: [docs/HOSTED.md](./docs/HOSTED.md)
 
@@ -43,7 +43,7 @@ npm run battle              # Spender → gate → AgentKit dry-run
 npm run connect             # discover hosted AllowLatch Gate as another agent
 npm run agent:gated         # AgentKit spender with gate baked in
 npm run http:gate           # local HTTP evaluate/execute (builder/dev)
-npm run deploy:openserv     # operator: always-on OpenServ Cloud host
+npm run deploy:host         # operator: always-on OpenServ Cloud host
 npm run dev                 # operator: local tunnel host (dev)
 ```
 

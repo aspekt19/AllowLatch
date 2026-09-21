@@ -37,11 +37,11 @@ const gate = services.find((s) => /allowlatch/i.test(s.name))
 
 ## Operator: keep the gate online
 
-The OpenServ listing exists even when idle (`isActive: false`). Calls only succeed while the AllowLatch process is reachable.
+The OpenServ listing exists even when idle (`isActive: false`). Calls only succeed while the AllowLatch process is reachable. **`isActive: true` can still hang** — always verify with a real `payWorkflow`.
 
-### Option A — OpenServ Cloud (preferred)
+### Option A — OpenServ Cloud container (primary)
 
-Official `npx @openserv-labs/client deploy` currently fails on upload (500). Use the slim always-on script instead (git clone into the container, no AgentKit on disk):
+Official `npx @openserv-labs/client deploy` upload can 500. Prefer the slim always-on script (git clone into the container, retries on Cloudflare 502, reuses `OPENSERV_CONTAINER_ID` when healthy):
 
 ```bash
 # Dashboard → https://platform.openserv.ai/profile/api-keys
@@ -49,11 +49,11 @@ Official `npx @openserv-labs/client deploy` currently fails on upload (500). Use
 npm run deploy:host
 ```
 
-This creates an OpenServ/Fly container, installs a slim dependency set, starts `src/agent.ts`, and `go-live continuous`. Your Mac can sleep — the gate stays up.
+Re-run after agent code changes. Force a new box with `ALLOWLATCH_FORCE_FRESH_CONTAINER=1 npm run deploy:host`.
 
-Re-run `npm run deploy:host` after agent code changes you need on the host.
+### Option B — Your own always-on VM (Railway / Fly / Render)
 
-### Option B — Always-on VM / Railway / Fly
+When OpenServ container exec is degraded, host the same process yourself:
 
 ```bash
 # Public HTTPS URL of this process
@@ -62,7 +62,9 @@ DISABLE_TUNNEL=true
 npm run dev
 ```
 
-### Option C — Local tunnel (dev only)
+See `Dockerfile` in the repo root for a slim Node image (`npm run start:host`).
+
+### Option C — Local tunnel (dev / incident only)
 
 ```bash
 npm run dev   # SDK tunnel to agents-proxy.openserv.ai
@@ -75,13 +77,12 @@ Do **not** document Option C as the end-user path.
 1. Confirm `discoverServices()` returns AllowLatch Gate with `isActive: true` (or host-info says so).
 2. **Also** run a real `payWorkflow` ping — discover can report active while the process is hung; clients must fail-closed on timeout.
 3. Set Vercel env `ALLOWLATCH_PAYWALL_URL` / `ALLOWLATCH_TRIGGER_URL` if they change after re-provision.
-4. Demo UI **Go live** uses `/api/gate` on Vercel (site backend by default — always-on). Agent enforcement still uses OpenServ x402.
+4. Demo UI **Go live** uses `/api/gate` on Vercel (site backend — always-on, sessionSeal survives cold starts). Agent enforcement still uses OpenServ x402.
 
 ### Known ops notes
 
-- `npm run deploy:host` clones from GitHub into a slim Fly container (no AgentKit on disk) and `go-live continuous`.
-- If `createContainer` / `exec` returns **502/5xx**, retry later with backoff; fall back to `npm run dev` (tunnel) for paid-path demos. **Do not claim cloud keep-alive is healthy until a real `payWorkflow` succeeds.**
-- Stopping a laptop tunnel (`npm run dev`) takes the **paid** agent gate offline until cloud keep-alive is restored. The **website** `/api/gate` stays up on Vercel.
-- `gate.isActive: true` can still hang — clients must fail-closed on timeout.
+- `npm run deploy:host` clones from GitHub into a slim Fly container (no AgentKit on disk) and `go-live continuous`. Retries 502s; reuses a healthy container by default.
+- If `createContainer` / `exec` returns **502/5xx** after retries, fall back to Option B or C. **Do not claim cloud keep-alive is healthy until a real `payWorkflow` succeeds.**
+- Stopping a laptop tunnel takes the **paid** agent gate offline until cloud keep-alive is restored. The **website** `/api/gate` stays up on Vercel.
 
 See [CONNECT.md](./CONNECT.md) (users) · [MONETIZE.md](./MONETIZE.md) · [EMBED.md](./EMBED.md) (builders).

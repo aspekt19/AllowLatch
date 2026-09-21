@@ -13,19 +13,19 @@ Local JSON / offline drafts are **not** production enforcement.
 
 | Surface | URL / entry | Who pays | Always on? |
 |---------|-------------|----------|------------|
-| **Website gate** | https://allowlatch.vercel.app → Go live → `/api/gate` | Free to try from the site | Yes (Vercel) |
-| **Agent gate (prod)** | OpenServ **AllowLatch Gate** `/allowlatch/i` · `$0.025` x402 | Agent wallet pays | Only while `gate.isActive` **and** payWorkflow responds — on timeout → DENY |
+| **Website gate** | https://allowlatch.vercel.app → Go live → `/api/gate` | Free | **Yes** (Vercel). Browser keeps `sessionSeal` across cold starts. **Preferred Connect path.** |
+| **OpenServ Gate** | Discover `/allowlatch/i` · `$0.025` x402 | Agent wallet | Only while the operator host process is reachable. `gate.isActive` can lie — timeout → DENY. |
 
-Check live status: `GET https://allowlatch.vercel.app/api/host-info` → `gate.isActive`.  
+Check: `GET https://allowlatch.vercel.app/api/host-info`  
 Still **fail-closed**: network / timeout / malformed → treat as DENY, never sign.
 
 ### Install paths (pick one)
 
-1. **Site Connect pack** — https://allowlatch.vercel.app → Draft → Go live → **Connect your agent** (instruction / code / MCP).
-2. **npm** — `npm i allowlatch` → `assertSpend` / `createGatedAgentKit` / `allowLatchActionProvider`.
-3. **MCP** — `npx allowlatch-mcp`.
-4. **Cursor skill** — AllowLatch skill (discover gate, apply mandate, never invent ALLOW).
-5. **OpenServ x402** — `discoverServices()` → `/allowlatch/i` → `payWorkflow({ triggerUrl, input: { prompt } })`.
+1. **Site Connect pack** — https://allowlatch.vercel.app → Draft → Go live → **Connect your agent** (`gateUrl` + `sessionSeal`).
+2. **npm** — `npm i allowlatch` → `assertSpend({ gateUrl, sessionSeal, … })` or OpenServ `triggerUrl`.
+3. **MCP** — `npx allowlatch-mcp` (set `ALLOWLATCH_GATE_URL` / `ALLOWLATCH_SESSION_SEAL`).
+4. **Agent skill (any LLM)** — [`skills/allowlatch/SKILL.md`](https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md) — Cursor, Claude, Codex, OpenServ, custom. Same markdown everywhere.
+5. **OpenServ x402** — `discoverServices()` → `/allowlatch/i` → `payWorkflow` when the host is online.
 
 Public card: https://allowlatch.vercel.app/api/host-info  
 Install UI: https://allowlatch.vercel.app/#install  
@@ -33,8 +33,8 @@ Live Base case: https://allowlatch.vercel.app/#case
 
 ### What to do before every spend
 
-1. Discover **AllowLatch Gate** or use `triggerUrl` from host-info / CONNECT.md.
-2. Ensure a MandatePolicy is applied (`apply_policy` / site Go live). Save `ownerToken` for later mutates.
+1. Prefer Connect pack `gateUrl` + `sessionSeal` (always-on), or OpenServ `triggerUrl` when paid path is live.
+2. Ensure a MandatePolicy is applied (site Go live or `apply_policy`).
 3. Call `assertSpend` / `evaluate_intent` with the exact intent JSON.
 4. **ALLOW + allow-receipt (`jti`)** → only then may you sign / `execute_gated_transfer`.
 5. **DENY / ESCALATE / timeout / bad JSON** → do not sign. On ESCALATE ask the human.
@@ -42,18 +42,18 @@ Live Base case: https://allowlatch.vercel.app/#case
 
 ### Pricing
 
-- OpenServ x402: **$0.025** per call (draft / apply / evaluate / explain / execute / buy_evaluate_pack).
+- Website `/api/gate`: free always-on evaluate + receipts (after Go live).
+- OpenServ x402: **$0.025** per call when the hosted agent process is up.
 - `buy_evaluate_pack`: same $0.025 mints fixed credits (default 3 ≈ $0.008/check).
-- Website `/api/gate`: free try (not a substitute for paid agent enforcement).
 
 ### Live case (Base mainnet · verified)
 
-Paid path: agent paid x402 → ALLOW + receipt → USDC transfer  
+Paid OpenServ path (when host online): assertSpend → receipt → USDC transfer  
 https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16  
-Fees settled to operator `0xa91841F98fd15e3f590e2681d7122ec04bc7F677`.  
-Also: https://basescan.org/tx/0xc3b2415601c434d1e9859ac3c0a6bb192d84eeffd2319f78361805da0f82223f · https://basescan.org/tx/0x04479adb7267416764f388360dcb106329b6d48d80afd565d587ea688d7dd0c7  
-Website `/api/gate` independently verified ALLOW / DENY / ESCALATE + receipts on Vercel.  
-**Ops:** OpenServ cloud `deploy:host` can 502; paid x402 needs operator keep-alive (`npm run_dev` tunnel or healthy cloud). `gate.isActive` alone is not enough.
+Fees to operator `0xa91841F98fd15e3f590e2681d7122ec04bc7F677`.  
+Website `/api/gate` independently verified ALLOW / DENY / ESCALATE + receipts on Vercel.
+
+**Ops:** OpenServ Cloud containers can sleep/502 — operator runs `npm run deploy:host` (retries) or the root `Dockerfile` on Railway/Fly. Website gate does not depend on that.
 
 ### Docs
 
@@ -62,6 +62,7 @@ Website `/api/gate` independently verified ALLOW / DENY / ESCALATE + receipts on
 - HOSTED (operators): https://github.com/aspekt19/AllowLatch/blob/main/docs/HOSTED.md
 - SECURITY: https://github.com/aspekt19/AllowLatch/blob/main/docs/SECURITY.md
 - Machine card: https://github.com/aspekt19/AllowLatch/blob/main/agent.json
+- Skill (any LLM): https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md
 
 ### Capabilities (host)
 

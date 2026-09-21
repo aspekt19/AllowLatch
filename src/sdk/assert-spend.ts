@@ -90,15 +90,21 @@ function parseGateJson(text: string): Record<string, unknown> {
 }
 
 /**
- * Call AllowLatch over x402 and refuse to proceed without ALLOW + valid receipt.
+ * Call AllowLatch and refuse to proceed without ALLOW + valid receipt.
+ * Prefer always-on `gateUrl` (Vercel /api/gate) when you applied on the website.
+ * OpenServ x402 (`triggerUrl`) is the paid marketplace path when the host is online.
  */
 export async function assertSpend(args: {
   intent: SpendIntent
   policyId?: string
+  /** Always-on website gate — https://allowlatch.vercel.app/api/gate */
+  gateUrl?: string
+  /** HMAC session from website Go live (survives Vercel cold starts). */
+  sessionSeal?: string
   /** OpenServ x402 trigger URL (from discoverServices().webhookUrl) */
   triggerUrl?: string
   workflowId?: number
-  /** Payer wallet — required for programmatic x402 */
+  /** Payer wallet — required for programmatic x402 (OpenServ path) */
   walletPrivateKey?: string
   /** If true, throw unless decision===allow and receipt verifies (default true). */
   requireReceipt?: boolean
@@ -107,38 +113,72 @@ export async function assertSpend(args: {
   const policyId = args.policyId ?? 'default'
   const requireReceipt = args.requireReceipt !== false
   const privateKey = args.walletPrivateKey ?? process.env.WALLET_PRIVATE_KEY
-
-  if (!args.workflowId && !args.triggerUrl) {
-    denyClosed('assertSpend requires triggerUrl or workflowId (paid AllowLatch host)')
-  }
-
-  const client = new PlatformClient()
-  const prompt = buildEvaluatePrompt(policyId, intent)
-  const payOpts = privateKey?.trim() ? { privateKey: privateKey.trim() } : {}
+  const gateUrl =
+    args.gateUrl?.trim() ||
+    process.env.ALLOWLATCH_GATE_URL?.trim() ||
+    ''
 
   let raw: unknown
-  try {
-    if (args.workflowId) {
-      raw = await client.payments.payWorkflow({
-        workflowId: args.workflowId,
-        input: { prompt },
-        ...payOpts,
+
+  if (gateUrl) {
+    try {
+      const res = await fetch(gateUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action: 'evaluate',
+          policyId,
+          intent,
+          sessionSeal: args.sessionSeal || process.env.ALLOWLATCH_SESSION_SEAL || undefined,
+        }),
       })
-    } else {
-      raw = await client.payments.payWorkflow({
-        triggerUrl: args.triggerUrl!,
-        input: { prompt },
-        ...payOpts,
-      })
+      raw = await res.json()
+      if (!res.ok || (raw as { ok?: boolean }).ok === false) {
+        denyClosed(
+          `site gate HTTP ${res.status}: ${String((raw as { error?: string }).error || 'error')}`
+        )
+      }
+    } catch (err) {
+      denyClosed(
+        `site gate unreachable — ${err instanceof Error ? err.message : String(err)}`
+      )
     }
-  } catch (err) {
-    denyClosed(
-      `gate unreachable or payment failed — ${err instanceof Error ? err.message : String(err)}`
-    )
+  } else {
+    if (!args.workflowId && !args.triggerUrl) {
+      denyClosed(
+        'assertSpend requires gateUrl (always-on /api/gate) or triggerUrl/workflowId (OpenServ x402)'
+      )
+    }
+
+    const client = new PlatformClient()
+    const prompt = buildEvaluatePrompt(policyId, intent)
+    const payOpts = privateKey?.trim() ? { privateKey: privateKey.trim() } : {}
+
+    try {
+      if (args.workflowId) {
+        raw = await client.payments.payWorkflow({
+          workflowId: args.workflowId,
+          input: { prompt },
+          ...payOpts,
+        })
+      } else {
+        raw = await client.payments.payWorkflow({
+          triggerUrl: args.triggerUrl!,
+          input: { prompt },
+          ...payOpts,
+        })
+      }
+    } catch (err) {
+      denyClosed(
+        `gate unreachable or payment failed — ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
   }
 
-  const text = extractGateText(raw)
-  const parsed = parseGateJson(text)
+  const text = gateUrl ? JSON.stringify(raw) : extractGateText(raw)
+  const parsed = gateUrl
+    ? (raw as Record<string, unknown>)
+    : parseGateJson(text)
 
   // Nested shapes: { evaluation: { decision } } or { result: { decision } }
   const nested =

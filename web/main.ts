@@ -76,6 +76,8 @@ type HostedSession = {
   ownerToken?: string
   /** Snapshot so Connect works after reload. */
   policy?: MandatePolicy
+  /** HMAC seal from /api/gate — restores policy after Vercel cold starts. */
+  sessionSeal?: string
 }
 
 const STORAGE_KEY = 'allowlatch.hosted.v1'
@@ -171,26 +173,33 @@ function buildAgentInstruction(): string {
   const policyId = hosted?.policyId || 'default'
   const ownerId = hosted?.ownerId || browserOwnerId()
   const ownerToken = hosted?.ownerToken
+  const sessionSeal = hosted?.sessionSeal
   const policyJson = p ? JSON.stringify(p) : '{}'
+  const gateUrl = `${location.origin}/api/gate`
   return [
     'You are my spending agent. AllowLatch holds my rules — do not invent allow/deny.',
     '',
     `policyId: ${policyId}`,
     `ownerId: ${ownerId}`,
     ownerToken ? `ownerToken: ${ownerToken}` : null,
-    `OpenServ trigger: ${cachedTriggerUrl}`,
+    `Always-on gateUrl: ${gateUrl}`,
+    sessionSeal ? `sessionSeal: ${sessionSeal}` : null,
+    `OpenServ trigger (paid x402, when host online): ${cachedTriggerUrl}`,
     `Paywall (human pay): ${cachedPaywallUrl}`,
     '',
-    'Setup (once):',
+    'Preferred (always-on, already applied via Go live):',
     '1) npm i allowlatch',
-    '2) Apply this MandatePolicy to OpenServ AllowLatch Gate (paywall or payWorkflow, $0.025):',
-    `apply_policy for policyId=${policyId}`,
+    '2) Before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, intent })',
+    '',
+    'Optional paid marketplace (OpenServ $0.025 when gate.isActive and payWorkflow works):',
+    `apply_policy for policyId=${policyId} on OpenServ if you need x402 there`,
     `ownerId=${ownerId}`,
     ownerToken ? `ownerToken=${ownerToken}` : null,
     policyJson,
     '',
     'Before EVERY transfer/swap/x402 payment:',
-    '- Call assertSpend({ policyId, triggerUrl, walletPrivateKey, intent }) from allowlatch',
+    '- Prefer gateUrl/sessionSeal from this Connect pack (Vercel site gate — always on).',
+    '- Or assertSpend({ policyId, triggerUrl, walletPrivateKey, intent }) for OpenServ x402.',
     '- On DENY or timeout → stop (fail-closed). On ESCALATE → ask me. On ALLOW → keep allow-receipt jti, then sign.',
     '- Never call a raw wallet signer in parallel. Prefer createGatedAgentKit / allowLatchActionProvider.',
     '',
@@ -202,16 +211,19 @@ function buildAgentInstruction(): string {
 
 function buildAgentCodeSnippet(): string {
   const policyId = hosted?.policyId || 'default'
+  const seal = hosted?.sessionSeal || ''
   return `import { assertSpend, allowLatchActionProvider } from 'allowlatch'
 // npm i allowlatch
 
 const POLICY_ID = ${JSON.stringify(policyId)}
-const TRIGGER = process.env.ALLOWLATCH_TRIGGER_URL || ${JSON.stringify(cachedTriggerUrl)}
+const GATE_URL = process.env.ALLOWLATCH_GATE_URL || ${JSON.stringify(`${location.origin}/api/gate`)}
+const SESSION_SEAL = process.env.ALLOWLATCH_SESSION_SEAL || ${JSON.stringify(seal)}
 
+// Always-on website gate (preferred after Go live on allowlatch.vercel.app)
 const { receipt } = await assertSpend({
   policyId: POLICY_ID,
-  triggerUrl: TRIGGER,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
+  gateUrl: GATE_URL,
+  sessionSeal: SESSION_SEAL || undefined,
   intent: {
     action: 'transfer',
     amountUsd: 5,
@@ -221,8 +233,9 @@ const { receipt } = await assertSpend({
 })
 // Only then sign. receipt.jti is single-use.
 
-// Or AgentKit:
-// actionProviders: [allowLatchActionProvider({ policyId: POLICY_ID, triggerUrl: TRIGGER })]
+// Optional paid OpenServ x402 when the hosted gate is online:
+// const TRIGGER = process.env.ALLOWLATCH_TRIGGER_URL || ${JSON.stringify(cachedTriggerUrl)}
+// await assertSpend({ policyId: POLICY_ID, triggerUrl: TRIGGER, walletPrivateKey: process.env.WALLET_PRIVATE_KEY, intent })
 `
 }
 
@@ -236,6 +249,10 @@ function buildAgentMcpConfig(): string {
           args: ['-y', '--package=allowlatch', 'allowlatch-mcp'],
           env: {
             ALLOWLATCH_POLICY_ID: policyId,
+            ALLOWLATCH_GATE_URL: `${location.origin}/api/gate`,
+            ...(hosted?.sessionSeal
+              ? { ALLOWLATCH_SESSION_SEAL: hosted.sessionSeal }
+              : {}),
             ALLOWLATCH_TRIGGER_URL: cachedTriggerUrl,
             WALLET_PRIVATE_KEY: 'YOUR_X402_PAYER_KEY',
           },
@@ -285,14 +302,23 @@ async function copyText(label: string, text: string) {
 }
 
 async function callGate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const body = {
+    ...payload,
+    ...(hosted?.sessionSeal && !payload.sessionSeal
+      ? { sessionSeal: hosted.sessionSeal }
+      : {}),
+  }
   const res = await fetch('/api/gate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   })
   const data = (await res.json()) as Record<string, unknown>
   if (!res.ok || data.ok === false) {
     throw new Error(String(data.error || `Gate HTTP ${res.status}`))
+  }
+  if (typeof data.sessionSeal === 'string' && hosted) {
+    saveHosted({ ...hosted, sessionSeal: data.sessionSeal })
   }
   return data
 }
@@ -514,6 +540,7 @@ async function enforceOnHost() {
       ownerId,
       ownerToken: token,
       policy: p as MandatePolicy,
+      sessionSeal: typeof data.sessionSeal === 'string' ? data.sessionSeal : undefined,
     })
     const backend = String(data.backend || 'site')
     addMessage(

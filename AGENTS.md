@@ -16,8 +16,8 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
 | Security / threat model / checklist | [`docs/SECURITY.md`](./docs/SECURITY.md) |
-| Machine card / llms | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) · site [`#install`](https://allowlatch.vercel.app/#install) / [`#case`](https://allowlatch.vercel.app/#case) |
-| Cursor skill | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
+| Machine card / llms / skill | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) · [`skills/allowlatch/SKILL.md`](./skills/allowlatch/SKILL.md) · site [`#install`](https://allowlatch.vercel.app/#install) / [`#case`](https://allowlatch.vercel.app/#case) |
+| Cursor skill mirror | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |
 | Deterministic gate | [`src/policy/engine.ts`](./src/policy/engine.ts) |
 | SQLite policy store | [`src/store/fs-store.ts`](./src/store/fs-store.ts) · [`src/store/types.ts`](./src/store/types.ts) |
@@ -49,9 +49,9 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 
 | Surface | Role |
 |---------|------|
-| **Website gate** (`/api/gate`) | Always-on free apply/evaluate on Vercel — good for humans / demos |
-| **Hosted OpenServ Gate** | Production paid path: discover + x402 $0.025 ([HOSTED.md](./docs/HOSTED.md), [CONNECT.md](./docs/CONNECT.md)) |
-| **Operator process** (`npm run deploy:host` / `dev`) | Keep OpenServ webhook online (maintainers only; Fly can be flaky — prefer `dev` tunnel if cloud down) |
+| **Website gate** (`/api/gate`) | Always-on free apply/evaluate + receipts on Vercel (`sessionSeal`) — **preferred Connect path** |
+| **Hosted OpenServ Gate** | Paid marketplace path: discover + x402 $0.025 when operator host reachable ([HOSTED.md](./docs/HOSTED.md)) |
+| **Operator process** (`npm run deploy:host` / `dev`) | Keep OpenServ webhook online (maintainers only; containers can sleep/502 — see HOSTED.md) |
 | **HTTP gate** (`npm run http:gate`) | Local/dev evaluate/execute (no OpenServ) |
 | **WOW CLI** (`npm run wow`) | Theater: messy mandate → injection → gate → explain → AgentKit |
 | **Vite UI** (`npm run ui`) | Demo story; `/api/copilot` → live SERV when key set |

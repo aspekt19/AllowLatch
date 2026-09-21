@@ -24,8 +24,14 @@
       "url": "https://allowlatch.vercel.app/api/gate",
       "actions": ["apply", "evaluate"],
       "priceUsd": "0",
-      "note": "Always-on Vercel path for humans to try; agents should use OpenServ x402 for production enforcement"
+      "sessionSeal": "HMAC blob returned on apply/evaluate — client must send it back to survive Vercel cold starts",
+      "note": "Always-on preferred Connect path after website Go live. assertSpend({ gateUrl, sessionSeal }). OpenServ x402 remains the paid marketplace path when the host is online."
     }
+  },
+  "agentSkill": {
+    "universal": "https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md",
+    "cursorMirror": "https://github.com/aspekt19/AllowLatch/blob/main/.cursor/skills/allowlatch/SKILL.md",
+    "llmsTxt": "https://allowlatch.vercel.app/llms.txt"
   },
   "skills": [
     {

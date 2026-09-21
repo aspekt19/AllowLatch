@@ -211,17 +211,22 @@ import { assertSpend, createGatedAgentKit } from 'allowlatch'</code></pre>
             <li>
               <span class="install-tag">Skill</span>
               <div>
-                <h3>Cursor Agent Skill</h3>
+                <h3>Agent skill (any LLM)</h3>
                 <p>
-                  Drop the AllowLatch skill into the agent store so the agent discovers the gate,
-                  applies your mandate, and never invents ALLOW.
+                  Paste or install the AllowLatch skill so Cursor, Claude, Codex, OpenServ, or any
+                  coding agent discovers the gate, applies your mandate, and never invents ALLOW.
+                  Same markdown works everywhere — not Cursor-only.
                 </p>
                 <a
-                  href="https://github.com/aspekt19/AllowLatch/blob/main/.cursor/skills/allowlatch/SKILL.md"
+                  href="https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md"
                   target="_blank"
                   rel="noreferrer"
                   >Skill source →</a
                 >
+                ·
+                <a href="/llms.txt" target="_blank" rel="noreferrer">llms.txt</a>
+                ·
+                <a href="/agent.json" target="_blank" rel="noreferrer">agent.json</a>
               </div>
             </li>
             <li>
@@ -229,8 +234,9 @@ import { assertSpend, createGatedAgentKit } from 'allowlatch'</code></pre>
               <div>
                 <h3>Discover + x402</h3>
                 <p>
-                  Agent finds the service, pays <strong>$0.025</strong> per call (or evaluate packs).
-                  No clone, no <code>npm run dev</code>.
+                  Agent finds <strong>AllowLatch Gate</strong>, pays <strong>$0.025</strong> per call
+                  (or evaluate packs). No clone. Requires the hosted gate process to be online —
+                  check <a href="/api/host-info">/api/host-info</a>; timeout → DENY.
                 </p>
                 <pre class="install-code" tabindex="0"><code>const services = await client.payments.discoverServices()
 const gate = services.find((s) => /allowlatch/i.test(s.name))

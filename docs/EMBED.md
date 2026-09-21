@@ -1,12 +1,19 @@
 # Enforce AllowLatch from your agent (paid)
 
-You do **not** run AllowLatch yourself. Production path uses the **hosted** AllowLatch Gate:
+You do **not** run AllowLatch yourself. **Preferred:** website Go live → Connect pack (`gateUrl` + `sessionSeal`) → `assertSpend` against https://allowlatch.vercel.app/api/gate (always-on).
 
-1. Discover **AllowLatch Gate** on OpenServ (or use public trigger/paywall from [CONNECT.md](./CONNECT.md) / `/api/host-info`) — **$0.025**
-2. Apply policy once (paywall / `payWorkflow` / `apply_policy`)
-3. Before **every** spend: `assertSpend` / `evaluate` → ALLOW + single-use **receipt** (`jti`) → pass receipt into `execute_gated_transfer` → only then sign
+**Optional paid path:** OpenServ **AllowLatch Gate** ($0.025 x402) when the operator host is online — discover + `payWorkflow` / `assertSpend({ triggerUrl })`. See [CONNECT.md](./CONNECT.md) / [HOSTED.md](./HOSTED.md).
 
-**Always-on free demo:** `POST https://allowlatch.vercel.app/api/gate` (`apply` / `evaluate`) — same engine, no x402. Agents needing enforcement receipts should use OpenServ x402 (operator must keep host alive — see [HOSTED.md](./HOSTED.md)).
+```ts
+import { assertSpend } from 'allowlatch'
+
+await assertSpend({
+  policyId: 'web-…',
+  gateUrl: 'https://allowlatch.vercel.app/api/gate',
+  sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
+  intent: { action: 'transfer', amountUsd: 5, toAddress: '0x…', symbol: 'USDC' },
+})
+```
 
 Local `npm run http:gate` is optional for **offline development** of your agent — not the end-user product.
 

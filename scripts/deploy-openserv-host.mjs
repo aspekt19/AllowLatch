@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Always-on OpenServ host without using the broken upload API.
- * Clones from GitHub (slim deps, no AgentKit), injects secrets, npm install, go-live.
+ * Always-on OpenServ host (slim clone, no AgentKit).
+ * Retries Cloudflare 502s; reuses OPENSERV_CONTAINER_ID when healthy.
  *
- *   node scripts/deploy-openserv-host.mjs
+ *   npm run deploy:host
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -27,6 +27,29 @@ function set(text, key, value) {
     : `${text.replace(/\s*$/, '')}\n${line}\n`
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+async function withRetry(label, fn, { attempts = 6, baseMs = 15_000 } = {}) {
+  let last
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      last = e
+      const code = e?.statusCode || e?.status
+      const msg = e instanceof Error ? e.message : String(e)
+      console.log(`${label} attempt ${i}/${attempts} failed`, code || msg.slice(0, 160))
+      if (i === attempts) break
+      const wait = baseMs * i
+      console.log(`retry in ${Math.round(wait / 1000)}s…`)
+      await sleep(wait)
+    }
+  }
+  throw last
+}
+
 async function main() {
   let envText = readEnv()
   const apiKey = get(envText, 'OPENSERV_USER_API_KEY')
@@ -34,23 +57,45 @@ async function main() {
   const client = new ApiClient({ apiKey })
 
   let id = get(envText, 'OPENSERV_CONTAINER_ID')
-  // Prefer a fresh container if prior ones are disk-full
-  console.log('Creating fresh container…')
-  const c = await client.createContainer()
-  id = c.id
-  envText = set(envText, 'OPENSERV_CONTAINER_ID', id)
-  if (!get(envText, 'ALLOWLATCH_EXECUTE_MODE')) {
-    envText = set(envText, 'ALLOWLATCH_EXECUTE_MODE', 'dry-run')
+  const forceFresh = process.env.ALLOWLATCH_FORCE_FRESH_CONTAINER === '1'
+
+  if (id && !forceFresh) {
+    try {
+      const st = await withRetry('getStatus', () => client.getStatus(id), {
+        attempts: 3,
+        baseMs: 8_000,
+      })
+      console.log('Reusing container', id, st?.status || st?.machineState || '')
+    } catch {
+      console.log('Existing container unreachable — creating fresh…')
+      id = null
+    }
   }
-  fs.writeFileSync(path.join(root, '.env'), envText)
-  console.log('Container', id)
+
+  if (!id || forceFresh) {
+    console.log('Creating fresh container…')
+    const c = await withRetry('createContainer', () => client.createContainer())
+    id = c.id
+    envText = set(envText, 'OPENSERV_CONTAINER_ID', id)
+    if (!get(envText, 'ALLOWLATCH_EXECUTE_MODE')) {
+      envText = set(envText, 'ALLOWLATCH_EXECUTE_MODE', 'dry-run')
+    }
+    fs.writeFileSync(path.join(root, '.env'), envText)
+    console.log('Container', id)
+  }
 
   async function sh(script, timeoutSec = 120) {
-    const r = await client.exec(id, ['bash', '-lc', script], timeoutSec)
-    if (r.stdout?.trim()) console.log(r.stdout.trim().slice(0, 1200))
-    if (r.stderr?.trim()) console.log('stderr:', r.stderr.trim().slice(0, 400))
-    if (r.exitCode !== 0) throw new Error(`exit ${r.exitCode}`)
-    return r
+    return withRetry(
+      'exec',
+      async () => {
+        const r = await client.exec(id, ['bash', '-lc', script], timeoutSec)
+        if (r.stdout?.trim()) console.log(r.stdout.trim().slice(0, 1200))
+        if (r.stderr?.trim()) console.log('stderr:', r.stderr.trim().slice(0, 400))
+        if (r.exitCode !== 0) throw new Error(`exit ${r.exitCode}`)
+        return r
+      },
+      { attempts: 6, baseMs: 12_000 }
+    )
   }
 
   console.log('Bootstrap apt + git clone…')
@@ -90,15 +135,15 @@ ls src | head
     300
   )
 
-  // secrets in small pieces via base64 (env is tiny)
-  // Ensure tenant auth on hosted container
   let envLocal = fs.readFileSync(path.join(root, '.env'), 'utf8')
   if (!/^ALLOWLATCH_TENANT_AUTH=/m.test(envLocal)) {
     envLocal += '\nALLOWLATCH_TENANT_AUTH=1\n'
     fs.writeFileSync(path.join(root, '.env'), envLocal)
   }
   const envB64Final = Buffer.from(envLocal).toString('base64')
-  const osB64 = Buffer.from(fs.readFileSync(path.join(root, '.openserv.json'))).toString('base64')
+  const osB64 = Buffer.from(fs.readFileSync(path.join(root, '.openserv.json'))).toString(
+    'base64'
+  )
   console.log('Writing secrets…')
   await sh(
     `printf '%s' '${envB64Final}' | base64 -d > /app/.env && printf '%s' '${osB64}' | base64 -d > /app/.openserv.json && wc -c /app/.env /app/.openserv.json`,
@@ -110,9 +155,9 @@ ls src | head
 
   let ok = false
   for (let i = 0; i < 60; i++) {
-    await new Promise((r) => setTimeout(r, 10000))
+    await sleep(10_000)
     const p = await sh(
-      `if pgrep -f "npm install" >/dev/null 2>&1; then echo RUNNING; tail -2 /tmp/npm.log
+      `if ps aux 2>/dev/null | grep -v grep | grep -q "npm install"; then echo RUNNING; tail -2 /tmp/npm.log
 elif test -x /app/node_modules/.bin/tsx && test -d /app/node_modules/@openserv-labs/sdk; then echo DONE; df -h /app; tail -8 /tmp/npm.log
 else echo WAIT; tail -12 /tmp/npm.log; fi`,
       90
@@ -128,16 +173,16 @@ else echo WAIT; tail -12 /tmp/npm.log; fi`,
   if (!ok) throw new Error('npm install did not finish')
 
   console.log('start + go-live…')
-  await client.start(id, 'npx tsx src/agent.ts')
-  const live = await client.goLive(id, 'continuous')
+  await withRetry('start', () => client.start(id, 'npx tsx src/agent.ts'))
+  const live = await withRetry('goLive', () => client.goLive(id, 'continuous'))
   console.log('LIVE', live)
 
-  // probe discover
   const { PlatformClient } = await import('@openserv-labs/client')
   const pc = new PlatformClient()
   const services = await pc.payments.discoverServices()
   const hit = services.find((s) => /allowlatch/i.test(s.name || ''))
   console.log('discover', { name: hit?.name, isActive: hit?.isActive, price: hit?.x402Pricing })
+  console.log('Done. Keep this container running — paid x402 needs it.')
 }
 
 main().catch((e) => {
