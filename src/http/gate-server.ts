@@ -258,10 +258,21 @@ async function handler(req: http.IncomingMessage, res: http.ServerResponse) {
           policyId: z.string().default('default'),
           intent: SpendIntentSchema,
           humanApproved: z.boolean().optional(),
+          /** Required when humanApproved=true — spender must not self-approve. */
+          ownerToken: z.string().optional(),
+          operatorToken: z.string().optional(),
           receipt: z.record(z.unknown()).optional(),
           requestId: z.string().optional(),
         })
         .parse(await readJson(req))
+      if (body.humanApproved) {
+        const { assertPolicyRead } = await import('../auth/tenant.js')
+        const meta = await store.getPolicyMeta(body.policyId)
+        assertPolicyRead(meta, {
+          ownerToken: body.ownerToken,
+          operatorToken: body.operatorToken,
+        })
+      }
       const result = await gatedTransfer(store, {
         policyId: body.policyId,
         intent: body.intent,

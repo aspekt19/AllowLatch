@@ -19,8 +19,8 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 
 ### Install
 
-1. Site Connect pack — https://allowlatch.vercel.app/#install (`gateUrl` + `sessionSeal` + payer key)
-2. `npm i allowlatch` → `assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent })`
+1. Site Connect pack — https://allowlatch.vercel.app/#install (`gateUrl` + `sessionSeal` + x402 payer; never `ownerToken`)
+2. `npm i allowlatch` → Vercel: `assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent })`; stronger: `createGatedAgentKit` on HTTP/OpenServ host
 3. MCP / skill (any LLM) — [`skills/allowlatch/SKILL.md`](https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md)
 4. OpenServ — optional fallback only
 

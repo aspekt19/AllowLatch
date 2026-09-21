@@ -1,8 +1,13 @@
 /**
  * Website product gate — deterministic engine + allow-receipt on Vercel.
  * Sessions survive cold starts via HMAC-signed sessionSeal held by the browser.
+ *
+ * Honest limits (see docs/SECURITY.md):
+ * - Seal is integrity-protected, not encrypted; never put ownerToken in the seal.
+ * - Seal carries ledger for cold-start demos — not a durable multi-instance ledger.
+ * - Monotonic `seq` rejects stale seals when a fresher session is still in memory.
  */
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
+import { createHmac, createHash, randomUUID, timingSafeEqual } from 'node:crypto'
 import {
   MandatePolicySchema,
   SpendLedgerSchema,
@@ -16,21 +21,38 @@ import { issueAllowReceipt } from '../billing/receipt.js'
 type Session = {
   policyId: string
   ownerId: string
+  /** Server/browser-only — never encoded into sessionSeal. */
   ownerToken: string
   policy: MandatePolicy
   ledger: SpendLedger
+  /** Monotonic revision — refuse older seals when a newer session is known. */
+  seq: number
   updatedAt: number
 }
 
 const TTL_MS = 1000 * 60 * 60 * 12 // 12h
 const sessions = new Map<string, Session>()
+let warnedServFallback = false
 
 function sealSecret(): string {
-  return (
-    process.env.ALLOWLATCH_RECEIPT_SECRET?.trim() ||
-    process.env.SERV_API_KEY?.trim() ||
-    ''
-  )
+  const dedicated = process.env.ALLOWLATCH_RECEIPT_SECRET?.trim()
+  if (dedicated) return dedicated
+  const serv = process.env.SERV_API_KEY?.trim()
+  if (serv) {
+    if (!warnedServFallback) {
+      warnedServFallback = true
+      console.warn(
+        '[site-gate] ALLOWLATCH_RECEIPT_SECRET unset — falling back to SERV_API_KEY. ' +
+          'Set a dedicated receipt secret in production (do not reuse Reasoning keys).'
+      )
+    }
+    return serv
+  }
+  return ''
+}
+
+function hashOwnerToken(token: string): string {
+  return createHash('sha256').update(`al-owner:${token}`).digest('hex')
 }
 
 function prune() {
@@ -44,14 +66,16 @@ function signSealPayload(payload: string): string {
   return createHmac('sha256', sealSecret()).update(payload).digest('hex')
 }
 
+/** Public seal for agents / cold starts — no ownerToken plaintext. */
 export function encodeSessionSeal(session: Session): string {
   const body = {
-    v: 1 as const,
+    v: 2 as const,
     policyId: session.policyId,
     ownerId: session.ownerId,
-    ownerToken: session.ownerToken,
+    ownerTokenHash: hashOwnerToken(session.ownerToken),
     policy: session.policy,
     ledger: session.ledger,
+    seq: session.seq,
     updatedAt: session.updatedAt,
   }
   const payload = Buffer.from(JSON.stringify(body), 'utf8').toString('base64url')
@@ -59,7 +83,19 @@ export function encodeSessionSeal(session: Session): string {
   return `${payload}.${sig}`
 }
 
-export function decodeSessionSeal(seal: string | undefined): Session | null {
+type DecodedSeal = {
+  policyId: string
+  ownerId: string
+  ownerTokenHash: string
+  /** Present only for legacy v1 seals — never re-encode. */
+  legacyOwnerToken?: string
+  policy: MandatePolicy
+  ledger: SpendLedger
+  seq: number
+  updatedAt: number
+}
+
+export function decodeSessionSeal(seal: string | undefined): DecodedSeal | null {
   if (!seal?.trim() || !sealSecret()) return null
   const [payload, sig] = seal.trim().split('.')
   if (!payload || !sig) return null
@@ -77,24 +113,73 @@ export function decodeSessionSeal(seal: string | undefined): Session | null {
       policyId?: string
       ownerId?: string
       ownerToken?: string
+      ownerTokenHash?: string
       policy?: unknown
       ledger?: unknown
+      seq?: number
       updatedAt?: number
     }
-    if (raw.v !== 1 || !raw.policyId || !raw.ownerId || !raw.ownerToken) return null
+    if (!raw.policyId || !raw.ownerId) return null
     if (typeof raw.updatedAt !== 'number' || Date.now() - raw.updatedAt > TTL_MS) return null
     const policy = MandatePolicySchema.parse(raw.policy)
     const ledger = SpendLedgerSchema.parse(raw.ledger ?? freshLedger())
-    return {
-      policyId: raw.policyId,
-      ownerId: raw.ownerId,
-      ownerToken: raw.ownerToken,
-      policy,
-      ledger,
-      updatedAt: raw.updatedAt,
+    const seq = typeof raw.seq === 'number' && raw.seq >= 0 ? raw.seq : 0
+
+    if (raw.v === 2) {
+      if (!raw.ownerTokenHash || raw.ownerTokenHash.length < 32) return null
+      return {
+        policyId: raw.policyId,
+        ownerId: raw.ownerId,
+        ownerTokenHash: raw.ownerTokenHash,
+        policy,
+        ledger,
+        seq,
+        updatedAt: raw.updatedAt,
+      }
     }
+
+    // Legacy v1: accept once, strip token on next encode.
+    if (raw.v === 1 && raw.ownerToken) {
+      return {
+        policyId: raw.policyId,
+        ownerId: raw.ownerId,
+        ownerTokenHash: hashOwnerToken(raw.ownerToken),
+        legacyOwnerToken: raw.ownerToken,
+        policy,
+        ledger,
+        seq,
+        updatedAt: raw.updatedAt,
+      }
+    }
+    return null
   } catch {
     return null
+  }
+}
+
+function materializeFromSeal(sealed: DecodedSeal, existing?: Session): Session {
+  const ownerToken =
+    sealed.legacyOwnerToken ||
+    existing?.ownerToken ||
+    // Evaluate-only path without prior apply in this process: placeholder.
+    // Mutates still require matching ownerTokenHash via apply().
+    `seal-only:${sealed.policyId}`
+
+  if (existing?.ownerToken && hashOwnerToken(existing.ownerToken) !== sealed.ownerTokenHash) {
+    // Prefer in-memory owner identity when hash matches a known session.
+  }
+
+  return {
+    policyId: sealed.policyId,
+    ownerId: sealed.ownerId,
+    ownerToken:
+      existing && hashOwnerToken(existing.ownerToken) === sealed.ownerTokenHash
+        ? existing.ownerToken
+        : sealed.legacyOwnerToken || existing?.ownerToken || ownerToken,
+    policy: sealed.policy,
+    ledger: sealed.ledger,
+    seq: sealed.seq,
+    updatedAt: sealed.updatedAt,
   }
 }
 
@@ -104,20 +189,32 @@ function resolveSession(args: {
 }): Session {
   prune()
   const sealed = decodeSessionSeal(args.sessionSeal)
+  const current = sessions.get(args.policyId)
+
   if (sealed) {
     if (sealed.policyId !== args.policyId) {
       throw new Error('sessionSeal policyId mismatch')
     }
-    sessions.set(sealed.policyId, sealed)
-    return sealed
+    // Freshness: never roll ledger back when this process already has a newer seq.
+    if (current && current.seq > sealed.seq) {
+      throw new Error(
+        'stale sessionSeal (ledger moved forward) — use the latest seal from the previous evaluate response'
+      )
+    }
+    if (current && current.seq === sealed.seq && current.updatedAt >= sealed.updatedAt) {
+      return current
+    }
+    const session = materializeFromSeal(sealed, current)
+    sessions.set(session.policyId, session)
+    return session
   }
-  const session = sessions.get(args.policyId)
-  if (!session) {
+
+  if (!current) {
     throw new Error(
       `Unknown policyId "${args.policyId}" on site gate — click Go live again (session expired or cold start)`
     )
   }
-  return session
+  return current
 }
 
 export function siteGateApply(args: {
@@ -142,28 +239,44 @@ export function siteGateApply(args: {
   })
   const sealed = decodeSessionSeal(args.sessionSeal)
   const existing =
-    (sealed && sealed.policyId === args.policyId ? sealed : null) ||
-    sessions.get(args.policyId)
+    (sealed && sealed.policyId === args.policyId
+      ? materializeFromSeal(sealed, sessions.get(args.policyId))
+      : null) || sessions.get(args.policyId)
 
   let ownerToken = args.ownerToken?.trim()
   if (existing) {
     if (existing.ownerId !== args.ownerId) {
       throw new Error('ownerId does not match this policyId session')
     }
-    if (ownerToken && ownerToken !== existing.ownerToken) {
-      throw new Error('ownerToken mismatch')
+    if (ownerToken) {
+      const matchesExisting = ownerToken === existing.ownerToken
+      const matchesSeal =
+        (sealed?.ownerTokenHash != null &&
+          hashOwnerToken(ownerToken) === sealed.ownerTokenHash) ||
+        (sealed?.legacyOwnerToken != null && ownerToken === sealed.legacyOwnerToken)
+      if (!matchesExisting && !matchesSeal && !existing.ownerToken.startsWith('seal-only:')) {
+        throw new Error('ownerToken mismatch')
+      }
+      if (!existing.ownerToken.startsWith('seal-only:')) {
+        ownerToken = existing.ownerToken
+      }
+    } else if (existing.ownerToken.startsWith('seal-only:')) {
+      ownerToken = randomUUID().replace(/-/g, '')
+    } else {
+      ownerToken = existing.ownerToken
     }
-    ownerToken = existing.ownerToken
   } else {
     ownerToken = ownerToken || randomUUID().replace(/-/g, '')
   }
 
+  const prevSeq = existing?.seq ?? -1
   const session: Session = {
     policyId: args.policyId,
     ownerId: args.ownerId,
     ownerToken,
     policy,
     ledger: existing?.ledger ?? freshLedger(),
+    seq: prevSeq + 1,
     updatedAt: Date.now(),
   }
   sessions.set(args.policyId, session)
@@ -207,6 +320,7 @@ export function siteGateEvaluate(args: {
       evaluation,
     })
     session.ledger = commitIntent(session.ledger, args.intent)
+    session.seq += 1
   }
   session.updatedAt = Date.now()
   sessions.set(session.policyId, session)

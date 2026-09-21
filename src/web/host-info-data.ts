@@ -36,6 +36,7 @@ export type HostInfo = {
   }
   docs: {
     connect: string
+    guide: string
     hosted: string
     monetize: string
     embed: string

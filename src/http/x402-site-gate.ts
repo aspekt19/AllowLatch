@@ -59,6 +59,26 @@ export function isSiteGateFreeOrigin(origin: string | undefined): boolean {
   return allowedCorsOrigins().includes(origin)
 }
 
+/**
+ * Origin alone is spoofable. Treat free path as browser UX, not a paywall credential:
+ * require Sec-Fetch-* signals typical of a same-site document fetch.
+ * Agents / curl without these headers still pay (or get 402).
+ */
+export function isBrowserSiteGateRequest(headers: Record<string, unknown> | undefined): boolean {
+  if (!headers) return false
+  const site = String(headers['sec-fetch-site'] ?? headers['Sec-Fetch-Site'] ?? '').toLowerCase()
+  const mode = String(headers['sec-fetch-mode'] ?? headers['Sec-Fetch-Mode'] ?? '').toLowerCase()
+  const dest = String(headers['sec-fetch-dest'] ?? headers['Sec-Fetch-Dest'] ?? '').toLowerCase()
+  // same-origin / same-site document or cors XHR from the site
+  if (site === 'same-origin' || site === 'same-site') return true
+  if (site === 'none' && mode === 'navigate') return false
+  // Vite/dev or older browsers may omit Sec-Fetch — allow only with empty dest + cors mode + free Origin checked separately
+  if (!site && (mode === 'cors' || mode === '') && (dest === 'empty' || dest === '')) {
+    return process.env.ALLOWLATCH_SITE_GATE_RELAX_FETCH === '1'
+  }
+  return false
+}
+
 export function x402FacilitatorConfigured(): boolean {
   return x402FacilitatorConfiguredSync()
 }
@@ -89,7 +109,8 @@ export async function enforceSiteGateX402(args: {
   headers: Record<string, unknown> | undefined
   resource: string
 }): Promise<X402GateResult> {
-  if (isSiteGateFreeOrigin(args.origin)) {
+  // Free only for real same-site browser traffic. Spoofed Origin alone is not enough.
+  if (isSiteGateFreeOrigin(args.origin) && isBrowserSiteGateRequest(args.headers)) {
     return { ok: true, free: true }
   }
 

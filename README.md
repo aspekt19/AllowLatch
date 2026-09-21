@@ -9,7 +9,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user API keys — **you never run the host**. **Primary:** always-on https://allowlatch.vercel.app/api/gate (website free to try; agents pay **$0.025 USDC** x402 on Base). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
+No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). Prefer `createGatedAgentKit` / hybrid Spend Permissions over chat-only “please ask AllowLatch”. **Primary:** always-on https://allowlatch.vercel.app/api/gate (browser free to try; agents pay). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 

@@ -14,21 +14,25 @@ https://allowlatch.vercel.app/llms.txt · https://allowlatch.vercel.app/agent.js
 ## Surfaces
 
 1. **Primary (always-on)** — `POST https://allowlatch.vercel.app/api/gate`  
-   Website Origin free to try. Agents pay **$0.025 USDC** x402 on Base.  
-   Connect pack: `gateUrl` + `sessionSeal` + `walletPrivateKey`.
+   Website browser (same-site) free to try. Agents pay **$0.025 USDC** x402 on Base.  
+   Connect pack: `gateUrl` + `sessionSeal` + x402 `walletPrivateKey` (never `ownerToken` / `SERV_API_KEY`).
 2. **OpenServ fallback** — discover `/allowlatch/i` · `$0.025` when host online.
 
 ## Before every spend
 
+Prefer `createGatedAgentKit` on an HTTP/OpenServ host so the signer cannot bypass the latch.
+
+For always-on Vercel:
+
 ```ts
 await assertSpend({
   policyId, gateUrl, sessionSeal,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
   intent,
 })
 ```
 
-ALLOW + receipt → sign. DENY / timeout → stop. Never invent ALLOW.
+ALLOW + receipt → sign. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
 
 ## Install
 

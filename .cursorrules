@@ -4,7 +4,7 @@
 AllowLatch turns a human spending mandate (natural language) into a strict Base/USDC policy, then **allow / deny / escalate** every proposed spend before Coinbase AgentKit may move funds.
 It does **not** custody user funds. Deterministic policy evaluation must never be replaced by LLM judgment.
 
-**Primary always-on path:** Vercel `https://allowlatch.vercel.app/api/gate` (website free to try; agents pay $0.025 USDC x402 on Base).  
+**Primary always-on path:** Vercel `https://allowlatch.vercel.app/api/gate` (browser free to try; agents pay $0.025 USDC x402 on Base). Session-scoped seal — not SQLite durable ledger.  
 **Optional fallback:** OpenServ discover / x402 when that host is up.  
 **Guide:** `docs/GUIDE.md`
 

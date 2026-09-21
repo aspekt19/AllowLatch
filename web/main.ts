@@ -170,33 +170,28 @@ async function refreshGateHealth() {
 
 function buildAgentInstruction(): string {
   const policyId = hosted?.policyId || 'default'
-  const ownerId = hosted?.ownerId || browserOwnerId()
-  const ownerToken = hosted?.ownerToken
   const sessionSeal = hosted?.sessionSeal
   const gateUrl = `${location.origin}/api/gate`
   return [
     'You are my spending agent. AllowLatch holds my rules — do not invent allow/deny.',
     '',
     `policyId: ${policyId}`,
-    `ownerId: ${ownerId}`,
-    ownerToken ? `ownerToken: ${ownerToken}` : null,
     `Primary gateUrl (always-on · agents pay $0.025 USDC x402 on Base): ${gateUrl}`,
     sessionSeal ? `sessionSeal: ${sessionSeal}` : null,
     `OpenServ trigger (optional fallback only): ${cachedTriggerUrl}`,
-    `Paywall (OpenServ human UI, optional): ${cachedPaywallUrl}`,
     '',
-    'Preferred (always-on, already applied via Go live):',
+    'Preferred enforcement (do not skip):',
     '1) npm i allowlatch',
-    '2) Before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, walletPrivateKey, intent })',
-    '   — native Base USDC x402 ($0.025), then ALLOW + receipt.',
+    '2) Use createGatedAgentKit({ gate: { kind: "http", baseUrl: gateUrl }, sessionSeal, walletPrivateKey })',
+    '   so the signer path cannot bypass the latch. hybrid Spend Permissions when available.',
+    '3) Or before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, walletPrivateKey, intent })',
+    '   — walletPrivateKey here is only the x402 payer (not a host SERV/CDP key).',
     '',
-    'Optional fallback if site gate fails: pass triggerUrl (OpenServ) as well.',
-    '',
-    'Before EVERY transfer/swap/x402 payment:',
-    '- Prefer gateUrl/sessionSeal + walletPrivateKey (Vercel site gate — always on).',
-    '- OpenServ triggerUrl only as fallback.',
-    '- On DENY or timeout → stop (fail-closed). On ESCALATE → ask me. On ALLOW → keep allow-receipt jti, then sign.',
-    '- Never call a raw wallet signer in parallel. Prefer createGatedAgentKit / allowLatchActionProvider.',
+    'Rules:',
+    '- ALLOW + allow-receipt jti → only then may you sign.',
+    '- DENY / timeout / unpaid 402 → stop (fail-closed). ESCALATE → ask me (I approve; you never set humanApproved yourself).',
+    '- Never call a raw wallet signer in parallel with assertSpend.',
+    '- Never invent ALLOW. Never ask for SERV_API_KEY, ownerToken, or CDP secrets.',
     '',
     'I set and change limits on https://allowlatch.vercel.app — you only enforce them.',
   ]

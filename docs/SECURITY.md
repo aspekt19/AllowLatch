@@ -86,6 +86,23 @@ Agent ──┬── assertSpend(...)
 
 Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapper that cannot be skipped. Default `ALLOWLATCH_ENFORCEMENT` is **hybrid** so on-chain Spend Permissions mirror daily USDC caps when `ALLOWLATCH_SMART_ACCOUNT` is set — even if middleware is bypassed.
 
+## Vercel site gate (`/api/gate`) — honest limits
+
+The always-on website path is **session-scoped**, not the same machine as the SQLite operator executor.
+
+| Property | Behavior |
+|----------|----------|
+| Persistence | `sessionSeal` (HMAC) + in-memory `Map` — survives cold starts only if the client returns the latest seal |
+| `ownerToken` | Returned on apply to the **browser**; **not** embedded in `sessionSeal` (v2). Never paste `ownerToken` into agent Connect packs |
+| Freshness | Monotonic `seq` rejects rolling the ledger back when this process already has a newer seal |
+| Multi-instance races | Two concurrent evaluates on different Vercel isolates can still both ALLOW against the same old seal — **not** custody-grade atomic caps |
+| Free website calls | Same-site browser `Sec-Fetch-*` + allowlisted Origin — **UX convenience**, not a cryptographic paywall. Agents without those signals pay x402 |
+| Receipt secret | Prefer dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is supported for ops continuity but is poor secret hygiene |
+
+For durable daily/lifetime caps + atomic `jti` consume, use the SQLite host (`npm run http:gate` / OpenServ operator) or a future shared store. Treat the public site gate as **always-on demo + agent smoke path** with small balances.
+
+Escalate + `humanApproved` on HTTP `/v1/execute` requires `ownerToken` (or operator) — the spender cannot self-approve.
+
 ## Threat model (summary)
 
 | Threat | Mitigation |
@@ -99,6 +116,8 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 | Mutated swap calldata | Required `calldataHash`; receipt echo; verify before external submit |
 | Gate outage | Fail-closed client; no fail-open local bypass for live funds |
 | Forged `apply_policy` | `ownerToken` and/or EIP-712 `ownerSig` over `policyHash`; optional `ALLOWLATCH_REQUIRE_OWNER_SIG` |
+| Spoofed free Origin | Free path also checks browser `Sec-Fetch-Site`; agents still 402 without payment |
+| Stale `sessionSeal` replay | Monotonic `seq` on site gate (same isolate); durable store still required for multi-instance |
 | API abuse | HTTP Bearer off-loopback; CORS + rate limits on demo `/api/copilot` |
 
 Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. Pair with hybrid Spend Permissions and a low-balance hot wallet.

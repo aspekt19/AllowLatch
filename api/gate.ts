@@ -109,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       note:
         mode === 'openserv'
           ? 'POST apply|evaluate via OpenServ x402 (fallback)'
-          : 'POST apply|evaluate on always-on site gate. Website Origin free; agents pay $0.025 USDC x402 on Base.',
+          : 'POST apply|evaluate on always-on site gate. Browser same-site free to try; agents pay $0.025 USDC x402 on Base. sessionSeal is session-scoped (not SQLite durable).',
     })
     return
   }

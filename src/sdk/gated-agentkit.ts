@@ -17,6 +17,8 @@ export type GatedGateConfig =
       kind: 'http'
       baseUrl: string
       token?: string
+      /** Owner credential — required for escalate + humanApproved on /v1/execute. */
+      ownerToken?: string
     }
   | {
       kind: 'openserv'
@@ -133,11 +135,16 @@ async function spendViaHttp(
   }
   if (decision === 'escalate' && !humanApproved) {
     throw new Error(
-      `AllowLatch ESCALATE: ask the human, then retry with humanApproved=true. ${(evalBody.reasons ?? []).join('; ')}`
+      `AllowLatch ESCALATE: ask the human, then retry with humanApproved=true and ownerToken. ${(evalBody.reasons ?? []).join('; ')}`
     )
   }
   if (decision !== 'allow' && !(decision === 'escalate' && humanApproved)) {
     throw new Error(`AllowLatch ${decision}: refuse to sign`)
+  }
+  if (humanApproved && !gate.ownerToken && !process.env.ALLOWLATCH_OPERATOR_TOKEN?.trim()) {
+    throw new Error(
+      'AllowLatch ESCALATE: humanApproved requires gate.ownerToken (spender cannot self-approve)'
+    )
   }
 
   const exec = (await httpJson(gate, '/v1/execute', {
@@ -146,6 +153,7 @@ async function spendViaHttp(
       policyId,
       intent,
       humanApproved,
+      ownerToken: gate.ownerToken,
       receipt: evalBody.receipt ?? undefined,
       requestId: intent.requestId,
     }),

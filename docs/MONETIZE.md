@@ -7,15 +7,15 @@ The **always-on** meter is native **x402 on Vercel** `/api/gate` (Base USDC). Op
 
 | Surface | Price | What you get |
 |---------|-------|----------------|
-| Website UI (AllowLatch Origin) | Free | Draft / Go live / try ALLOW·DENY·ESCALATE + receipts |
-| **Agent → `/api/gate`** (no website Origin) | **$0.025 USDC** x402 on Base | Always-on evaluate + allow-receipt |
+| Website UI (same-site browser) | Free | Draft / Go live / try ALLOW·DENY·ESCALATE + receipts |
+| **Agent → `/api/gate`** | **$0.025 USDC** x402 on Base | Always-on evaluate + allow-receipt (Origin spoof alone is not free) |
 | OpenServ discover / paywall | **$0.025** x402 | Fallback when site gate fails or `preferOpenServ` |
 | Demo JSON snapshot | Free, watermarked | `enforcement: "demo-only"` — **not** production |
 
 ## Why agents pay
 
-1. **Hosted policy** — change rules without shipping files; mutates require `ownerToken` / `sessionSeal`.
-2. **Ledger + receipts** — daily caps + single-use `jti`.
+1. **Hosted policy** — change rules without shipping files; mutates require `ownerToken` (browser-side), not the agent Connect pack.
+2. **Ledger + receipts** — daily caps + single-use `jti` (SQLite host is durable; Vercel site gate is session-scoped — see [SECURITY.md](./SECURITY.md)).
 3. **SERV Copilot** on the operator key (draft/explain).
 4. **Fail-closed clients** — unreachable gate → DENY.
 
@@ -26,7 +26,8 @@ OpenServ x402 (fallback) settles to the OpenServ trigger payout wallet.
 
 ## Env (Vercel)
 
-- `ALLOWLATCH_RECEIPT_SECRET` (or `SERV_API_KEY`) — receipts + sessionSeal
+- `ALLOWLATCH_RECEIPT_SECRET` — **preferred** dedicated secret for receipts + sessionSeal (avoid reusing `SERV_API_KEY`)
+- `SERV_API_KEY` — Copilot only; temporary receipt fallback warns in production
 - `CDP_API_KEY_ID` + `CDP_API_KEY_SECRET` — Coinbase x402 facilitator (verify/settle)
 - `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO` — payee on Base
 - Optional: `ALLOWLATCH_SITE_GATE_X402=0` — disable paywall (dev only)

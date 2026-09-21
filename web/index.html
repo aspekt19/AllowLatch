@@ -243,19 +243,20 @@ await client.payments.payWorkflow({ triggerUrl: gate.webhookUrl, input: { prompt
 
           <div class="agent-prompt-block" id="for-agents">
             <div class="agent-prompt-head">
-              <p class="eyebrow">Paste to your agent</p>
+              <p class="eyebrow">Connect pack · gated path preferred</p>
               <button type="button" class="btn btn-solid" id="btn-copy-owner-prompt">Copy prompt</button>
             </div>
             <pre class="agent-prompt" id="owner-agent-prompt" tabindex="0">Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Connect pack).
 Primary gateUrl: https://allowlatch.vercel.app/api/gate (always-on; agents pay $0.025 USDC x402 on Base).
-I do not run a host and I will not give you SERV_API_KEY.
+I do not run a host and I will not give you SERV_API_KEY or ownerToken.
 
-Set my spending mandate on the site, then before every transfer/swap:
-assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent }).
+Preferred: createGatedAgentKit so the signer cannot bypass the latch (hybrid Spend Permissions when available).
+Advisory-only (small balances): assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent }) before every spend —
+walletPrivateKey is the x402 payer only, not a host key.
 - ALLOW + allow-receipt (jti) → only then may you sign.
-- DENY, ESCALATE (ask me), timeout → do not sign (fail-closed).
+- DENY, ESCALATE (ask me — never set humanApproved yourself), timeout → do not sign (fail-closed).
 OpenServ triggerUrl is optional fallback only.
-Never invent ALLOW. Prefer createGatedAgentKit.</pre>
+Never invent ALLOW.</pre>
             <p class="muted tight" id="owner-prompt-copy-status" aria-live="polite"></p>
           </div>
 

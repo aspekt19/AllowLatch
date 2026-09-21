@@ -12,7 +12,7 @@
 
 | Surface | Who | Price | Always on? |
 |---------|-----|-------|------------|
-| **Primary — Vercel `/api/gate`** | Humans on the website + agents via Connect | Website Origin **free to try**. Agents pay **$0.025 USDC** (native x402 on Base) | **Yes** |
+| **Primary — Vercel `/api/gate`** | Humans on the website + agents via Connect | Website **browser** free to try (same-site fetch). Agents pay **$0.025 USDC** (native x402 on Base) | **Yes** (session-scoped seal — not SQLite durable ledger) |
 | **Fallback — OpenServ** | Optional marketplace path | **$0.025** x402 | Only while the operator OpenServ host is reachable |
 
 Public status: `GET https://allowlatch.vercel.app/api/host-info`  
@@ -30,12 +30,19 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 6. Optional: **Install** (`#install`) and **Live case** (`#case`)
 
 You never set `SERV_API_KEY`, never run the local OpenServ host, never deploy this repo.
+Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) — that is not a host SERV/CDP key, and it is not custody by AllowLatch.
+
+**Preferred agent path:** `createGatedAgentKit` (+ hybrid Spend Permissions). `assertSpend` alone is advisory if the agent can still call a raw signer.
+
+**Site-gate honesty:** `sessionSeal` restores policy after cold starts; it is not a multi-tenant durable ledger. Keep live balances small unless you run the SQLite host / hybrid on-chain caps. Details: [SECURITY.md](./SECURITY.md).
 
 ---
 
 ## 3. For agents (enforce before every spend)
 
 ### Preferred (always-on)
+
+### Preferred (always-on Vercel)
 
 ```ts
 import { assertSpend } from 'allowlatch'
@@ -45,7 +52,7 @@ const { receipt } = await assertSpend({
   policyId: 'web-…', // from Connect pack
   gateUrl: 'https://allowlatch.vercel.app/api/gate',
   sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // pays $0.025 on Base
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only — not a host SERV/CDP key
   intent: {
     action: 'transfer',
     amountUsd: 5,
@@ -53,7 +60,20 @@ const { receipt } = await assertSpend({
     symbol: 'USDC',
   },
 })
-// ONLY THEN sign / transfer. receipt.jti is single-use.
+// ONLY THEN sign. receipt.jti is single-use.
+// Stronger: remove raw signer access, or use createGatedAgentKit against the SQLite HTTP host / OpenServ.
+```
+
+### Stronger (operator HTTP host / OpenServ)
+
+```ts
+import { createGatedAgentKit } from 'allowlatch'
+
+const agent = await createGatedAgentKit({
+  policyId: '…',
+  gate: { kind: 'http', baseUrl: 'http://127.0.0.1:8787' }, // or kind: 'openserv'
+})
+await agent.spend(intent) // evaluate → receipt → execute; no parallel raw signer
 ```
 
 ### Rules
