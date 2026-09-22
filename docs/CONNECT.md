@@ -29,6 +29,8 @@ Demo mandate wording (passes SERV GUARD in live tests):
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
 // npm i allowlatch@^0.2.0
+# if registry not yet updated:
+# npm i https://github.com/aspekt19/AllowLatch/releases/download/v0.2.0/allowlatch-0.2.0.tgz
 
 const agent = await createGatedAgentKit({
   policyId: 'web-…',
