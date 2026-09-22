@@ -566,12 +566,23 @@ async function main() {
     )
   }
 
+  // Production (Railway/Fly): public HTTPS origin so OpenServ reaches us with DISABLE_TUNNEL.
+  // Without this, provision() can leave endpoint on agents-proxy and isActive stays false.
+  const endpointUrl = (
+    process.env.ALLOWLATCH_HOST_URL ||
+    process.env.OPENSERV_ENDPOINT_URL ||
+    ''
+  )
+    .trim()
+    .replace(/\/$/, '')
+
   const result = await provision({
     agent: {
       instance: agent,
       name: 'allowlatch',
       description:
         'Policy Copilot + spending turnstile for AgentKit wallets on Base/USDC. SERV drafts mandates; deterministic gate allow/deny/escalates; AgentKit only after ALLOW. Connect via x402 — no end-user API keys.',
+      ...(endpointUrl ? { endpointUrl } : {}),
     },
     workflow: {
       name: 'AllowLatch',

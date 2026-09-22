@@ -12,7 +12,8 @@ RUN npm install --legacy-peer-deps
 COPY tsconfig.json ./
 COPY src ./src
 ENV DISABLE_TUNNEL=true
-ENV PORT=7378
+# Railway Networking often uses 8080 and injects PORT; default 7378 for local docker.
+ENV PORT=8080
 ENV ALLOWLATCH_EXECUTE_MODE=dry-run
-EXPOSE 7378
+EXPOSE 8080
 CMD ["npx", "tsx", "src/agent.ts"]

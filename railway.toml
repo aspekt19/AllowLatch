@@ -4,9 +4,10 @@
 #
 # Required env in Railway:
 #   SERV_API_KEY, OPENSERV_API_KEY, OPENSERV_AUTH_TOKEN, OPENSERV_USER_API_KEY,
-#   WALLET_PRIVATE_KEY, DISABLE_TUNNEL=true, PORT=7378
-# After public URL exists:
-#   ALLOWLATCH_HOST_URL=https://….up.railway.app npm run host:point
+#   WALLET_PRIVATE_KEY, DISABLE_TUNNEL=true
+#   PORT=<same as Networking port, often 8080>
+#   ALLOWLATCH_HOST_URL=https://….up.railway.app  (so provision keeps endpointUrl)
+# Also once: ALLOWLATCH_HOST_URL=… npm run host:point (from laptop)
 
 [build]
 builder = "DOCKERFILE"

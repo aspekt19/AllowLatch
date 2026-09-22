@@ -65,15 +65,17 @@ If discover stays `isActive: false` while status is `stopped`, fall back to Opti
 OpenServ Cloud containers sleep/502. Run the slim Dockerfile on **Railway / Fly / Render** instead:
 
 1. Deploy `Dockerfile` (see `railway.toml`) with env:
-   - `DISABLE_TUNNEL=true`, `PORT=7378`
+   - `DISABLE_TUNNEL=true`
+   - `PORT` = same as Railway **Networking → Port** (often `8080`)
+   - `ALLOWLATCH_HOST_URL=https://YOUR-SERVICE.up.railway.app` (keeps `provision()` endpoint on every boot)
    - `SERV_API_KEY`, `OPENSERV_API_KEY`, `OPENSERV_AUTH_TOKEN`, `OPENSERV_USER_API_KEY`, `WALLET_PRIVATE_KEY`
-2. Point the OpenServ agent at the public HTTPS URL:
+2. Point the OpenServ agent at the public HTTPS URL (from your laptop once):
 
 ```bash
 ALLOWLATCH_HOST_URL=https://YOUR-SERVICE.up.railway.app npm run host:point
 ```
 
-3. Confirm `GET /api/host-info` → `openserv.isActive: true` (may take ~1 min).
+3. Confirm `GET /api/host-info` → `openserv.isActive: true` (may take ~1 min). Prefer canonical SpendGate listing if several “AllowLatch Gate” rows exist.
 4. Stop any local `npm run dev` / laptop tunnel — not needed anymore.
 
 See `Dockerfile` + `scripts/point-openserv-endpoint.mjs`.

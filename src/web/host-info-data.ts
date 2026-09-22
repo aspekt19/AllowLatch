@@ -98,10 +98,16 @@ async function probeOpenServActive(_triggerUrl: string): Promise<boolean | null>
     const { PlatformClient } = await import('@openserv-labs/client')
     const client = new PlatformClient()
     const services = await client.payments.discoverServices()
-    const hit = (services || []).find((s: { name?: string }) =>
+    const hits = (services || []).filter((s: { name?: string }) =>
       /allowlatch/i.test(s.name || '')
-    ) as { isActive?: boolean; webhookUrl?: string } | undefined
-    const active = typeof hit?.isActive === 'boolean' ? hit.isActive : null
+    ) as { isActive?: boolean; webhookUrl?: string }[]
+    // Prefer the canonical listing (DEFAULT_TRIGGER id), else any active AllowLatch gate.
+    const canonicalId = DEFAULT_TRIGGER.split('/').pop()
+    const preferred =
+      hits.find((s) => canonicalId && s.webhookUrl?.includes(canonicalId)) ||
+      hits.find((s) => s.isActive === true) ||
+      hits[0]
+    const active = typeof preferred?.isActive === 'boolean' ? preferred.isActive : null
     cachedActive = { at: now, value: active }
     return active
   } catch {
