@@ -15,7 +15,28 @@ import { clampMandateText } from '../http/abuse-guard.js'
 
 export type CopilotJson =
   | { ok: true; mode: 'draft' | 'revise' | 'explain'; draft?: unknown; explanation?: unknown; evaluation?: unknown; serv: unknown; brain: string }
-  | { ok: false; error: string; fallback?: 'local' }
+  | { ok: false; error: string; fallback?: 'local'; reason?: 'serv_refusal' | 'serv_unavailable' }
+
+function classifyCopilotError(message: string): {
+  error: string
+  fallback?: 'local'
+  reason?: 'serv_refusal' | 'serv_unavailable'
+} {
+  const lower = message.toLowerCase()
+  if (
+    lower.includes('refused') ||
+    lower.includes('content filter') ||
+    lower.includes("can't share") ||
+    lower.includes('cannot share') ||
+    lower.includes('i can\'t share')
+  ) {
+    return { error: message, reason: 'serv_refusal' }
+  }
+  if (lower.includes('serv_api_key') || lower.includes('not configured')) {
+    return { error: message, fallback: 'local', reason: 'serv_unavailable' }
+  }
+  return { error: message, fallback: 'local' }
+}
 
 export async function handleCopilotBody(body: unknown): Promise<{ status: number; json: CopilotJson }> {
   if (!process.env.SERV_API_KEY?.trim()) {
@@ -25,6 +46,7 @@ export async function handleCopilotBody(body: unknown): Promise<{ status: number
         ok: false,
         error: 'SERV_API_KEY not configured on host',
         fallback: 'local',
+        reason: 'serv_unavailable',
       },
     }
   }
@@ -111,9 +133,11 @@ export async function handleCopilotBody(body: unknown): Promise<{ status: number
 
     return { status: 400, json: { ok: false, error: `Unknown action: ${action}` } }
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const classified = classifyCopilotError(message)
     return {
-      status: 500,
-      json: { ok: false, error: err instanceof Error ? err.message : String(err) },
+      status: classified.reason === 'serv_refusal' ? 422 : 500,
+      json: { ok: false, ...classified },
     }
   }
 }

@@ -332,6 +332,7 @@ async function callCopilot(payload: Record<string, unknown>): Promise<{
   serv?: ServMetaView
   error?: string
   fallback?: string
+  reason?: 'serv_refusal' | 'serv_unavailable'
 }> {
   const res = await fetch('/api/copilot', {
     method: 'POST',
@@ -341,7 +342,26 @@ async function callCopilot(payload: Record<string, unknown>): Promise<{
   return res.json()
 }
 
-async function draftFromMandate(text: string): Promise<{ draft: PolicyDraft; via: 'serv' | 'local' }> {
+const SERV_REFUSAL_HINT = [
+  'SERV safety paused this draft (often a false positive on normal spending rules).',
+  'Rephrase the same limits in different words and try again — keep dollar caps and addresses, change the wording.',
+  'Or type "local draft" for offline heuristics (not the live SERV path).',
+].join('\n')
+
+type DraftOutcome =
+  | { ok: true; draft: PolicyDraft; via: 'serv' | 'local' }
+  | { ok: false; reason: 'serv_refusal' }
+
+async function draftFromMandate(
+  text: string,
+  opts?: { forceLocal?: boolean }
+): Promise<DraftOutcome> {
+  if (opts?.forceLocal) {
+    lastServ = null
+    setBrain('Local heuristics (forced)', false)
+    return { ok: true, draft: draftPolicyLocally(text), via: 'local' }
+  }
+
   try {
     const data = await callCopilot({ action: 'draft', mandateText: text })
     if (data.ok && data.draft) {
@@ -350,14 +370,19 @@ async function draftFromMandate(text: string): Promise<{ draft: PolicyDraft; via
         `SERV · ${data.serv?.model ?? 'Reasoning'}${data.serv?.latencyMs != null ? ` · ${data.serv.latencyMs}ms` : ''}`,
         true
       )
-      return { draft: data.draft, via: 'serv' }
+      return { ok: true, draft: data.draft, via: 'serv' }
+    }
+    if (data.reason === 'serv_refusal' || /refus|can'?t share|content filter/i.test(data.error ?? '')) {
+      lastServ = null
+      setBrain('SERV safety · rephrase mandate', false)
+      return { ok: false, reason: 'serv_refusal' }
     }
   } catch {
-    /* fall through */
+    /* fall through to local */
   }
   lastServ = null
   setBrain('Local heuristics (SERV offline)', false)
-  return { draft: draftPolicyLocally(text), via: 'local' }
+  return { ok: true, draft: draftPolicyLocally(text), via: 'local' }
 }
 
 function setPhase(next: Phase) {
@@ -389,7 +414,7 @@ function setPhase(next: Phase) {
     next === 'mandate'
       ? 'e.g. Max $10 per transfer, $40/day, only USDC & ETH, ask me above $8…'
       : next === 'review'
-        ? 'Type "apply", or clarify (e.g. use $10 per transfer, Uniswap only)…'
+        ? 'Type "apply", clarify, or "local draft" if SERV paused…'
         : next === 'escalate'
           ? 'Type yes to approve, or no to deny…'
           : 'e.g. transfer $8 to Uniswap - or tap a scenario'
@@ -943,11 +968,26 @@ async function runSpend(intent: SpendIntent, _fromChip = false) {
 
 async function handleMandate(text: string) {
   addMessage('you', text)
-  lastMandate = text
-  addMessage('guard', 'Drafting with SERV Reasoning…')
-  const { draft, via } = await draftFromMandate(text)
+  const forceLocal = /^(local\s*draft|offline\s*draft|локальн)/i.test(text.trim())
+  if (!forceLocal) lastMandate = text
+  const source = forceLocal
+    ? lastMandate.trim() || text.replace(/^(local\s*draft|offline\s*draft|локальн\w*)\s*/i, '').trim()
+    : text
+  if (forceLocal && !source) {
+    addMessage('guard', 'Paste spending rules first (or after “local draft”), then try again.')
+    setPhase('mandate')
+    return
+  }
+  addMessage('guard', forceLocal ? 'Drafting with local heuristics…' : 'Drafting with SERV Reasoning…')
+  const outcome = await draftFromMandate(source, { forceLocal })
   messagesEl.lastElementChild?.remove()
-  showDraftReview(draft, via)
+  if (!outcome.ok) {
+    addMessage('guard', SERV_REFUSAL_HINT)
+    setPhase('mandate')
+    return
+  }
+  if (!forceLocal) lastMandate = source
+  showDraftReview(outcome.draft, outcome.via)
 }
 
 async function handleReview(text: string) {
@@ -957,11 +997,23 @@ async function handleReview(text: string) {
     applyDraft(/anyway/.test(t))
     return
   }
+  if (/^(local\s*draft|offline\s*draft|локальн)/i.test(t)) {
+    addMessage('guard', 'Drafting with local heuristics…')
+    const outcome = await draftFromMandate(lastMandate, { forceLocal: true })
+    messagesEl.lastElementChild?.remove()
+    if (outcome.ok) showDraftReview(outcome.draft, outcome.via)
+    return
+  }
   lastMandate = `${lastMandate}\n\nClarification: ${text.trim()}`
   addMessage('guard', 'Revising draft with SERV…')
-  const { draft, via } = await draftFromMandate(lastMandate)
+  const outcome = await draftFromMandate(lastMandate)
   messagesEl.lastElementChild?.remove()
-  showDraftReview(draft, via)
+  if (!outcome.ok) {
+    addMessage('guard', SERV_REFUSAL_HINT)
+    setPhase('review')
+    return
+  }
+  showDraftReview(outcome.draft, outcome.via)
 }
 
 function handleEscalate(text: string) {
