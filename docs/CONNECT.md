@@ -2,7 +2,6 @@
 
 Full guide: [GUIDE.md](./GUIDE.md).
 
-
 You do **not** run a server. You do **not** need `SERV_API_KEY`.
 
 ## Two surfaces
@@ -17,47 +16,38 @@ Skill (any LLM): [`skills/allowlatch/SKILL.md`](../skills/allowlatch/SKILL.md)
 
 ## Try on the website
 
-1. Open https://allowlatch.vercel.app → Draft → Apply → **Go live**
+1. Open https://allowlatch.vercel.app → **Load demo mandate (SERV-safe)** (or paste your own) → Draft → Apply → **Go live**
 2. Try ALLOW / DENY / ESCALATE (free from the site browser)
-3. **Connect your agent** → copy `gateUrl` + `sessionSeal` (**never** `ownerToken`)
+3. **Connect your agent** → copy gated-kit instruction (`gateUrl` + `sessionSeal`; **never** `ownerToken`)
 
-## Agent path
+Demo mandate wording (passes SERV GUARD in live tests):
 
-```ts
-import { assertSpend } from 'allowlatch'
+> Budget $2 USDC on Base. Max $0.10 per transfer and $0.50 per day. Only allow transfers to 0x5cc0Aa9ed773F413f81f78a62F2e94109CE26205. No swaps. Escalate above $0.05.
 
-await assertSpend({
-  policyId: 'web-…',
-  gateUrl: 'https://allowlatch.vercel.app/api/gate',
-  sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only — not a host key
-  // packKey: process.env.ALLOWLATCH_PACK_KEY, // optional prepaid credits after buy_pack
-  intent: {
-    action: 'transfer',
-    amountUsd: 5,
-    toAddress: '0x…',
-    symbol: 'USDC',
-    tokenAmount: '5000000', // required for USDC — 6 decimals; amountUsd alone is not binding
-  },
-})
-```
-
-Prefer `createGatedAgentKit` so the signer cannot bypass the latch:
+## Agent path (required)
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
+// npm i allowlatch@^0.2.0
 
-await createGatedAgentKit({
+const agent = await createGatedAgentKit({
+  policyId: 'web-…',
   gate: {
     kind: 'site',
     gateUrl: 'https://allowlatch.vercel.app/api/gate',
     sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
+    walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only — not a host key
   },
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+})
+
+await agent.transfer({
+  toAddress: '0x…',
+  amountUsd: 0.04,
+  reason: 'gated spend',
 })
 ```
 
-Chat-only “please ask AllowLatch” is advisory.
+**`assertSpend` alone is advisory** — it checks the gate, but does **not** remove a raw AgentKit/CDP signer. Prefer `createGatedAgentKit` so the agent cannot bypass the latch. Hybrid Spend Permissions when configured.
 
 Public card: `GET https://allowlatch.vercel.app/api/host-info` → prefer `primary` (durable site gate); `openserv.isActive` is fallback-only.
 

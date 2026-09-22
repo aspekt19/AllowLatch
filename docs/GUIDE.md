@@ -32,7 +32,7 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 You never set `SERV_API_KEY`, never run the local OpenServ host, never deploy this repo.
 Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) — that is not a host SERV/CDP key, and it is not custody by AllowLatch.
 
-**Preferred agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })` (+ hybrid Spend Permissions). `assertSpend` alone is advisory if the agent can still call a raw signer.
+**Required agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })` (+ hybrid Spend Permissions when available). `assertSpend` alone is **advisory** if a raw signer still exists.
 
 **Site-gate honesty:** Production (`GET /api/gate` → `durable: true`) uses Turso for shared ledger + receipts. Without Turso, `sessionSeal` restores policy after cold starts but is not multi-tenant durable. Keep live balances small unless durable + hybrid on-chain caps. Details: [SECURITY.md](./SECURITY.md).
 
@@ -40,7 +40,7 @@ Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) �
 
 ## 3. For agents (enforce before every spend)
 
-### Preferred (always-on site gate)
+### Required (always-on site gate)
 
 ```ts
 import { createGatedAgentKit, assertSpend } from 'allowlatch'

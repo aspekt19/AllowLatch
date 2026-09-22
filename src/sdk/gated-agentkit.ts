@@ -1,11 +1,18 @@
 /**
  * Gate-baked AgentKit spender.
  *
- * Create a new financial agent with AllowLatch already in the signing path:
- * no policy → no spend; other (non-spend) work is unconstrained by this module.
- *
- *   const agent = await createGatedAgentKit({ gate: { kind: 'http', baseUrl: 'http://127.0.0.1:8787' } })
+ * Preferred (always-on Vercel site gate):
+ *   const agent = await createGatedAgentKit({
+ *     gate: {
+ *       kind: 'site',
+ *       gateUrl: 'https://allowlatch.vercel.app/api/gate',
+ *       sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
+ *     },
+ *     walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer
+ *   })
  *   await agent.transfer({ toAddress, amountUsd: 5 }) // throws until policy is applied
+ *
+ * Local HTTP / OpenServ are for offline dev or fallback only.
  */
 import { SpendIntentSchema, type SpendIntent } from '../policy/schema.js'
 import type { AllowReceipt } from '../billing/receipt.js'

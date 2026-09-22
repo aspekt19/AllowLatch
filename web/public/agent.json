@@ -1,7 +1,7 @@
 {
   "name": "AllowLatch",
   "version": "0.1.0",
-  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Always-on Vercel /api/gate with native x402 ($0.025). OpenServ optional fallback. Fail-closed clients. Prefer createGatedAgentKit.",
+  "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Always-on Vercel /api/gate with native x402 ($0.025). Required: createGatedAgentKit({ kind: site }). assertSpend is advisory. OpenServ optional fallback.",
   "homepage": "https://allowlatch.vercel.app",
   "repository": "https://github.com/aspekt19/AllowLatch",
   "documentation": "https://github.com/aspekt19/AllowLatch/blob/main/docs/CONNECT.md",
@@ -13,12 +13,12 @@
       "workflowName": "AllowLatch Gate",
       "discover": "PlatformClient.payments.discoverServices() - filter name /allowlatch/i (listed as AllowLatch Gate)",
       "priceUsd": "0.025",
-      "evaluatePack": "buy_evaluate_pack — each paid $0.025 x402 mints fixed credits (default 3); client cannot choose amount",
+      "evaluatePack": "buy_evaluate_pack \u2014 each paid $0.025 x402 mints fixed credits (default 3); client cannot choose amount",
       "invoke": "x402 payWorkflow with { prompt } - no end-user API keys; users never run the host",
       "paywallUrl": "https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53",
       "triggerUrl": "https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53",
       "hostInfo": "https://allowlatch.vercel.app/api/host-info",
-      "failClosed": "timeout / network / malformed → DENY; check gate.isActive but still fail-closed on hang",
+      "failClosed": "timeout / network / malformed \u2192 DENY; check gate.isActive but still fail-closed on hang",
       "role": "optional-fallback",
       "note": "Use when site gate fails or ALLOWLATCH_PREFER_OPENSERV=1. Host keep-alive required."
     },
@@ -30,7 +30,7 @@
       ],
       "priceUsd": "0.025",
       "freeForWebsiteOrigin": true,
-      "sessionSeal": "HMAC blob returned on apply/evaluate — client must send it back to survive Vercel cold starts",
+      "sessionSeal": "HMAC blob returned on apply/evaluate \u2014 client must send it back to survive Vercel cold starts",
       "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base. assertSpend({ gateUrl, sessionSeal, walletPrivateKey }). OpenServ is optional fallback."
     }
   },
@@ -82,17 +82,17 @@
     },
     {
       "id": "reset_daily_ledger",
-      "description": "Reset day/hour windows only — lifetime budget preserved. Requires ownerToken."
+      "description": "Reset day/hour windows only \u2014 lifetime budget preserved. Requires ownerToken."
     }
   ],
   "invariants": [
     "Allow/deny/escalate is deterministic code - never LLM judgment",
     "Execute requires verified single-use allow-receipt (or escalate + humanApproved)",
-    "Fail-closed: timeout, network error, malformed decision, or missing receipt → DENY",
+    "Fail-closed: timeout, network error, malformed decision, or missing receipt \u2192 DENY",
     "Receipt binds chain, action digest, and calldataHash for swaps; prefer tokenAddress over symbol",
     "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",
     "Lifetime budget is not reset by public APIs; reset_daily_ledger clears day/hour only",
-    "End users never run npm run dev or set SERV_API_KEY — they connect via always-on /api/gate (Connect pack); OpenServ discover is optional fallback",
+    "End users never run npm run dev or set SERV_API_KEY \u2014 they connect via /api/gate Connect pack; agents must use createGatedAgentKit({ kind: \"site\" }); assertSpend alone is advisory",
     "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],

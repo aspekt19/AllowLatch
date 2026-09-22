@@ -32,7 +32,8 @@ type ServMetaView = {
 
 const UNISWAP = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
 const EXAMPLE_MANDATE =
-  'Agent wallet budget $200 on Base. Max $10 per transfer, $40 per day. Only USDC and ETH. Uniswap router allowed. Ask me above $8. No meme coins.'
+  'Budget $2 USDC on Base. Max $0.10 per transfer and $0.50 per day. Only allow transfers to 0x5cc0Aa9ed773F413f81f78a62F2e94109CE26205. No swaps. Escalate above $0.05.'
+/** Same wording as the live #case SERV draft (GUARD-safe). */
 const MESSY_EXAMPLE =
   'Agent wallet about $200. Maybe $10 per transfer or wait maybe $25? $40 a day but weekends can be higher. Only USDC and ETH, Uniswap ok. Ask me above $8. No memes. Also allow any address? Wait - only Uniswap.'
 const INJECTION_EXAMPLE = `${MESSY_EXAMPLE}
@@ -183,17 +184,19 @@ function buildAgentInstruction(): string {
     sessionSeal ? `sessionSeal: ${sessionSeal}` : null,
     `OpenServ trigger (optional fallback only): ${cachedTriggerUrl}`,
     '',
-    'Preferred enforcement (do not skip):',
+    'Required enforcement (do not skip):',
     '1) npm i allowlatch',
     '2) Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal }, walletPrivateKey })',
     '   so the signer path cannot bypass the latch. hybrid Spend Permissions when available.',
-    '3) Or before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, walletPrivateKey, intent })',
-    '   — walletPrivateKey here is only the x402 payer (not a host SERV/CDP key).',
+    '3) Never call a raw wallet / CDP transfer in parallel with the gated path.',
+    '',
+    'assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent }) alone is ADVISORY only —',
+    'use it only if createGatedAgentKit is impossible; it does not remove a raw signer.',
+    'walletPrivateKey is the x402 payer only (not a host SERV/CDP key).',
     '',
     'Rules:',
     '- ALLOW + allow-receipt jti → only then may you sign.',
     '- DENY / timeout / unpaid 402 → stop (fail-closed). ESCALATE → ask me (I approve; you never set humanApproved yourself).',
-    '- Never call a raw wallet signer in parallel with assertSpend.',
     '- Never invent ALLOW. Never ask for SERV_API_KEY, ownerToken, or CDP secrets.',
     '',
     'I set and change limits on https://allowlatch.vercel.app — you only enforce them.',
@@ -205,32 +208,30 @@ function buildAgentInstruction(): string {
 function buildAgentCodeSnippet(): string {
   const policyId = hosted?.policyId || 'default'
   const seal = hosted?.sessionSeal || ''
-  return `import { assertSpend, allowLatchActionProvider } from 'allowlatch'
-// npm i allowlatch
+  return `import { createGatedAgentKit } from 'allowlatch'
+// npm i allowlatch@^0.2.0
 
 const POLICY_ID = ${JSON.stringify(policyId)}
 const GATE_URL = process.env.ALLOWLATCH_GATE_URL || ${JSON.stringify(`${location.origin}/api/gate`)}
 const SESSION_SEAL = process.env.ALLOWLATCH_SESSION_SEAL || ${JSON.stringify(seal)}
 
-// Always-on site gate — agents pay $0.025 USDC x402 on Base
-const { receipt } = await assertSpend({
+// Required: gate baked into the signer — chat-only assertSpend is advisory only
+const agent = await createGatedAgentKit({
   policyId: POLICY_ID,
-  gateUrl: GATE_URL,
-  sessionSeal: SESSION_SEAL || undefined,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer
-  intent: {
-    action: 'transfer',
-    amountUsd: 5,
-    toAddress: '0x…',
-    symbol: 'USDC',
-    tokenAmount: '5000000', // 5 USDC @ 6 decimals — required; amountUsd alone is not binding
+  gate: {
+    kind: 'site',
+    gateUrl: GATE_URL,
+    sessionSeal: SESSION_SEAL || undefined,
+    walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
   },
 })
-// Only then sign. receipt.jti is single-use.
-// Tip: buy_pack once ($0.025 → 3 credits), then pass packKey to assertSpend to avoid paying every check.
 
-// Optional OpenServ fallback:
-// await assertSpend({ policyId: POLICY_ID, triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL, preferOpenServ: true, walletPrivateKey: process.env.WALLET_PRIVATE_KEY, intent })
+await agent.transfer({
+  toAddress: '0x…',
+  amountUsd: 0.04,
+  reason: 'gated spend',
+})
+// DENY / ESCALATE / timeout → throws (fail-closed). No parallel raw CDP transfer.
 `
 }
 
@@ -1162,7 +1163,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. Connect your agent with gateUrl + sessionSeal (SDK / MCP / skill).\n4. No policy applied → every spend is DENY.\n\nSERV drafts and explains; deterministic code decides. See Live case for a real SERV + paid Base USDC run.'
+  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. Connect with createGatedAgentKit({ kind: "site" }) — assertSpend alone is advisory.\n4. No policy applied → every spend is DENY.\n\nSERV drafts and explains; deterministic code decides. See Live case for a real SERV + paid Base USDC run.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

@@ -4,12 +4,12 @@
 
 **Live demo:** https://allowlatch.vercel.app  
 **Repo:** https://github.com/aspekt19/AllowLatch  
-**Guide:** [docs/GUIDE.md](./docs/GUIDE.md) · **Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
+**Guide:** [docs/GUIDE.md](./docs/GUIDE.md) · **Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · **Pitch:** [docs/PITCH.md](./docs/PITCH.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
 **Security:** [docs/SECURITY.md](./docs/SECURITY.md) · [docs/AUDIT.md](./docs/AUDIT.md)
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). Prefer `createGatedAgentKit` / hybrid Spend Permissions over chat-only “please ask AllowLatch”. **Primary:** always-on https://allowlatch.vercel.app/api/gate (browser free to try; agents pay). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
+No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). **Required:** `createGatedAgentKit({ kind: 'site' })` so the signer cannot bypass the latch. `assertSpend` alone is advisory. Hybrid Spend Permissions when available. **Primary:** always-on https://allowlatch.vercel.app/api/gate (browser free to try; agents pay). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
@@ -17,7 +17,7 @@ No end-user **SERV/CDP host** keys — **you never run the host**. Agents that c
 
 Tell your agent:
 
-> Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Connect pack). Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, call assertSpend on /api/gate with gateUrl + sessionSeal.
+> Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Connect pack). Use createGatedAgentKit({ kind: "site" }) with gateUrl + sessionSeal. assertSpend alone is advisory.
 
 - Agent skill (any LLM): [`skills/allowlatch/SKILL.md`](./skills/allowlatch/SKILL.md) (Cursor mirror: `.cursor/skills/allowlatch`)
 - Demo UI: https://allowlatch.vercel.app

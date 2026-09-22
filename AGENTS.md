@@ -16,6 +16,7 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Hosted gate (operator keep-alive) | [`docs/HOSTED.md`](./docs/HOSTED.md) · `npm run deploy:host` / `deploy:openserv` |
 | Embed / gated AgentKit SDK | [`docs/EMBED.md`](./docs/EMBED.md) · `createGatedAgentKit` · `npm run agent:gated` |
 | Monetization | [`docs/MONETIZE.md`](./docs/MONETIZE.md) |
+| Pitch (shareable) | [`docs/PITCH.md`](./docs/PITCH.md) |
 | Security / threat model / checklist | [`docs/SECURITY.md`](./docs/SECURITY.md) |
 | Machine card / llms / skill | [`agent.json`](./agent.json) · [`llms.txt`](./llms.txt) · [`skills/allowlatch/SKILL.md`](./skills/allowlatch/SKILL.md) · site [`#install`](https://allowlatch.vercel.app/#install) / [`#case`](https://allowlatch.vercel.app/#case) |
 | Cursor skill mirror | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
@@ -63,7 +64,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
 4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
-5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend`). Trust `gate.isActive` only as a hint — still fail closed on hang/timeout.
+5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend` / gated kit). Trust `gate.isActive` only as a hint — still fail closed on hang/timeout. **Required agent path:** `createGatedAgentKit({ kind: 'site' })`; `assertSpend` alone is advisory.
 6. Product name is **AllowLatch**.
 7. Live proof (SERV draft + paid `/api/gate` + Base transfer): [`0x399dd9…`](https://basescan.org/tx/0x399dd953a96332dfbb0e27dfc19dea0898c0a1a236f065216ef4e6759a2792b5); fees to operator — see site [`#case`](https://allowlatch.vercel.app/#case).
 
