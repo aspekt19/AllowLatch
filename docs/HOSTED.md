@@ -60,27 +60,32 @@ Re-run after agent code changes. Force a new box with `ALLOWLATCH_FORCE_FRESH_CO
 
 If discover stays `isActive: false` while status is `stopped`, fall back to Option B or C immediately — do not wait on cloud.
 
-### Option B — Your own always-on VM (Railway / Fly / Render)
+### Option B — Your own always-on host (**recommended** for `isActive: true`)
 
-When OpenServ container exec is degraded, host the same process yourself:
+OpenServ Cloud containers sleep/502. Run the slim Dockerfile on **Railway / Fly / Render** instead:
+
+1. Deploy `Dockerfile` (see `railway.toml`) with env:
+   - `DISABLE_TUNNEL=true`, `PORT=7378`
+   - `SERV_API_KEY`, `OPENSERV_API_KEY`, `OPENSERV_AUTH_TOKEN`, `OPENSERV_USER_API_KEY`, `WALLET_PRIVATE_KEY`
+2. Point the OpenServ agent at the public HTTPS URL:
 
 ```bash
-# Public HTTPS URL of this process
-DISABLE_TUNNEL=true
-# provision with agent.endpointUrl = that URL
-npm run dev
+ALLOWLATCH_HOST_URL=https://YOUR-SERVICE.up.railway.app npm run host:point
 ```
 
-See `Dockerfile` in the repo root for a slim Node image (`npm run start:host`).
+3. Confirm `GET /api/host-info` → `openserv.isActive: true` (may take ~1 min).
+4. Stop any local `npm run dev` / laptop tunnel — not needed anymore.
 
-### Option C — Local tunnel (recommended when Cloud is flaky)
+See `Dockerfile` + `scripts/point-openserv-endpoint.mjs`.
+
+### Option C — Local tunnel (temporary only)
 
 ```bash
 npm run dev   # SDK tunnel to agents-proxy.openserv.ai
 # or: npx tsx src/agent.ts
 ```
 
-Keep the process running (laptop awake, no sleep). Confirm `GET /api/host-info` → `openserv.isActive: true`.
+Use only until Railway/Fly host is live. Keep the process running (laptop awake). Confirm `GET /api/host-info` → `openserv.isActive: true`.
 
 Do **not** document Option C as the end-user path — operators only.
 

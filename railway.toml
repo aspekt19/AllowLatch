@@ -1,0 +1,17 @@
+# Always-on OpenServ fallback host (not the Vercel site gate).
+# Dashboard: New Project → Deploy from GitHub → Dockerfile
+# Or CLI: npm i -g @railway/cli && railway login && railway up
+#
+# Required env in Railway:
+#   SERV_API_KEY, OPENSERV_API_KEY, OPENSERV_AUTH_TOKEN, OPENSERV_USER_API_KEY,
+#   WALLET_PRIVATE_KEY, DISABLE_TUNNEL=true, PORT=7378
+# After public URL exists:
+#   ALLOWLATCH_HOST_URL=https://….up.railway.app npm run host:point
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

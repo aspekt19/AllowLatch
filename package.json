@@ -69,7 +69,8 @@
     "owner:copilot": "tsx examples/owner-copilot.ts",
     "http:gate": "tsx src/http/gate-server.ts",
     "deploy:openserv": "npx @openserv-labs/client deploy .",
-    "deploy:host": "node scripts/deploy-openserv-host.mjs"
+    "deploy:host": "node scripts/deploy-openserv-host.mjs",
+    "host:point": "node scripts/point-openserv-endpoint.mjs"
   },
   "keywords": [
     "allowlatch",
