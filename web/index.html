@@ -196,7 +196,7 @@
                   <strong>Required:</strong> <code>createGatedAgentKit</code> (gate baked into signing).
                   <code>assertSpend</code> is advisory only if a raw signer still exists.
                 </p>
-                <pre class="install-code" tabindex="0"><code>npm i allowlatch@^0.2.0
+                <pre class="install-code" tabindex="0"><code>npm i allowlatch@^0.2.2
 import { createGatedAgentKit } from 'allowlatch'</code></pre>
               </div>
             </li>
@@ -255,7 +255,7 @@ await client.payments.payWorkflow({ triggerUrl: gate.webhookUrl, input: { prompt
 Primary gateUrl: https://allowlatch.vercel.app/api/gate (always-on; agents pay $0.025 USDC x402 on Base).
 I do not run a host and I will not give you SERV_API_KEY or ownerToken.
 
-Required: npm i allowlatch@^0.2.0 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal }, walletPrivateKey })
+Required: npm i allowlatch@^0.2.2 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })
 so the signer cannot bypass the latch (hybrid Spend Permissions when available).
 assertSpend alone is advisory only — do not use it as the sole control if a raw CDP/wallet signer remains.
 walletPrivateKey is the x402 payer only, not a host key.
@@ -426,7 +426,7 @@ Never invent ALLOW.</pre>
             </p>
           </div>
           <pre class="agentkit-code" tabindex="0"><code>import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.0 — gate baked into signing (required)
+// npm i allowlatch@^0.2.2 — gate baked into signing (required)
 const agent = await createGatedAgentKit({
   gate: { kind: 'site', gateUrl, sessionSeal, walletPrivateKey },
 })

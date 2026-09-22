@@ -43,9 +43,7 @@ Operator fee wallet `0xa918…F677` rose with the three $0.025 settlements (**x4
 ## Install (agents)
 
 ```bash
-npm i allowlatch@^0.2.0
-# if registry not yet updated:
-# npm i https://github.com/aspekt19/AllowLatch/releases/download/v0.2.0/allowlatch-0.2.0.tgz
+npm i allowlatch@^0.2.2
 ```
 
 ```ts

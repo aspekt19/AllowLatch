@@ -43,7 +43,8 @@ Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) �
 ### Required (always-on site gate)
 
 ```ts
-import { createGatedAgentKit, assertSpend } from 'allowlatch'
+import { createGatedAgentKit } from 'allowlatch'
+// npm i allowlatch@^0.2.2
 
 const agent = await createGatedAgentKit({
   policyId: '…',
@@ -51,26 +52,14 @@ const agent = await createGatedAgentKit({
     kind: 'site',
     gateUrl: 'https://allowlatch.vercel.app/api/gate',
     sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
-  },
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer
-})
-await agent.spend(intent) // evaluate → receipt → sign; no parallel raw signer
-
-// Or assert-only:
-await assertSpend({
-  policyId: '…',
-  gateUrl: 'https://allowlatch.vercel.app/api/gate',
-  sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
-  intent: {
-    action: 'transfer',
-    amountUsd: 5,
-    toAddress: '0x…',
-    symbol: 'USDC',
-    tokenAmount: '5000000', // required for USDC — 6 decimals
+    walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
   },
 })
+await agent.transfer({ toAddress: '0x…', amountUsd: 0.04, reason: 'gated spend' })
+// evaluate → receipt → sign; no parallel raw signer
 ```
+
+`assertSpend` alone is **advisory** (checks the gate but does not remove a raw signer). Prefer the gated kit above.
 
 ### Local HTTP host / OpenServ (dev or fallback)
 
@@ -81,7 +70,7 @@ const agent = await createGatedAgentKit({
   policyId: '…',
   gate: { kind: 'http', baseUrl: 'http://127.0.0.1:8787' }, // or kind: 'openserv'
 })
-await agent.spend(intent)
+await agent.transfer({ toAddress: '0x…', amountUsd: 0.04 })
 ```
 
 ### Rules
@@ -126,7 +115,7 @@ Details: [MONETIZE.md](./MONETIZE.md)
 - Allow / deny / escalate is **deterministic** (`engine.ts`) — never LLM judgment.
 - SERV drafts / revises / explains only.
 - Execute / sign only after ALLOW + consumed allow-receipt (or escalate + human approval).
-- Fail-closed clients (`assertSpend`).
+- Fail-closed clients (`createGatedAgentKit` / `assertSpend`).
 - AllowLatch does **not** custody user funds.
 
 ---

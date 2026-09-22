@@ -1,6 +1,6 @@
 # AllowLatch - Product
 
-**AllowLatch** is a control layer for financial AI agents with a wallet on Base (USDC). Primary integrations today: OpenServ + Coinbase AgentKit - the product is the gate, not a single SDK.
+**AllowLatch** is a control layer for financial AI agents with a wallet on Base (USDC). **Primary surface:** always-on Vercel `/api/gate` + Coinbase AgentKit via `createGatedAgentKit({ kind: 'site' })`. OpenServ is an optional marketplace fallback — the product is the gate, not a single SDK.
 
 It is **not** a bank, not a custodian, and not an LLM that decides whether money may move.
 
@@ -37,7 +37,7 @@ Give the owner of a financial agent a way to say **how money may be spent**, kee
 | Who | Why |
 |-----|-----|
 | Owners of AI agents with wallets | Mandate in words → policy → auditable decisions |
-| Builders on Base / AgentKit / OpenServ | First integration path: keep your agent, add the latch |
+| Builders on Base / AgentKit | First integration path: keep your agent, add the latch (`createGatedAgentKit`) |
 | Operators of paying / x402 agents | Limits, addresses, escalation without re-coding every time |
 
 Out of scope: retail banking UX, and "any rules for any agents" outside finance.

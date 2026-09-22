@@ -1,6 +1,6 @@
 {
   "name": "AllowLatch",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Always-on Vercel /api/gate with native x402 ($0.025). Required: createGatedAgentKit({ kind: site }). assertSpend is advisory. OpenServ optional fallback.",
   "homepage": "https://allowlatch.vercel.app",
   "repository": "https://github.com/aspekt19/AllowLatch",
@@ -31,7 +31,7 @@
       "priceUsd": "0.025",
       "freeForWebsiteOrigin": true,
       "sessionSeal": "HMAC blob returned on apply/evaluate \u2014 client must send it back to survive Vercel cold starts",
-      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base. assertSpend({ gateUrl, sessionSeal, walletPrivateKey }). OpenServ is optional fallback."
+      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base. Required: createGatedAgentKit({ kind: site, gateUrl, sessionSeal, walletPrivateKey }). assertSpend is advisory. OpenServ is optional fallback."
     }
   },
   "agentSkill": {

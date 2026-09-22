@@ -185,8 +185,8 @@ function buildAgentInstruction(): string {
     `OpenServ trigger (optional fallback only): ${cachedTriggerUrl}`,
     '',
     'Required enforcement (do not skip):',
-    '1) npm i allowlatch',
-    '2) Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal }, walletPrivateKey })',
+    '1) npm i allowlatch@^0.2.2',
+    '2) Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })',
     '   so the signer path cannot bypass the latch. hybrid Spend Permissions when available.',
     '3) Never call a raw wallet / CDP transfer in parallel with the gated path.',
     '',
@@ -209,7 +209,7 @@ function buildAgentCodeSnippet(): string {
   const policyId = hosted?.policyId || 'default'
   const seal = hosted?.sessionSeal || ''
   return `import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.0
+// npm i allowlatch@^0.2.2
 
 const POLICY_ID = ${JSON.stringify(policyId)}
 const GATE_URL = process.env.ALLOWLATCH_GATE_URL || ${JSON.stringify(`${location.origin}/api/gate`)}
@@ -1109,17 +1109,21 @@ btnCopyAgentMcp?.addEventListener('click', () => {
   void copyText('MCP config', buildAgentMcpConfig())
 })
 
-const EMBED_SNIPPET = `import { assertSpend } from 'allowlatch'
-// npm i allowlatch — set ALLOWLATCH_TRIGGER_URL + WALLET_PRIVATE_KEY (x402 payer)
+const EMBED_SNIPPET = `import { createGatedAgentKit } from 'allowlatch'
+// npm i allowlatch@^0.2.2
+// Go live on https://allowlatch.vercel.app → Connect pack (gateUrl + sessionSeal)
 
-const { receipt } = await assertSpend({
+const agent = await createGatedAgentKit({
   policyId: process.env.ALLOWLATCH_POLICY_ID || 'default',
-  triggerUrl: process.env.ALLOWLATCH_TRIGGER_URL,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
-  intent: { action: 'transfer', amountUsd: 5, toAddress: '0x…', symbol: 'USDC' },
+  gate: {
+    kind: 'site',
+    gateUrl: process.env.ALLOWLATCH_GATE_URL || 'https://allowlatch.vercel.app/api/gate',
+    sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
+    walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
+  },
 })
-// Sign only after ALLOW + receipt. Prefer createGatedAgentKit.
-// Set rules on https://allowlatch.vercel.app → Go live → Connect your agent
+await agent.transfer({ toAddress: '0x…', amountUsd: 0.04, reason: 'gated spend' })
+// assertSpend alone is advisory if a raw signer still exists
 `
 
 const btnCopyEmbed = document.querySelector<HTMLButtonElement>('#btn-copy-embed-snippet')
@@ -1129,12 +1133,12 @@ btnCopyEmbed?.addEventListener('click', async () => {
     await navigator.clipboard.writeText(EMBED_SNIPPET)
     if (agentkitCopyStatus) {
       agentkitCopyStatus.textContent =
-        'Embed snippet copied - paste into your AgentKit project before any wallet transfer.'
+        'Gated-kit snippet copied — paste into your AgentKit project before any wallet transfer.'
     }
   } catch {
     if (agentkitCopyStatus) {
       agentkitCopyStatus.textContent =
-        'Clipboard blocked - open the Embed guide and copy assertSpend from there.'
+        'Clipboard blocked - open the Embed guide and copy createGatedAgentKit from there.'
     }
   }
 })

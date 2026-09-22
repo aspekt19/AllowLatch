@@ -23,7 +23,7 @@ https://allowlatch.vercel.app/llms.txt · https://allowlatch.vercel.app/agent.js
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.0
+// npm i allowlatch@^0.2.2
 
 const agent = await createGatedAgentKit({
   gate: {

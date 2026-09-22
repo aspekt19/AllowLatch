@@ -20,7 +20,7 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.0
+// npm i allowlatch@^0.2.2
 
 await createGatedAgentKit({
   gate: {
