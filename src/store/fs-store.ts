@@ -159,11 +159,12 @@ export class PolicyStore implements PolicyStoreApi {
   async init() {
     this.db = openDb()
     migrateFromJson(this.db)
+    // Mark ready before seed write — setPolicy/assertReady must work during init.
+    this.ready = true
     const row = this.db.prepare('SELECT policy_id FROM policies WHERE policy_id = ?').get('default')
     if (!row) {
       await this.setPolicy('default', DEMO_POLICY, DEMO_POLICY.ownerId, undefined, { skipAuth: true })
     }
-    this.ready = true
   }
 
   private assertReady() {
