@@ -50,10 +50,31 @@ async function withRetry(label, fn, { attempts = 6, baseMs = 15_000 } = {}) {
   throw last
 }
 
+function syncAgentCredsFromOpenservJson(envText) {
+  const osPath = path.join(root, '.openserv.json')
+  if (!fs.existsSync(osPath)) return envText
+  try {
+    const osj = JSON.parse(fs.readFileSync(osPath, 'utf8'))
+    const agent = osj?.agents?.allowlatch
+    if (!agent?.apiKey) return envText
+    let next = envText
+    next = set(next, 'OPENSERV_API_KEY', agent.apiKey)
+    if (agent.authToken) next = set(next, 'OPENSERV_AUTH_TOKEN', agent.authToken)
+    // Cloud containers use OpenServ routing; do not force DISABLE_TUNNEL here.
+    return next
+  } catch {
+    return envText
+  }
+}
+
 async function main() {
-  let envText = readEnv()
+  let envText = syncAgentCredsFromOpenservJson(readEnv())
+  fs.writeFileSync(path.join(root, '.env'), envText)
   const apiKey = get(envText, 'OPENSERV_USER_API_KEY')
   if (!apiKey) throw new Error('OPENSERV_USER_API_KEY missing')
+  if (!get(envText, 'OPENSERV_API_KEY')) {
+    throw new Error('OPENSERV_API_KEY missing — run provision once or restore .openserv.json')
+  }
   const client = new ApiClient({ apiKey })
 
   let id = get(envText, 'OPENSERV_CONTAINER_ID')
@@ -179,10 +200,27 @@ else echo WAIT; tail -12 /tmp/npm.log; fi`,
 
   const { PlatformClient } = await import('@openserv-labs/client')
   const pc = new PlatformClient()
-  const services = await pc.payments.discoverServices()
-  const hit = services.find((s) => /allowlatch/i.test(s.name || ''))
-  console.log('discover', { name: hit?.name, isActive: hit?.isActive, price: hit?.x402Pricing })
-  console.log('Done. Keep this container running — paid x402 needs it.')
+  let hit = null
+  for (let i = 1; i <= 8; i++) {
+    await sleep(10_000)
+    const services = await pc.payments.discoverServices()
+    hit = services.find((s) => /allowlatch/i.test(s.name || ''))
+    const st = await client.getStatus(id)
+    console.log(`discover poll ${i}`, {
+      name: hit?.name,
+      isActive: hit?.isActive,
+      status: st?.status,
+      machineState: st?.machineState,
+      price: hit?.x402Pricing,
+    })
+    if (hit?.isActive) break
+  }
+  if (!hit?.isActive) {
+    console.log(
+      'WARN: OpenServ cloud machine may have stopped. Fallback: keep `npm run dev` running locally (tunnel), or Option B in docs/HOSTED.md.'
+    )
+  }
+  console.log('Done. Paid OpenServ x402 needs a reachable host (cloud continuous or local tunnel).')
 }
 
 main().catch((e) => {

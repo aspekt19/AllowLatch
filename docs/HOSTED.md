@@ -43,6 +43,8 @@ const gate = services.find((s) => /allowlatch/i.test(s.name))
 
 The OpenServ listing exists even when idle (`isActive: false`). Calls only succeed while the AllowLatch process is reachable. **`isActive: true` can still hang** — always verify with a real `payWorkflow`.
 
+**Reality check (OpenServ Cloud):** Fly containers often flip to `machineState: stopped` shortly after `goLive continuous` (exec/start 500s). Treat cloud keep-alive as best-effort. For judging / demos, prefer a **local tunnel host** (`npm run dev`) on a machine that stays awake, or Option B (your own VM).
+
 ### Option A — OpenServ Cloud container (keep-alive for fallback)
 
 Official `npx @openserv-labs/client deploy` upload can 500. Prefer the slim always-on script (git clone into the container, retries on Cloudflare 502, reuses `OPENSERV_CONTAINER_ID` when healthy):
@@ -50,10 +52,13 @@ Official `npx @openserv-labs/client deploy` upload can 500. Prefer the slim alwa
 ```bash
 # Dashboard → https://platform.openserv.ai/profile/api-keys
 # .env must contain OPENSERV_USER_API_KEY=…
+# Script syncs OPENSERV_API_KEY from .openserv.json before deploy
 npm run deploy:host
 ```
 
 Re-run after agent code changes. Force a new box with `ALLOWLATCH_FORCE_FRESH_CONTAINER=1 npm run deploy:host`.
+
+If discover stays `isActive: false` while status is `stopped`, fall back to Option B or C immediately — do not wait on cloud.
 
 ### Option B — Your own always-on VM (Railway / Fly / Render)
 
@@ -68,13 +73,16 @@ npm run dev
 
 See `Dockerfile` in the repo root for a slim Node image (`npm run start:host`).
 
-### Option C — Local tunnel (dev / incident only)
+### Option C — Local tunnel (recommended when Cloud is flaky)
 
 ```bash
 npm run dev   # SDK tunnel to agents-proxy.openserv.ai
+# or: npx tsx src/agent.ts
 ```
 
-Do **not** document Option C as the end-user path.
+Keep the process running (laptop awake, no sleep). Confirm `GET /api/host-info` → `openserv.isActive: true`.
+
+Do **not** document Option C as the end-user path — operators only.
 
 ## After the gate is live
 
