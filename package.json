@@ -1,6 +1,6 @@
 {
   "name": "allowlatch",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Spending turnstile for financial AI agents on Base/USDC \u2014 createGatedAgentKit({ kind: site }) + always-on /api/gate x402; SERV drafts; OpenServ optional",
   "type": "module",
   "main": "./dist/index.js",
@@ -41,7 +41,7 @@
     "docs/GUIDE.md"
   ],
   "bin": {
-    "allowlatch-mcp": "./bin/allowlatch-mcp.js"
+    "allowlatch-mcp": "bin/allowlatch-mcp.mjs"
   },
   "scripts": {
     "dev": "tsx src/agent.ts",
