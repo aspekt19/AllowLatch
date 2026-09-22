@@ -317,10 +317,15 @@ export async function assertSpend(args: {
       })
     )
 
+    // Remote site-gate clients never hold ALLOWLATCH_RECEIPT_SECRET — bind via digests + TLS.
+    // Dedicated secret → full HMAC (operator / same-process execute).
+    const haveDedicatedSecret = Boolean(process.env.ALLOWLATCH_RECEIPT_SECRET?.trim())
+    const requireHmac = haveDedicatedSecret || !usedSiteGate
+
     let verified = false
     let lastErr = 'intent hash mismatch'
     for (const candidate of variants) {
-      const v = verifyAllowReceipt(receipt, { intent: candidate })
+      const v = verifyAllowReceipt(receipt, { intent: candidate, requireHmac })
       if (v.ok) {
         verified = true
         break
@@ -331,7 +336,7 @@ export async function assertSpend(args: {
     // different intent echo. Signature still proves the host issued ALLOW; bind money fields
     // via intentsCompat when an echo exists, otherwise accept signed receipt + client intent.
     if (!verified) {
-      const sigOnly = verifyAllowReceipt(receipt)
+      const sigOnly = verifyAllowReceipt(receipt, { requireHmac })
       if (!sigOnly.ok) denyClosed(`invalid allow-receipt: ${sigOnly.error}`)
       if (gateIntent) {
         const drift = intentsCompat(intent, gateIntent)

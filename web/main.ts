@@ -185,7 +185,7 @@ function buildAgentInstruction(): string {
     '',
     'Preferred enforcement (do not skip):',
     '1) npm i allowlatch',
-    '2) Use createGatedAgentKit({ gate: { kind: "http", baseUrl: gateUrl }, sessionSeal, walletPrivateKey })',
+    '2) Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal }, walletPrivateKey })',
     '   so the signer path cannot bypass the latch. hybrid Spend Permissions when available.',
     '3) Or before EVERY spend: assertSpend({ policyId, gateUrl, sessionSeal, walletPrivateKey, intent })',
     '   — walletPrivateKey here is only the x402 payer (not a host SERV/CDP key).',
@@ -1110,7 +1110,7 @@ input.addEventListener('keydown', (e) => {
 
 addMessage(
   'guard',
-  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → Draft → Apply.\n2. Go live (server gate).\n3. Connect your agent — or use Install (SDK / MCP / skill / OpenServ x402).\n4. No policy applied → every spend is DENY.\n\nYou set rules. The agent only asks AllowLatch before signing. See Live case for a real paid Base USDC run.'
+  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. Connect your agent with gateUrl + sessionSeal (SDK / MCP / skill).\n4. No policy applied → every spend is DENY.\n\nSERV drafts and explains; deterministic code decides. See Live case for a real SERV + paid Base USDC run.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

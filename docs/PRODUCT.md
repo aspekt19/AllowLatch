@@ -80,7 +80,7 @@ AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 p
 - Allow / deny symbols, addresses, contracts; optional slippage / gas / emergency stop  
 - Actions: transfer / swap / x402_pay (host **executes** transfer/x402 only; swap = evaluate + receipt for external routers)  
 - Human-confirm threshold (escalate)  
-- SQLite spend ledger + audit events; single-use allow-receipt required before execute  
+- Spend ledger: **Turso** on always-on `/api/gate` when configured; **SQLite** on operator HTTP/OpenServ host; single-use allow-receipt required before execute 
 
 Chain focus: **Base**. Policy currency: **USDC**.
 

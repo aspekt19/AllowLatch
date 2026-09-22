@@ -12,32 +12,36 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 
 | Surface | Entry | Price | Always on? |
 |---------|-------|-------|------------|
-| **Primary gate** | `POST https://allowlatch.vercel.app/api/gate` | Website Origin **free**; agents **$0.025 USDC x402** on Base | **Yes** (Vercel) |
+| **Primary gate** | `POST https://allowlatch.vercel.app/api/gate` | Website Origin **free**; agents **$0.025 USDC x402** on Base | **Yes** (Vercel; Turso durable when configured) |
+| **SERV Copilot** | `POST /api/copilot` on the website | Owner drafts/revises/explains via SERV Reasoning | Yes (host key; not for agents) |
 | **OpenServ fallback** | discover `/allowlatch/i` · triggerUrl | $0.025 x402 | Only while operator host is reachable |
 
-`assertSpend` defaults to the primary gate and can fall back to OpenServ if `triggerUrl` is set.
+`assertSpend` defaults to the primary gate. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does).
 
 ### Install
 
 1. Site Connect pack — https://allowlatch.vercel.app/#install (`gateUrl` + `sessionSeal` + x402 payer; never `ownerToken`)
-2. `npm i allowlatch` → Vercel: `assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent })`; stronger: `createGatedAgentKit` on HTTP/OpenServ host
+2. `npm i allowlatch` → `assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent })` or `createGatedAgentKit({ gate: { kind: 'site', gateUrl, sessionSeal }, … })`
 3. MCP / skill (any LLM) — [`skills/allowlatch/SKILL.md`](https://github.com/aspekt19/AllowLatch/blob/main/skills/allowlatch/SKILL.md)
 4. OpenServ — optional fallback only
 
 ### Before every spend
 
-1. `assertSpend` with Connect pack fields (pays $0.025 on Base unless website Origin).
+1. `assertSpend` with Connect pack fields (pays $0.025 on Base unless website Origin or pack credits).
 2. **ALLOW + allow-receipt (`jti`)** → then sign.
 3. **DENY / ESCALATE / timeout** → do not sign.
 
-### Live case
+### Live case (SERV + paid gate · 22 Sep 2026)
 
-https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16
+SERV draft → durable apply → paid DENY / ESCALATE / ALLOW → transfer:
+
+https://basescan.org/tx/0x399dd953a96332dfbb0e27dfc19dea0898c0a1a236f065216ef4e6759a2792b5
+
+Full story: https://allowlatch.vercel.app/#case
 
 ### Docs
 
 - Full guide: https://github.com/aspekt19/AllowLatch/blob/main/docs/GUIDE.md
-
 - CONNECT · EMBED · HOSTED · MONETIZE · SECURITY on GitHub
 - Machine card: https://allowlatch.vercel.app/agent.json
 
@@ -46,4 +50,4 @@ https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da
 - Decisions are deterministic code — never LLM judgment.
 - Fail-closed: timeout / network / malformed → DENY.
 - End users never run the local OpenServ host or set `SERV_API_KEY`.
-- AllowLatch does not custody funds.
+- AllowLatch does not custody funds (middleware ≠ custody without Spend Permissions / gated signer).

@@ -11,9 +11,9 @@ This document is the public threat model and production checklist. For architect
 | Owner mandate (NL) | Untrusted until applied; show draft + confirm before `apply_policy` |
 | SERV Copilot | Drafts / explains only — **never** overrides `engine.ts` |
 | Deterministic gate (`evaluateIntent`) | Source of truth for allow / deny / escalate |
-| Allow-receipt (`jti` + HMAC) | Single-use capability token bound to action digest |
+| Allow-receipt (`jti` + HMAC) | Single-use capability token bound to action digest. Host/execute path verifies HMAC with `ALLOWLATCH_RECEIPT_SECRET`. Remote `assertSpend` clients without that secret bind via digest + TLS to `/api/gate` |
 | Agent / Spender | **Untrusted** — must not be able to sign without a consumed receipt |
-| Remote x402 / HTTP gate | Fail-closed client (`assertSpend`); treat network errors as DENY |
+| Remote x402 / HTTP gate | Fail-closed client (`assertSpend`); treat network errors as DENY. Site-gate x402 uses Base USDC EIP-3009 domain name **`USD Coin`** / version `2` |
 | Shared host tenants | `ownerToken` (minted on first apply) or `ALLOWLATCH_OPERATOR_TOKEN` for mutate/read |
 
 ## Multi-tenant rules

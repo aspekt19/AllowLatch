@@ -136,7 +136,17 @@ export function issueAllowReceipt(args: {
 
 export function verifyAllowReceipt(
   receipt: AllowReceipt,
-  opts?: { policy?: MandatePolicy; intent?: SpendIntent; nowSec?: number }
+  opts?: {
+    policy?: MandatePolicy
+    intent?: SpendIntent
+    nowSec?: number
+    /**
+     * When false, skip HMAC (remote clients never have the host receipt secret).
+     * Still binds expiry + optional policy/intent digests. Prefer true whenever
+     * ALLOWLATCH_RECEIPT_SECRET is available (operator / same-process execute).
+     */
+    requireHmac?: boolean
+  }
 ): { ok: true } | { ok: false; error: string } {
   if (receipt.v !== 1 || receipt.decision !== 'allow' || !receipt.jti) {
     return { ok: false, error: 'invalid receipt shape' }
@@ -144,11 +154,16 @@ export function verifyAllowReceipt(
   const now = opts?.nowSec ?? Math.floor(Date.now() / 1000)
   if (now > receipt.expiresAt) return { ok: false, error: 'receipt expired' }
 
-  const expected = sign(signingPayload(receipt), receiptSecret())
-  const a = Buffer.from(expected, 'hex')
-  const b = Buffer.from(receipt.sig, 'hex')
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return { ok: false, error: 'bad signature' }
+  const requireHmac = opts?.requireHmac !== false
+  if (requireHmac) {
+    const expected = sign(signingPayload(receipt), receiptSecret())
+    const a = Buffer.from(expected, 'hex')
+    const b = Buffer.from(receipt.sig, 'hex')
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return { ok: false, error: 'bad signature' }
+    }
+  } else if (typeof receipt.sig !== 'string' || receipt.sig.length < 32) {
+    return { ok: false, error: 'missing receipt signature' }
   }
   if (opts?.policy && hashPolicy(opts.policy) !== receipt.policyHash) {
     return { ok: false, error: 'policy hash mismatch' }

@@ -65,7 +65,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
 5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend`). Trust `gate.isActive` only as a hint — still fail closed on hang/timeout.
 6. Product name is **AllowLatch**.
-7. Live proof (Base): agent USDC after receipt — e.g. [`0x3d9e46…`](https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16); fee to operator — check `host-info` / `#case` on the site.
+7. Live proof (SERV draft + paid `/api/gate` + Base transfer): [`0x399dd9…`](https://basescan.org/tx/0x399dd953a96332dfbb0e27dfc19dea0898c0a1a236f065216ef4e6759a2792b5); fees to operator — see site [`#case`](https://allowlatch.vercel.app/#case).
 
 ## Verify
 

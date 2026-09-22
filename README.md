@@ -17,7 +17,7 @@ No end-user **SERV/CDP host** keys — **you never run the host**. Agents that c
 
 Tell your agent:
 
-> Connect to AllowLatch. Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, ask AllowLatch.
+> Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Connect pack). Enforce: max $10/tx, $40/day, only USDC and ETH, ask me above $8. Before any spend, call assertSpend on /api/gate with gateUrl + sessionSeal.
 
 - Agent skill (any LLM): [`skills/allowlatch/SKILL.md`](./skills/allowlatch/SKILL.md) (Cursor mirror: `.cursor/skills/allowlatch`)
 - Demo UI: https://allowlatch.vercel.app
@@ -41,7 +41,7 @@ npm run test                # engine + receipt unit tests
 npm run ui                  # dialog UI (live SERV via /api/copilot when key set)
 npm run wow                 # full SERV → injection → gate → explain → AgentKit
 npm run battle              # Spender → gate → AgentKit dry-run
-npm run connect             # discover hosted AllowLatch Gate as another agent
+npm run connect             # optional: discover OpenServ AllowLatch Gate (fallback)
 npm run agent:gated         # AgentKit spender with gate baked in
 npm run http:gate           # local HTTP evaluate/execute (builder/dev)
 npm run deploy:host         # operator: always-on OpenServ Cloud host

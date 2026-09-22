@@ -23,48 +23,56 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 ## 2. For humans (no keys, no server)
 
 1. Open https://allowlatch.vercel.app → **Try AllowLatch now**
-2. Paste / load a mandate → **Draft** → **Apply**
-3. **Go live (server gate)** — policy + `sessionSeal` stored (survives cold starts)
+2. Paste / load a mandate → **Draft** (SERV Reasoning) → **Apply**
+3. **Go live (server gate)** — policy + `sessionSeal` (survives cold starts; production also persists ledger on Turso when configured)
 4. Click spend chips → see **ALLOW / DENY / ESCALATE** + receipts (free from the site)
 5. **Connect your agent** — copy instruction / code / MCP
-6. Optional: **Install** (`#install`) and **Live case** (`#case`)
+6. Optional: **Install** (`#install`) and **Live case** (`#case`) — full SERV + paid Base path
 
 You never set `SERV_API_KEY`, never run the local OpenServ host, never deploy this repo.
 Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) — that is not a host SERV/CDP key, and it is not custody by AllowLatch.
 
-**Preferred agent path:** `createGatedAgentKit` (+ hybrid Spend Permissions). `assertSpend` alone is advisory if the agent can still call a raw signer.
+**Preferred agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })` (+ hybrid Spend Permissions). `assertSpend` alone is advisory if the agent can still call a raw signer.
 
-**Site-gate honesty:** `sessionSeal` restores policy after cold starts; it is not a multi-tenant durable ledger. Keep live balances small unless you run the SQLite host / hybrid on-chain caps. Details: [SECURITY.md](./SECURITY.md).
+**Site-gate honesty:** Production (`GET /api/gate` → `durable: true`) uses Turso for shared ledger + receipts. Without Turso, `sessionSeal` restores policy after cold starts but is not multi-tenant durable. Keep live balances small unless durable + hybrid on-chain caps. Details: [SECURITY.md](./SECURITY.md).
 
 ---
 
 ## 3. For agents (enforce before every spend)
 
-### Preferred (always-on)
-
-### Preferred (always-on Vercel)
+### Preferred (always-on site gate)
 
 ```ts
-import { assertSpend } from 'allowlatch'
-// npm i allowlatch
+import { createGatedAgentKit, assertSpend } from 'allowlatch'
 
-const { receipt } = await assertSpend({
-  policyId: 'web-…', // from Connect pack
+const agent = await createGatedAgentKit({
+  policyId: '…',
+  gate: {
+    kind: 'site',
+    gateUrl: 'https://allowlatch.vercel.app/api/gate',
+    sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
+  },
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer
+})
+await agent.spend(intent) // evaluate → receipt → sign; no parallel raw signer
+
+// Or assert-only:
+await assertSpend({
+  policyId: '…',
   gateUrl: 'https://allowlatch.vercel.app/api/gate',
   sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
-  walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only — not a host SERV/CDP key
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
   intent: {
     action: 'transfer',
     amountUsd: 5,
     toAddress: '0x…',
     symbol: 'USDC',
+    tokenAmount: '5000000', // required for USDC — 6 decimals
   },
 })
-// ONLY THEN sign. receipt.jti is single-use.
-// Stronger: remove raw signer access, or use createGatedAgentKit against the SQLite HTTP host / OpenServ.
 ```
 
-### Stronger (operator HTTP host / OpenServ)
+### Local HTTP host / OpenServ (dev or fallback)
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
@@ -73,7 +81,7 @@ const agent = await createGatedAgentKit({
   policyId: '…',
   gate: { kind: 'http', baseUrl: 'http://127.0.0.1:8787' }, // or kind: 'openserv'
 })
-await agent.spend(intent) // evaluate → receipt → execute; no parallel raw signer
+await agent.spend(intent)
 ```
 
 ### Rules
@@ -145,4 +153,5 @@ Details: [MONETIZE.md](./MONETIZE.md)
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System layout |
 | [AGENTS.md](../AGENTS.md) | Coding agents in-repo |
 
-Live proof (Base): https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16
+Live proof (SERV + paid site gate · Base): https://basescan.org/tx/0x399dd953a96332dfbb0e27dfc19dea0898c0a1a236f065216ef4e6759a2792b5  
+Story: https://allowlatch.vercel.app/#case

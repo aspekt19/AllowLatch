@@ -42,9 +42,26 @@ await assertSpend({
 })
 ```
 
-Prefer `createGatedAgentKit` so the signer cannot bypass the latch. Chat-only “please ask AllowLatch” is advisory.
+Prefer `createGatedAgentKit` so the signer cannot bypass the latch:
+
+```ts
+import { createGatedAgentKit } from 'allowlatch'
+
+await createGatedAgentKit({
+  gate: {
+    kind: 'site',
+    gateUrl: 'https://allowlatch.vercel.app/api/gate',
+    sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
+  },
+  walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+})
+```
+
+Chat-only “please ask AllowLatch” is advisory.
 
 Public card: `GET https://allowlatch.vercel.app/api/host-info` → prefer `primary` (durable site gate); `openserv.isActive` is fallback-only.
+
+Live case (SERV + paid gate): https://allowlatch.vercel.app/#case
 
 ## Operator
 

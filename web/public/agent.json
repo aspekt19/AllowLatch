@@ -92,7 +92,7 @@
     "Receipt binds chain, action digest, and calldataHash for swaps; prefer tokenAddress over symbol",
     "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",
     "Lifetime budget is not reset by public APIs; reset_daily_ledger clears day/hour only",
-    "End users never run npm run dev or set SERV_API_KEY — they discover hosted AllowLatch Gate",
+    "End users never run npm run dev or set SERV_API_KEY — they connect via always-on /api/gate (Connect pack); OpenServ discover is optional fallback",
     "AllowLatch does not custody user funds or private keys",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],

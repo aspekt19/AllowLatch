@@ -148,8 +148,10 @@
             <p class="eyebrow">Install</p>
             <h2 id="install-title">How you (and your agent) connect.</h2>
             <p class="section-lead">
-              You do not run a server. You do not need <code>SERV_API_KEY</code>. Pick any path —
-              all of them end at the same hosted gate before every spend.
+              You do not run a server. You do not need <code>SERV_API_KEY</code>.
+              Primary path: Draft with SERV on this site → <strong>Go live</strong> → Connect pack
+              (<code>gateUrl</code> + <code>sessionSeal</code>) → agent pays $0.025 on
+              <code>/api/gate</code> before every spend.
             </p>
           </div>
 
@@ -157,19 +159,18 @@
             <div class="audience-col">
               <h3>For you (human)</h3>
               <ol class="path-steps">
-                <li>Open this site → write a mandate → <strong>Draft</strong> → review.</li>
-                <li><strong>Go live</strong> — policy stored on the server gate + real receipts.</li>
-                <li><strong>Connect your agent</strong> — copy instruction, code, or MCP.</li>
-                <li>Or tell your agent in chat: “Connect to AllowLatch Gate on OpenServ and apply my mandate.”</li>
+                <li>Open this site → write a mandate → <strong>Draft</strong> (SERV Reasoning) → review.</li>
+                <li><strong>Go live</strong> — policy on the always-on gate + real receipts.</li>
+                <li><strong>Connect your agent</strong> — copy instruction, code, or MCP (<code>gateUrl</code> + <code>sessionSeal</code>).</li>
+                <li>Optional: OpenServ discover only if the site gate is unreachable.</li>
               </ol>
             </div>
             <div class="audience-col">
               <h3>For your agent</h3>
               <ol class="path-steps">
-                <li>Discover <strong>AllowLatch Gate</strong> (<code>/allowlatch/i</code>) or read
-                  <a href="/api/host-info">/api/host-info</a>.</li>
-                <li>Apply the owner’s MandatePolicy once (<code>apply_policy</code> / paywall).</li>
-                <li>Before <em>every</em> transfer / swap / x402 pay: <code>assertSpend</code> (or gated kit).</li>
+                <li>Read Connect pack or <a href="/api/host-info">/api/host-info</a> → prefer <code>primary.gateUrl</code>.</li>
+                <li>Owner already applied MandatePolicy (Go live). You keep <code>sessionSeal</code>.</li>
+                <li>Before <em>every</em> transfer / swap / x402 pay: <code>assertSpend({ gateUrl, sessionSeal, … })</code> or <code>createGatedAgentKit({ gate: { kind: 'site', … } })</code>.</li>
                 <li>ALLOW + receipt → may sign. DENY / ESCALATE / timeout → do not sign.</li>
               </ol>
             </div>
@@ -282,11 +283,12 @@ Never invent ALLOW.</pre>
       <section class="section case" id="case" aria-labelledby="case-title">
         <div class="shell">
           <div class="section-intro section-intro-wide">
-            <p class="eyebrow">Live case · Base mainnet · Sept 2026</p>
-            <h2 id="case-title">Real x402 fees. Real USDC transfer.</h2>
+            <p class="eyebrow">Live case · Base mainnet · 22 Sep 2026</p>
+            <h2 id="case-title">SERV drafts. Code decides. Base settles.</h2>
             <p class="section-lead">
-              End-to-end as a user agent: site Go live → assertSpend on /api/gate ($0.025) → ALLOW + receipt →
-              only then sign on Base.
+              Full product path: SERV Reasoning drafts the mandate → Go live on
+              <code>/api/gate</code> → agent pays $0.025 x402 → deterministic DENY / ESCALATE / ALLOW →
+              SERV explains the DENY → only ALLOW + receipt may sign on Base.
             </p>
           </div>
 
@@ -295,7 +297,7 @@ Never invent ALLOW.</pre>
               <span class="case-step">01 · Fund</span>
               <h3>Owner tops up the agent wallet</h3>
               <p>
-                Spender <code>0x36fe…3645</code> received USDC + gas ETH on Base (top-ups including
+                Spender <code>0x36fe…3645</code> held USDC + gas ETH on Base (earlier top-ups including
                 <a
                   href="https://basescan.org/tx/0x6e95397c24c2aea98b4645d5654adb308187ad6c6b92069296be82fcab4a1816"
                   target="_blank"
@@ -305,61 +307,75 @@ Never invent ALLOW.</pre>
               </p>
             </li>
             <li>
-              <span class="case-step">02 · Mandate</span>
-              <h3>Rules in plain language</h3>
+              <span class="case-step">02 · SERV draft</span>
+              <h3>Plain language → MandatePolicy</h3>
               <blockquote>
-                Budget $0.16 USDC on Base. Max $0.10 per transfer. Escalate above $0.05. Only transfer
-                to <code>0x5cc0…6205</code>. No swaps, no other contracts.
+                Budget $2 USDC on Base. Max $0.10 per transfer and $0.50 per day. Only allow transfers to
+                <code>0x5cc0…6205</code>. No swaps. Escalate above $0.05.
               </blockquote>
-              <p class="muted tight">
-                No applied MandatePolicy → every spend DENY (fail-closed). Local drafts are not
-                production enforcement.
-              </p>
-            </li>
-            <li>
-              <span class="case-step">03 · Paid gate</span>
-              <h3>Always-on gate · $0.025 per agent call</h3>
               <p>
-                Hosted <strong>AllowLatch Gate</strong> online. Agent paid with its own USDC;
-                settlement to operator <code>0xa918…F677</code> (seen rising to <strong>0.25 USDC</strong>
-                across the session). Path: <code>payWorkflow</code> / <code>assertSpend</code> — not a
-                local <code>engine.ts</code> bypass.
+                <code>POST /api/copilot</code> (action <code>draft</code>) via SERV Reasoning —
+                Multipath · prompt_guard · shadow —
+                model <code>gpt-5.4-mini</code>, prompt <code>allowlatch-draft-v1</code>, ~15s.
+                Ready-to-apply policy: lifetime $2 · day $0.50 · per-tx $0.10 · confirm above $0.05 ·
+                swaps off · single allowlisted destination.
               </p>
             </li>
             <li>
-              <span class="case-step">04 · Verdicts</span>
-              <h3>What the turnstile returned</h3>
+              <span class="case-step">03 · Go live</span>
+              <h3>Durable site gate</h3>
+              <p>
+                Free same-site apply → policyId <code>serv-live-1790076763</code>,
+                <code>durable: true</code> (Turso) + <code>sessionSeal</code> for the agent Connect pack.
+              </p>
+            </li>
+            <li>
+              <span class="case-step">04 · Paid checks</span>
+              <h3>Always-on <code>/api/gate</code> · $0.025 each</h3>
+              <p>
+                Agent paid native Base USDC x402 to operator <code>0xa918…F677</code>
+                (balance <strong>0.495 → 0.57 USDC</strong> = three settlements). Not OpenServ
+                <code>payWorkflow</code> — primary path is the Vercel gate.
+              </p>
               <ul class="case-verdicts">
                 <li>
-                  <span class="tag-allow">ALLOW</span>
-                  $0.04 after paid assertSpend + receipt → signed
+                  <span class="tag-deny">DENY</span>
+                  wrong destination →
                   <a
-                    href="https://basescan.org/tx/0x3d9e46e7f0a203dedd6f8845c94bb5d8d8764c5bdcf8a9450c08da0378c69c16"
+                    href="https://basescan.org/tx/0x3e3efd2d3814d32d85909e7e807519fa0fd99bd4f3b256e75b0b0c3392eca0c6"
                     target="_blank"
                     rel="noreferrer"
-                    >tx 0x3d9e…9c16</a
+                    >fee 0x3e3e…a0c6</a
                   >
-                  (also
-                  <a
-                    href="https://basescan.org/tx/0xc3b2415601c434d1e9859ac3c0a6bb192d84eeffd2319f78361805da0f82223f"
-                    target="_blank"
-                    rel="noreferrer"
-                    >0xc3b2…223f</a
-                  >,
-                  <a
-                    href="https://basescan.org/tx/0x04479adb7267416764f388360dcb106329b6d48d80afd565d587ea688d7dd0c7"
-                    target="_blank"
-                    rel="noreferrer"
-                    >0x0447…d0c7</a
-                  >)
+                  · SERV explain (~25s): destination not on allowlist — verdict unchanged
                 </li>
                 <li>
                   <span class="tag-escalate">ESCALATE</span>
-                  $0.08 → <strong>not signed</strong> (above $0.05 human confirm)
+                  $0.08 above $0.05 confirm →
+                  <a
+                    href="https://basescan.org/tx/0x4a78280c108fe2769ebe1d98faa2770814a2fd4172896dc41e3f84e09a72c0f3"
+                    target="_blank"
+                    rel="noreferrer"
+                    >fee 0x4a78…c0f3</a
+                  >
+                  · <strong>not signed</strong>
                 </li>
                 <li>
-                  <span class="tag-deny">DENY</span>
-                  wrong destination / over max → <strong>not signed</strong>
+                  <span class="tag-allow">ALLOW</span>
+                  $0.04 + receipt → fee
+                  <a
+                    href="https://basescan.org/tx/0xa8ecfda33d7b0f3ad00ed3935909aeb658289bc56f3cf17be3fba6b42233ae43"
+                    target="_blank"
+                    rel="noreferrer"
+                    >0xa8ec…ae43</a
+                  >
+                  → signed transfer
+                  <a
+                    href="https://basescan.org/tx/0x399dd953a96332dfbb0e27dfc19dea0898c0a1a236f065216ef4e6759a2792b5"
+                    target="_blank"
+                    rel="noreferrer"
+                    >0x399d…92b5</a
+                  >
                 </li>
               </ul>
             </li>
@@ -367,14 +383,15 @@ Never invent ALLOW.</pre>
               <span class="case-step">05 · Result</span>
               <h3>Product invariants held</h3>
               <p>
-                LLM never overrode the verdict. Fees hit the operator wallet. Signature only after
-                ALLOW + allow-receipt. Same flow your agent should use via Install below.
+                SERV drafted and explained — never overrode allow/deny/escalate.
+                <code>engine.ts</code> owned every verdict. Fees hit the operator wallet. Signature only
+                after ALLOW + consumed allow-receipt. Same flow via Install below.
               </p>
             </li>
           </ol>
 
           <p class="case-cta">
-            <a class="btn btn-solid" href="#gate">Try the gate on this site</a>
+            <a class="btn btn-solid" href="#gate">Try SERV + gate on this site</a>
             <a class="btn btn-line" href="#install">Install paths for your agent</a>
           </p>
         </div>
@@ -408,9 +425,9 @@ Never invent ALLOW.</pre>
             </p>
           </div>
           <pre class="agentkit-code" tabindex="0"><code>import { assertSpend } from 'allowlatch'
-// walletPrivateKey = x402 payer only
+// walletPrivateKey = x402 payer only (not SERV / CDP host keys)
 const { receipt } = await assertSpend({
-  intent, triggerUrl, walletPrivateKey,
+  policyId, gateUrl, sessionSeal, walletPrivateKey, intent,
 })
 // ALLOW + receipt → then AgentKit / execute_gated_transfer
 // DENY / timeout → refuse (fail-closed)</code></pre>
@@ -451,8 +468,9 @@ const { receipt } = await assertSpend({
             </div>
           </div>
           <p class="pricing-foot muted">
-            Discover OpenServ service <strong>AllowLatch Gate</strong>
-            (<code>/allowlatch/i</code>). Clients fail-closed on timeout.
+            Agents pay <strong>$0.025 USDC</strong> on always-on <code>/api/gate</code>
+            (or burn prepaid <code>buy_pack</code> credits when Turso durable is on).
+            OpenServ discover is optional fallback. Clients fail-closed on timeout.
             Policy mutates need <code>ownerToken</code>. Details:
             <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE</a>
             ·
@@ -467,8 +485,9 @@ const { receipt } = await assertSpend({
             <p class="eyebrow">Use it here</p>
             <h2 id="gate-title">Try AllowLatch now</h2>
             <p class="section-lead">
-              Three steps: <strong>1)</strong> write a spending rule → <strong>2)</strong> apply it →
+              Three steps: <strong>1)</strong> write a spending rule → <strong>2)</strong> SERV Draft → Apply →
               <strong>3)</strong> Go live. After that your agent cannot move USDC without this gate.
+              SERV drafts and explains; deterministic code returns ALLOW / DENY / ESCALATE.
             </p>
             <p class="muted tight" id="gate-health">Checking hosted Gate…</p>
           </div>

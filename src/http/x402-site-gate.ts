@@ -46,8 +46,9 @@ export function buildSiteGateRequirements(resource: string): PaymentRequirements
     payTo: siteGatePayTo(),
     maxTimeoutSeconds: 120,
     asset: USDC_BASE,
+    // Base USDC EIP-3009 domain — must match on-chain EIP-712 name ("USD Coin"), not the ticker.
     extra: {
-      name: 'USDC',
+      name: 'USD Coin',
       version: '2',
     },
   }

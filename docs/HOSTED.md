@@ -16,12 +16,12 @@ End users and their agents **never** run `npm run dev`, never set `SERV_API_KEY`
 
 ```text
 You / your agent
-    → OpenServ discoverServices() / paywall
-    → AllowLatch Gate (hosted by AllowLatch)
+    → Prefer always-on https://allowlatch.vercel.app/api/gate (native x402)
+    → Optional: OpenServ discoverServices() / paywall when site gate unreachable
     → ALLOW + receipt → your wallet signs
 ```
 
-## Public connection (no local host)
+## Public connection (OpenServ fallback)
 
 | Field | Value |
 |-------|--------|
@@ -29,7 +29,7 @@ You / your agent
 | Price | **$0.025** per call (or evaluate pack) |
 | Paywall | https://platform.openserv.ai/workspace/paywall/d5bd76ab6637492c8dea60fabb590b53 |
 | Trigger (webhook) | https://api.openserv.ai/webhooks/x402/trigger/d5bd76ab6637492c8dea60fabb590b53 |
-| Live status | `GET https://allowlatch.vercel.app/api/host-info` → `gate.isActive` |
+| Live status | `GET https://allowlatch.vercel.app/api/host-info` → `openserv.isActive` (primary is `primary.gateUrl`) |
 
 Agents can also omit hardcoded URLs and use:
 
@@ -43,7 +43,7 @@ const gate = services.find((s) => /allowlatch/i.test(s.name))
 
 The OpenServ listing exists even when idle (`isActive: false`). Calls only succeed while the AllowLatch process is reachable. **`isActive: true` can still hang** — always verify with a real `payWorkflow`.
 
-### Option A — OpenServ Cloud container (primary)
+### Option A — OpenServ Cloud container (keep-alive for fallback)
 
 Official `npx @openserv-labs/client deploy` upload can 500. Prefer the slim always-on script (git clone into the container, retries on Cloudflare 502, reuses `OPENSERV_CONTAINER_ID` when healthy):
 

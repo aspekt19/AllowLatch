@@ -9,7 +9,7 @@ The **always-on** meter is native **x402 on Vercel** `/api/gate` (Base USDC). Op
 |---------|-------|----------------|
 | Website UI (same-site browser) | Free | Draft / Go live / try ALLOW·DENY·ESCALATE + receipts |
 | **Agent → `/api/gate`** | **$0.025 USDC** x402 on Base | Always-on evaluate + allow-receipt (Origin spoof alone is not free) |
-| **Agent → `buy_pack`** | **$0.025** → default **3** credits | Prepaid evaluates via `packKey` (~$0.008/check). Client cannot choose mint size |
+| **Agent → `buy_pack`** | **$0.025** → default **3** credits | Prepaid evaluates via `packKey` (~$0.008/check). **Requires Turso durable** (`durable: true`). Client cannot choose mint size |
 | OpenServ discover / paywall | **$0.025** x402 | Fallback when site gate fails or `preferOpenServ` |
 | Demo JSON snapshot | Free, watermarked | `enforcement: "demo-only"` — **not** production |
 
@@ -29,7 +29,7 @@ OpenServ x402 (fallback) settles to the OpenServ trigger payout wallet.
 
 - `ALLOWLATCH_RECEIPT_SECRET` — **preferred** dedicated secret for receipts + sessionSeal (avoid reusing `SERV_API_KEY`)
 - `SERV_API_KEY` — Copilot only; temporary receipt fallback warns in production
-- `CDP_API_KEY_ID` + `CDP_API_KEY_SECRET` — Coinbase x402 facilitator (verify/settle)
+- `CDP_API_KEY_ID` + `CDP_API_KEY_SECRET` — Coinbase x402 facilitator (verify/settle). Base USDC EIP-3009 domain must use name **`USD Coin`** (not ticker `USDC`) or verify fails.
 - `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO` — payee on Base
 - `ALLOWLATCH_TURSO_DATABASE_URL` + `ALLOWLATCH_TURSO_AUTH_TOKEN` — **durable** shared ledger for `/api/gate` (recommended for anything beyond demo)
 - Optional: `ALLOWLATCH_SITE_GATE_X402=0` — disable paywall (dev only)
