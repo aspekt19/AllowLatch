@@ -9,7 +9,7 @@ You do **not** run a server. You do **not** need `SERV_API_KEY`.
 
 | Surface | What it is | Always on? |
 |---------|------------|------------|
-| **Primary** https://allowlatch.vercel.app/api/gate | Go live + Connect. Browser same-site **free to try**. Agents pay **$0.025 USDC** via native x402 on Base. Session-scoped seal — not SQLite durable. | **Yes** (Vercel) |
+| **Primary** https://allowlatch.vercel.app/api/gate | Go live + Connect. Browser same-site **free to try**. Agents pay **$0.025 USDC** x402 (or `buy_pack` → prepaid credits). Turso durable when configured (`GET /api/gate` → `durable: true`). | **Yes** (Vercel) |
 | **OpenServ fallback** | discover `/allowlatch/i` · trigger/paywall | Only while operator host is reachable |
 
 Install: https://allowlatch.vercel.app/#install  
@@ -31,15 +31,20 @@ await assertSpend({
   gateUrl: 'https://allowlatch.vercel.app/api/gate',
   sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
   walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only — not a host key
-  intent: { action: 'transfer', amountUsd: 5, toAddress: '0x…', symbol: 'USDC' },
+  // packKey: process.env.ALLOWLATCH_PACK_KEY, // optional prepaid credits after buy_pack
+  intent: {
+    action: 'transfer',
+    amountUsd: 5,
+    toAddress: '0x…',
+    symbol: 'USDC',
+    tokenAmount: '5000000', // required for USDC — 6 decimals; amountUsd alone is not binding
+  },
 })
 ```
 
-Prefer `createGatedAgentKit` on the SQLite HTTP host / OpenServ so the signer cannot bypass the latch. Chat-only “please ask AllowLatch” is advisory.
+Prefer `createGatedAgentKit` so the signer cannot bypass the latch. Chat-only “please ask AllowLatch” is advisory.
 
-Optional OpenServ fallback: pass `triggerUrl` (assertSpend tries site gate first, then OpenServ).
-
-Public card: `GET https://allowlatch.vercel.app/api/host-info`
+Public card: `GET https://allowlatch.vercel.app/api/host-info` → prefer `primary` (durable site gate); `openserv.isActive` is fallback-only.
 
 ## Operator
 

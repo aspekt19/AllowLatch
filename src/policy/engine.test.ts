@@ -23,6 +23,21 @@ import path from 'node:path'
 
 const router = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
 
+/** USDC transfer/x402 helper — amountUsd alone is not binding. */
+function usdcIntent(
+  amountUsd: number,
+  extra: Partial<SpendIntent> & { action?: SpendIntent['action'] } = {}
+): SpendIntent {
+  return {
+    action: extra.action ?? 'transfer',
+    amountUsd,
+    symbol: 'USDC',
+    tokenAmount: String(Math.round(amountUsd * 1e6)),
+    toAddress: router,
+    ...extra,
+  }
+}
+
 describe('evaluateIntent', () => {
   it('allows a small swap under caps', () => {
     const intent: SpendIntent = {
@@ -63,21 +78,13 @@ describe('evaluateIntent', () => {
   })
 
   it('escalates above human threshold', () => {
-    const r = evaluateIntent(
-      DEMO_POLICY,
-      { action: 'x402_pay', amountUsd: 10.5, toAddress: router },
-      freshLedger()
-    )
+    const r = evaluateIntent(DEMO_POLICY, usdcIntent(10.5, { action: 'x402_pay' }), freshLedger())
     assert.equal(r.decision, 'escalate')
   })
 
   it('enforces lifetime wallet budget', () => {
     const ledger = { ...freshLedger(), spentUsdLifetime: 190 }
-    const r = evaluateIntent(
-      DEMO_POLICY,
-      { action: 'transfer', amountUsd: 15, toAddress: router },
-      ledger
-    )
+    const r = evaluateIntent(DEMO_POLICY, usdcIntent(15), ledger)
     assert.equal(r.decision, 'deny')
     assert.match(r.reasons.join(' '), /lifetime wallet budget/i)
   })
@@ -92,56 +99,53 @@ describe('evaluateIntent', () => {
     }
     const r = evaluateIntent(
       policy,
-      {
-        action: 'transfer',
-        amountUsd: 1,
-        toAddress: router,
-        functionSelector: '0x095ea7b3',
-      },
+      usdcIntent(1, { functionSelector: '0x095ea7b3' }),
       freshLedger()
     )
     assert.equal(r.decision, 'deny')
   })
 
   it('commits lifetime spend', () => {
-    const next = commitIntent(freshLedger(), {
-      action: 'transfer',
-      amountUsd: 3,
-      toAddress: router,
-    })
+    const next = commitIntent(freshLedger(), usdcIntent(3))
     assert.equal(next.spentUsdToday, 3)
     assert.equal(next.spentUsdLifetime, 3)
   })
 
   it('denies wrong chainId', () => {
-    const r = evaluateIntent(
-      DEMO_POLICY,
-      { action: 'transfer', amountUsd: 2, toAddress: router, chainId: 1 },
-      freshLedger()
-    )
+    const r = evaluateIntent(DEMO_POLICY, usdcIntent(2, { chainId: 1 }), freshLedger())
     assert.equal(r.decision, 'deny')
     assert.match(r.reasons.join(' '), /chainId/i)
   })
 
   it('allows matching Base chainId', () => {
+    const r = evaluateIntent(DEMO_POLICY, usdcIntent(2, { chainId: 8453 }), freshLedger())
+    assert.equal(r.decision, 'allow')
+  })
+
+  it('denies USDC transfer without tokenAmount binding', () => {
     const r = evaluateIntent(
       DEMO_POLICY,
-      { action: 'transfer', amountUsd: 2, toAddress: router, chainId: 8453 },
+      { action: 'transfer', amountUsd: 2, symbol: 'USDC', toAddress: router },
       freshLedger()
     )
-    assert.equal(r.decision, 'allow')
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /tokenAmount|calldata/i)
+  })
+
+  it('denies tokenAmount that disagrees with amountUsd', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      usdcIntent(2, { tokenAmount: '999' }),
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /does not match amountUsd/i)
   })
 
   it('denies fake USDC token contract', () => {
     const r = evaluateIntent(
       DEMO_POLICY,
-      {
-        action: 'transfer',
-        amountUsd: 2,
-        symbol: 'USDC',
-        tokenAddress: '0x000000000000000000000000000000000000dead',
-        toAddress: router,
-      },
+      usdcIntent(2, { tokenAddress: '0x000000000000000000000000000000000000dead' }),
       freshLedger()
     )
     assert.equal(r.decision, 'deny')
@@ -175,13 +179,7 @@ describe('evaluateIntent', () => {
 
 describe('allow-receipt', () => {
   it('issues and verifies action-bound receipt', () => {
-    const intent: SpendIntent = {
-      action: 'transfer',
-      amountUsd: 2,
-      toAddress: router,
-      calldataHash: '0x' + 'ab'.repeat(16),
-      reason: 'ignored in digest',
-    }
+    const intent = usdcIntent(2, { calldataHash: '0x' + 'ab'.repeat(16), reason: 'ignored in digest' })
     const evaluation = evaluateIntent(DEMO_POLICY, intent, freshLedger())
     assert.equal(evaluation.decision, 'allow')
     const receipt = issueAllowReceipt({
@@ -199,11 +197,7 @@ describe('allow-receipt', () => {
   })
 
   it('rejects chain-mismatched receipt', () => {
-    const intent: SpendIntent = {
-      action: 'transfer',
-      amountUsd: 2,
-      toAddress: router,
-    }
+    const intent = usdcIntent(2)
     const evaluation = evaluateIntent(DEMO_POLICY, intent, freshLedger())
     const receipt = issueAllowReceipt({
       policyId: 'default',
@@ -217,24 +211,16 @@ describe('allow-receipt', () => {
   })
 
   it('binds digest to tokenAddress and chainId', () => {
-    const a: SpendIntent = {
-      action: 'transfer',
-      amountUsd: 2,
-      toAddress: router,
+    const a = usdcIntent(2, {
       tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       chainId: 8453,
-    }
+    })
     const b = { ...a, chainId: 84532 }
     assert.notEqual(hashAction(a), hashAction(b))
   })
 
   it('rejects calldata swap after issue', () => {
-    const intent: SpendIntent = {
-      action: 'transfer',
-      amountUsd: 2,
-      toAddress: router,
-      calldataHash: '0x' + '11'.repeat(16),
-    }
+    const intent = usdcIntent(2, { calldataHash: '0x' + '11'.repeat(16) })
     const evaluation = evaluateIntent(DEMO_POLICY, intent, freshLedger())
     const receipt = issueAllowReceipt({
       policyId: 'default',
@@ -248,12 +234,7 @@ describe('allow-receipt', () => {
   })
 
   it('ignores reason changes in action digest', () => {
-    const a: SpendIntent = {
-      action: 'transfer',
-      amountUsd: 2,
-      toAddress: router,
-      reason: 'one',
-    }
+    const a = usdcIntent(2, { reason: 'one' })
     const b: SpendIntent = { ...a, reason: 'two' }
     assert.equal(hashAction(a), hashAction(b))
   })

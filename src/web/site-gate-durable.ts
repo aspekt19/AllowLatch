@@ -97,6 +97,11 @@ async function getClient(): Promise<LibsqlClient> {
           n INTEGER NOT NULL,
           reset_at INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS site_packs (
+          pack_key TEXT PRIMARY KEY,
+          credits INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
       `)
       try {
         await client!.execute({ sql: 'PRAGMA busy_timeout = 5000', args: [] })
@@ -437,6 +442,58 @@ export async function durableRateLimit(
   }
   if (n > maxPerWindow) return { ok: false }
   return { ok: true }
+}
+
+function packCreditsPerPurchase(): number {
+  const n = Number(process.env.ALLOWLATCH_CREDITS_PER_X402 || 3)
+  return Number.isFinite(n) && n > 0 ? Math.min(100, Math.floor(n)) : 3
+}
+
+export async function durableGetPackCredits(packKey: string): Promise<number> {
+  const c = await getClient()
+  const rs = await c.execute({
+    sql: 'SELECT credits FROM site_packs WHERE pack_key = ?',
+    args: [packKey],
+  })
+  return Number(rs.rows[0]?.credits ?? 0)
+}
+
+/** After a paid buy_pack — mint fixed credits (client cannot choose the amount). */
+export async function durableAddPackCredits(packKey: string): Promise<{
+  packKey: string
+  added: number
+  credits: number
+}> {
+  const key = packKey.trim()
+  if (key.length < 3) throw new Error('packKey too short')
+  const added = packCreditsPerPurchase()
+  const c = await getClient()
+  const now = Date.now()
+  await c.execute({
+    sql: `INSERT INTO site_packs (pack_key, credits, updated_at) VALUES (?, ?, ?)
+          ON CONFLICT(pack_key) DO UPDATE SET
+            credits = site_packs.credits + excluded.credits,
+            updated_at = excluded.updated_at`,
+    args: [key, added, now],
+  })
+  return { packKey: key, added, credits: await durableGetPackCredits(key) }
+}
+
+/** Burn one prepaid evaluate credit. Returns remaining credits, or null if none. */
+export async function durableTryConsumePackCredit(
+  packKey: string
+): Promise<number | null> {
+  const key = packKey.trim()
+  if (!key) return null
+  const c = await getClient()
+  const now = Date.now()
+  const upd = await c.execute({
+    sql: `UPDATE site_packs SET credits = credits - 1, updated_at = ?
+           WHERE pack_key = ? AND credits > 0`,
+    args: [now, key],
+  })
+  if (Number(upd.rowsAffected) !== 1) return null
+  return durableGetPackCredits(key)
 }
 
 export async function durableHasPolicy(policyId: string): Promise<boolean> {

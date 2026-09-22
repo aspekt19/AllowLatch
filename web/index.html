@@ -427,7 +427,7 @@ const { receipt } = await assertSpend({
             <div class="price-row">
               <div>
                 <h3>x402 gate call</h3>
-                <p>draft · apply · evaluate · explain · execute</p>
+                <p>apply · evaluate · explain · execute — or buy_pack for prepaid checks</p>
               </div>
               <p class="price-figure">$0.025</p>
             </div>
@@ -435,8 +435,9 @@ const { receipt } = await assertSpend({
               <div>
                 <h3>Evaluate pack credits</h3>
                 <p>
-                  Primary meter: native x402 on <code>/api/gate</code> ($0.025). OpenServ <code>buy_evaluate_pack</code> remains an optional fallback.
-                  Client cannot choose the amount. Burn with <code>packKey</code> on evaluate.
+                  Pay once via <code>buy_pack</code> on <code>/api/gate</code> (or OpenServ
+                  <code>buy_evaluate_pack</code>) → fixed credits (default 3). Burn with
+                  <code>packKey</code> on evaluate. Client cannot choose the mint size.
                 </p>
               </div>
               <p class="price-figure">~$0.008/check</p>
@@ -466,9 +467,8 @@ const { receipt } = await assertSpend({
             <p class="eyebrow">Use it here</p>
             <h2 id="gate-title">Try AllowLatch now</h2>
             <p class="section-lead">
-              1) Write a mandate → 2) Apply the draft → 3) <strong>Go live</strong> (stores policy on
-              the server gate + issues real allow-receipts) → 4) Click spend scenarios for live
-              ALLOW / DENY / ESCALATE. No agent required.
+              Three steps: <strong>1)</strong> write a spending rule → <strong>2)</strong> apply it →
+              <strong>3)</strong> Go live. After that your agent cannot move USDC without this gate.
             </p>
             <p class="muted tight" id="gate-health">Checking hosted Gate…</p>
           </div>
@@ -521,7 +521,7 @@ const { receipt } = await assertSpend({
                   </div>
                   <div class="policy-empty" id="policy-empty">
                     <p>No policy yet.</p>
-                    <p class="muted">Send a mandate - SERV drafts limits, allowlists, and escalation.</p>
+                    <p class="muted">Write a rule above, then apply it. Limits stay here — the agent only asks before signing.</p>
                   </div>
                   <div class="policy-live is-hidden" id="policy-live">
                     <p class="policy-name" id="policy-name"></p>

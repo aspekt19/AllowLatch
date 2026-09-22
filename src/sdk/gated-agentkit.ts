@@ -11,6 +11,7 @@ import { SpendIntentSchema, type SpendIntent } from '../policy/schema.js'
 import type { AllowReceipt } from '../billing/receipt.js'
 import { assertSpend } from './assert-spend.js'
 import { PlatformClient } from '@openserv-labs/client'
+import { formatUsdcAtomic, usdcAtomicFromUsd } from '../policy/amount-bind.js'
 
 export type GatedGateConfig =
   | {
@@ -329,11 +330,17 @@ export async function createGatedAgentKit(args?: {
     },
 
     async transfer(input) {
+      const symbol = input.symbol ?? 'USDC'
       const intent = SpendIntentSchema.parse({
         action: 'transfer',
         amountUsd: input.amountUsd,
         toAddress: input.toAddress,
-        symbol: input.symbol ?? 'USDC',
+        symbol,
+        tokenAmount:
+          symbol.toUpperCase() === 'USDC'
+            ? formatUsdcAtomic(usdcAtomicFromUsd(input.amountUsd))
+            : undefined,
+        functionSelector: symbol.toUpperCase() === 'USDC' ? '0xa9059cbb' : undefined,
         reason: input.reason ?? 'gated-agentkit transfer',
         requestId: input.requestId,
       })

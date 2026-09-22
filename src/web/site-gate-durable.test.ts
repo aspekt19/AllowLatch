@@ -29,6 +29,7 @@ const intent = {
   action: 'transfer' as const,
   amountUsd: 4,
   symbol: 'USDC',
+  tokenAmount: '4000000',
   toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
   chainId: 8453,
 }
@@ -86,5 +87,15 @@ describe('durable site gate', () => {
     assert.equal((await durable.durableRateLimit('bucket-a', 2)).ok, true)
     assert.equal((await durable.durableRateLimit('bucket-a', 2)).ok, false)
     assert.equal((await durable.durableRateLimit('bucket-b', 2)).ok, true)
+  })
+
+  it('mints and burns pack credits', async () => {
+    const minted = await durable.durableAddPackCredits('pack-test-1')
+    assert.equal(minted.added, 3)
+    assert.equal(minted.credits, 3)
+    assert.equal(await durable.durableTryConsumePackCredit('pack-test-1'), 2)
+    assert.equal(await durable.durableTryConsumePackCredit('pack-test-1'), 1)
+    assert.equal(await durable.durableTryConsumePackCredit('pack-test-1'), 0)
+    assert.equal(await durable.durableTryConsumePackCredit('pack-test-1'), null)
   })
 })

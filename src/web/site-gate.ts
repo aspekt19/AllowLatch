@@ -465,6 +465,12 @@ export async function siteGateConsume(args: {
   return { ok: true, jti: out.jti, durable: true }
 }
 
+export {
+  durableAddPackCredits as siteGateBuyPack,
+  durableTryConsumePackCredit as siteGateTryConsumePack,
+  durableGetPackCredits as siteGatePackCredits,
+} from './site-gate-durable.js'
+
 export function siteGateConfigured(): boolean {
   return Boolean(sealSecret())
 }

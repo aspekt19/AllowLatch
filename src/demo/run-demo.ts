@@ -36,6 +36,8 @@ const scenarios: { title: string; intent: SpendIntent; commit?: boolean }[] = [
     intent: {
       action: 'transfer',
       amountUsd: 50,
+      symbol: 'USDC',
+      tokenAmount: '50000000',
       toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
       reason: 'Send to router',
     },
@@ -45,6 +47,8 @@ const scenarios: { title: string; intent: SpendIntent; commit?: boolean }[] = [
     intent: {
       action: 'x402_pay',
       amountUsd: 10.5,
+      symbol: 'USDC',
+      tokenAmount: '10500000',
       toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
       reason: 'Pay research API',
     },
@@ -54,6 +58,8 @@ const scenarios: { title: string; intent: SpendIntent; commit?: boolean }[] = [
     intent: {
       action: 'transfer',
       amountUsd: 3,
+      symbol: 'USDC',
+      tokenAmount: '3000000',
       toAddress: '0x000000000000000000000000000000000000dEaD',
       reason: 'Oops wrong address',
     },
@@ -63,6 +69,8 @@ const scenarios: { title: string; intent: SpendIntent; commit?: boolean }[] = [
     intent: {
       action: 'transfer',
       amountUsd: 15,
+      symbol: 'USDC',
+      tokenAmount: '15000000',
       toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
       reason: 'Drain toward lifetime ceiling',
     },

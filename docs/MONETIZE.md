@@ -9,13 +9,14 @@ The **always-on** meter is native **x402 on Vercel** `/api/gate` (Base USDC). Op
 |---------|-------|----------------|
 | Website UI (same-site browser) | Free | Draft / Go live / try ALLOW·DENY·ESCALATE + receipts |
 | **Agent → `/api/gate`** | **$0.025 USDC** x402 on Base | Always-on evaluate + allow-receipt (Origin spoof alone is not free) |
+| **Agent → `buy_pack`** | **$0.025** → default **3** credits | Prepaid evaluates via `packKey` (~$0.008/check). Client cannot choose mint size |
 | OpenServ discover / paywall | **$0.025** x402 | Fallback when site gate fails or `preferOpenServ` |
 | Demo JSON snapshot | Free, watermarked | `enforcement: "demo-only"` — **not** production |
 
 ## Why agents pay
 
 1. **Hosted policy** — change rules without shipping files; mutates require `ownerToken` (browser-side), not the agent Connect pack.
-2. **Ledger + receipts** — daily caps + single-use `jti` (SQLite host is durable; Vercel site gate is session-scoped — see [SECURITY.md](./SECURITY.md)).
+2. **Ledger + receipts** — daily caps + single-use `jti` (Turso on Vercel when configured; SQLite on operator host).
 3. **SERV Copilot** on the operator key (draft/explain).
 4. **Fail-closed clients** — unreachable gate → DENY.
 
@@ -36,7 +37,7 @@ OpenServ x402 (fallback) settles to the OpenServ trigger payout wallet.
 ## Do not
 
 - Market “download JSON and trade all night” as the product.
-- Treat OpenServ `isActive` as proof the paid path works without a successful `payWorkflow`.
-- Call middleware-only “custody-grade” when CDP keys live on an execute path.
+- Treat OpenServ `isActive` / `openserv.isActive` as proof the **site** gate works — check `primary.durable` and a real `/api/gate` call.
+- Call middleware-only “custody-grade” when the agent still holds a raw ungated key (use hybrid Spend Permissions).
 
 See [CONNECT.md](./CONNECT.md) · [HOSTED.md](./HOSTED.md) · [EMBED.md](./EMBED.md).

@@ -84,6 +84,19 @@ export const SpendIntentSchema = z.object({
   slippageBps: z.number().int().nonnegative().optional(),
   /** Estimated gas cost in USD for daily gas cap checks. */
   estimatedGasUsd: z.number().nonnegative().optional(),
+  /**
+   * Token amount in atomic units (string integer). For USDC on Base = 6 decimals.
+   * Required for USDC transfer / x402_pay so amountUsd cannot lie about the spend size.
+   */
+  tokenAmount: z
+    .string()
+    .regex(/^\d+$/, 'tokenAmount must be an integer string of atomic units')
+    .optional(),
+  /** Optional raw calldata — ERC-20 transfer is decoded and bound to amount/to. */
+  calldata: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]*$/, 'calldata must be 0x-hex')
+    .optional(),
   /** 4-byte function selector, e.g. 0xa9059cbb (transfer). */
   functionSelector: z
     .string()

@@ -4,6 +4,7 @@ import {
   type SpendIntent,
   type SpendLedger,
 } from './schema.js'
+import { checkAmountBinding } from './amount-bind.js'
 
 /** Canonical USDC contracts for Base chains (currency=USDC policies). */
 export const USDC_BY_CHAIN = {
@@ -254,6 +255,9 @@ export function evaluateIntent(
       `Slippage ${intent.slippageBps} bps exceeds policy max ${maxSlip} bps.`
     )
   }
+
+  // Bind claimed USD to tokenAmount / ERC-20 transfer calldata (USDC transfers).
+  reasons.push(...checkAmountBinding(policy, intent))
 
   // Bind swap ALLOW to exact calldata so a receipt cannot authorize a mutated router call.
   if (intent.action === 'swap' && !intent.calldataHash?.trim()) {

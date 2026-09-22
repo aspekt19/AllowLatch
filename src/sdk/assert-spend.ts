@@ -105,6 +105,8 @@ export async function assertSpend(args: {
   /** OpenServ x402 trigger URL — fallback / optional marketplace path */
   triggerUrl?: string
   workflowId?: number
+  /** Prepaid pack credits — burn one per evaluate instead of paying $0.025 each time. */
+  packKey?: string
   /** Skip site gate and use OpenServ only */
   preferOpenServ?: boolean
   /** Payer wallet — pays site-gate x402 and/or OpenServ x402 */
@@ -123,11 +125,40 @@ export async function assertSpend(args: {
   const preferOpenServ =
     args.preferOpenServ === true ||
     process.env.ALLOWLATCH_PREFER_OPENSERV === '1'
+  const packKey =
+    args.packKey?.trim() || process.env.ALLOWLATCH_PACK_KEY?.trim() || undefined
 
   let raw: unknown
   let usedSiteGate = false
 
   async function callSiteGate(): Promise<unknown> {
+    if (!privateKey?.trim() && !packKey) {
+      denyClosed(
+        'walletPrivateKey required to pay site-gate x402 ($0.025 USDC on Base), or packKey with prepaid credits'
+      )
+    }
+    const body = {
+      action: 'evaluate' as const,
+      policyId,
+      intent,
+      sessionSeal: args.sessionSeal || process.env.ALLOWLATCH_SESSION_SEAL || undefined,
+      packKey,
+    }
+
+    // Prefer burning a pack credit when available (no wallet needed for that hop).
+    if (packKey) {
+      const creditRes = await fetch(gateUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const creditBody = await creditRes.json()
+      if (creditRes.ok && (creditBody as { ok?: boolean }).ok !== false) {
+        return creditBody
+      }
+      // Fall through to paid path if no credits / 402
+    }
+
     if (!privateKey?.trim()) {
       denyClosed('walletPrivateKey required to pay site-gate x402 ($0.025 USDC on Base)')
     }
@@ -136,7 +167,6 @@ export async function assertSpend(args: {
     let pk = privateKey.trim()
     if (!pk.startsWith('0x')) pk = `0x${pk}`
     const account = privateKeyToAccount(pk as `0x${string}`)
-    // x402-fetch accepts a viem LocalAccount / wallet client; cast for SignerWallet typing.
     const paidFetch = wrapFetchWithPayment(
       fetch,
       account as unknown as Parameters<typeof wrapFetchWithPayment>[1],
@@ -145,25 +175,20 @@ export async function assertSpend(args: {
     const res = await paidFetch(gateUrl, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        action: 'evaluate',
-        policyId,
-        intent,
-        sessionSeal: args.sessionSeal || process.env.ALLOWLATCH_SESSION_SEAL || undefined,
-      }),
+      body: JSON.stringify(body),
     })
-    const body = await res.json()
+    const paidBody = await res.json()
     if (res.status === 402) {
       denyClosed(
-        `site gate payment required/failed: ${JSON.stringify(body).slice(0, 400)}`
+        `site gate payment required/failed: ${JSON.stringify(paidBody).slice(0, 400)}`
       )
     }
-    if (!res.ok || (body as { ok?: boolean }).ok === false) {
+    if (!res.ok || (paidBody as { ok?: boolean }).ok === false) {
       throw new Error(
-        `site gate HTTP ${res.status}: ${String((body as { error?: string }).error || 'error')}`
+        `site gate HTTP ${res.status}: ${String((paidBody as { error?: string }).error || 'error')}`
       )
     }
-    return body
+    return paidBody
   }
 
   async function callOpenServ(): Promise<unknown> {

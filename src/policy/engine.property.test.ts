@@ -41,8 +41,14 @@ const arbIntent: fc.Arbitrary<SpendIntent> = fc
     if (r.action === 'swap') {
       intent.calldataHash = r.calldataHash ?? '0x' + 'cd'.repeat(16)
       intent.contractAddress = r.toAddress
-    } else if (r.calldataHash) {
-      intent.calldataHash = r.calldataHash
+    } else {
+      // USDC-shaped spends must bind atomic amount (policy currency is USDC).
+      const needsBind = !r.symbol || r.symbol === 'USDC'
+      if (needsBind) {
+        intent.tokenAmount = String(Math.round(r.amountUsd * 1e6))
+        if (!r.symbol) intent.symbol = 'USDC'
+      }
+      if (r.calldataHash) intent.calldataHash = r.calldataHash
     }
     if (r.chainId != null) intent.chainId = r.chainId
     return intent

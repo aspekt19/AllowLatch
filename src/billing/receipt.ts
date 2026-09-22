@@ -53,6 +53,7 @@ export function hashAction(intent: SpendIntent): string {
     amountUsd: intent.amountUsd,
     symbol: intent.symbol ? intent.symbol.toUpperCase() : null,
     tokenAddress: intent.tokenAddress?.trim().toLowerCase() ?? null,
+    tokenAmount: intent.tokenAmount?.trim() ?? null,
     toAddress: intent.toAddress?.trim().toLowerCase() ?? null,
     contractAddress: intent.contractAddress?.trim().toLowerCase() ?? null,
     spenderAddress: intent.spenderAddress?.trim().toLowerCase() ?? null,
@@ -60,6 +61,7 @@ export function hashAction(intent: SpendIntent): string {
     networkId: intent.networkId?.trim().toLowerCase() ?? null,
     functionSelector: intent.functionSelector?.toLowerCase() ?? null,
     calldataHash: intent.calldataHash?.trim().toLowerCase() ?? null,
+    calldata: intent.calldata?.trim().toLowerCase() ?? null,
     slippageBps: intent.slippageBps ?? null,
   }
   return createHash('sha256').update(JSON.stringify(canonical)).digest('hex').slice(0, 32)

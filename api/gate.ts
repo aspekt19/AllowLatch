@@ -22,12 +22,15 @@ import {
 import { MandatePolicySchema, SpendIntentSchema } from '../src/policy/schema.js'
 import {
   siteGateApply,
+  siteGateBuyPack,
   siteGateConfigured,
   siteGateConsume,
   siteGateDurable,
   siteGateEvaluate,
+  siteGateTryConsumePack,
 } from '../src/web/site-gate.js'
 import { durableRateLimit } from '../src/web/site-gate-durable.js'
+import { sitePackCreditsPerPurchase } from '../src/web/host-info-data.js'
 import {
   gateProxyConfigured,
   hostApplyPolicy,
@@ -53,6 +56,8 @@ const EvaluateSchema = z.object({
   policyId: z.string().min(1).max(80),
   intent: SpendIntentSchema,
   sessionSeal: z.string().max(50_000).optional(),
+  /** Prepaid evaluate credit from buy_pack — burns 1 instead of paying x402. */
+  packKey: z.string().min(3).max(120).optional(),
 })
 
 const ConsumeSchema = z.object({
@@ -62,10 +67,17 @@ const ConsumeSchema = z.object({
   intent: SpendIntentSchema.optional(),
 })
 
+const BuyPackSchema = z.object({
+  action: z.literal('buy_pack'),
+  /** Payer wallet / client id — credits bind to this key. */
+  packKey: z.string().min(3).max(120),
+})
+
 const BodySchema = z.discriminatedUnion('action', [
   ApplySchema,
   EvaluateSchema,
   ConsumeSchema,
+  BuyPackSchema,
 ])
 
 function backend(): 'site' | 'openserv' {
@@ -124,13 +136,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               amountUsd: SITE_GATE_PRICE_USD,
               freeForWebsiteOrigin: true,
               facilitator: x402FacilitatorConfigured(),
+              creditsPerPack: sitePackCreditsPerPurchase(),
+              buyPack: 'POST action=buy_pack + packKey (paid) then evaluate with packKey',
             }
           : { via: 'openserv' },
       note:
         mode === 'openserv'
           ? 'POST apply|evaluate via OpenServ x402 (fallback)'
           : durable
-            ? 'POST apply|evaluate|consume — Turso durable ledger (multi-instance safe). Browser same-site free; agents pay $0.025 USDC x402.'
+            ? 'POST apply|evaluate|consume|buy_pack — Turso durable ledger. Browser same-site free; agents pay $0.025 or burn pack credits (~$0.008/check).'
             : 'POST apply|evaluate — memory+sessionSeal (demo). Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402.',
     })
     return
@@ -212,6 +226,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let settlement: string | undefined
+  let packCreditsRemaining: number | null = null
+  let paidVia: 'free' | 'x402' | 'pack' = 'free'
   if (mode === 'site') {
     const host =
       (typeof req.headers['x-forwarded-host'] === 'string'
@@ -224,19 +240,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? req.headers['x-forwarded-proto']
         : 'https'
     const resource = `${proto}://${host}/api/gate`
-    const paid = await enforceSiteGateX402({
-      origin,
-      headers: req.headers as Record<string, unknown>,
-      resource,
-    })
-    if (!paid.ok) {
-      res.status(paid.status).json(paid.body)
-      return
+
+    const packKey =
+      body.action === 'evaluate' || body.action === 'buy_pack'
+        ? body.packKey?.trim()
+        : undefined
+
+    if (body.action === 'evaluate' && packKey && siteGateDurable()) {
+      const remaining = await siteGateTryConsumePack(packKey)
+      if (remaining != null) {
+        packCreditsRemaining = remaining
+        paidVia = 'pack'
+      }
     }
-    settlement = paid.settlement
+
+    if (paidVia !== 'pack') {
+      const paid = await enforceSiteGateX402({
+        origin,
+        headers: req.headers as Record<string, unknown>,
+        resource,
+      })
+      if (!paid.ok) {
+        res.status(paid.status).json({
+          ...paid.body,
+          ...(packKey
+            ? {
+                hint: 'No pack credits for packKey — call buy_pack ($0.025) or pay this evaluate',
+                packKey,
+              }
+            : {}),
+        })
+        return
+      }
+      settlement = paid.settlement
+      paidVia = paid.free ? 'free' : 'x402'
+    }
   }
 
   try {
+    if (body.action === 'buy_pack') {
+      if (mode !== 'site' || !siteGateDurable()) {
+        res.status(400).json({
+          ok: false,
+          error: 'buy_pack requires durable site gate (Turso)',
+        })
+        return
+      }
+      if (paidVia !== 'x402') {
+        res.status(402).json({
+          ok: false,
+          error: 'buy_pack requires $0.025 USDC x402 payment (not free Origin, not pack credits)',
+          priceUsd: String(SITE_GATE_PRICE_USD),
+        })
+        return
+      }
+      const minted = await siteGateBuyPack(body.packKey)
+      res.status(200).json({
+        ok: true,
+        action: 'buy_pack',
+        backend: 'site',
+        ...minted,
+        priceUsd: String(SITE_GATE_PRICE_USD),
+        settlement: settlement ?? null,
+        note: `Each paid buy_pack grants ${minted.added} evaluate credits. Pass packKey on evaluate to burn one.`,
+      })
+      return
+    }
+
     if (body.action === 'apply') {
       const policy = MandatePolicySchema.parse({
         ...body.policy,
@@ -293,7 +363,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         intent: body.intent,
       })
       res.status(200).json({
-        ok: true,
         action: 'consume',
         backend: 'site',
         ...consumed,
@@ -319,7 +388,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         receipt: evaluated.receipt,
         sessionSeal: evaluated.sessionSeal,
         durable: evaluated.durable,
-        priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        packCreditsRemaining,
+        paidVia,
+        priceUsd:
+          paidVia === 'x402'
+            ? String(SITE_GATE_PRICE_USD)
+            : paidVia === 'pack'
+              ? '0'
+              : '0',
         settlement: settlement ?? null,
       })
       return

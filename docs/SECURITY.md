@@ -96,6 +96,8 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 | Freshness (demo) | Monotonic `seq` rejects rolling the ledger back when this process already has a newer seal |
 | Multi-instance races | **Fixed in durable mode** via `seq` compare-and-swap. In demo mode two concurrent evaluates on different isolates can both ALLOW against the same old seal |
 | Free website calls | Same-site browser `Sec-Fetch-*` + allowlisted Origin — **UX convenience**, not a cryptographic paywall. Agents without those signals pay x402 |
+| Prepaid packs | `POST action=buy_pack` (paid $0.025) mints a fixed credit count (default 3). `evaluate` with `packKey` burns one credit instead of paying again. Client cannot choose mint size |
+| Amount binding | USDC `transfer` / `x402_pay` require `tokenAmount` (6-decimal atomic) or ERC-20 `transfer` calldata that matches `amountUsd` — claimed USD alone is not enough |
 | Receipt secret | Prefer dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is supported for ops continuity but is poor secret hygiene |
 | Budget vs settlement | On ALLOW the daily/lifetime ledger is reserved when the receipt is issued (conservative). Durable `consume` marks `jti` settled for replay protection at the execute boundary |
 
@@ -116,6 +118,7 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 | Fake USDC / ticker spoof | `tokenAddress` + canonical USDC check; token allowlists |
 | Wrong chain | `chainId` / `networkId` vs policy.chain; receipt `chain` field |
 | Mutated swap calldata | Required `calldataHash`; receipt echo; verify before external submit |
+| Lying `amountUsd` on USDC transfer | Require matching `tokenAmount` (atomic) or decoded ERC-20 transfer calldata |
 | Gate outage | Fail-closed client; no fail-open local bypass for live funds |
 | Forged `apply_policy` | `ownerToken` and/or EIP-712 `ownerSig` over `policyHash`; optional `ALLOWLATCH_REQUIRE_OWNER_SIG` |
 | Spoofed free Origin | Free path also checks browser `Sec-Fetch-Site`; agents still 402 without payment |
