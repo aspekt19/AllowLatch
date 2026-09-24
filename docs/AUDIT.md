@@ -11,9 +11,10 @@ AllowLatch has **not** completed a third-party security audit. Use this before p
 - [ ] Production `/api/gate`: set `ALLOWLATCH_TURSO_DATABASE_URL` (+ auth token) so `GET /api/gate` reports `durable: true`
 - [ ] `ALLOWLATCH_ENFORCEMENT=hybrid` + synced Spend Permission for live USDC
 - [ ] Tenant: `ownerToken` and/or EIP-712 `ownerSig`; consider `ALLOWLATCH_REQUIRE_OWNER_SIG=1`
-- [ ] Secrets rotated: `ALLOWLATCH_RECEIPT_SECRET`, `ALLOWLATCH_OPERATOR_TOKEN`, CDP
+- [ ] **`ALLOWLATCH_RECEIPT_SECRET` required in production** (no `SERV_API_KEY` fallback); rotate with CDP / operator tokens
 - [ ] Host keep-alive ([HOSTED.md](./HOSTED.md)); clients fail-closed on outage
-- [ ] Hot wallet only; lifetime budget set; emergency stop tested
+- [ ] Hot wallet only; lifetime budget set; emergency stop tested; swaps off unless calldata adapter exists
+- [ ] Durable evaluate requires latest `sessionSeal` (policyId alone is not a spender credential)
 
 ## External audit (recommended before scale)
 

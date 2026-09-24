@@ -20,7 +20,7 @@ This document is the public threat model and production checklist. For architect
 
 1. **Create** policy → require `ownerId`; host returns one-time `ownerToken` (store client-side).
 2. **Update** policy / sync wallet / read claimed policy / reset day ledger → require `ownerToken` or operator.
-3. **Evaluate / execute** → `policyId` only (spender path). Prefer unguessable `policyId`s.
+3. **Evaluate** (spender path) → `policyId` **+** valid `sessionSeal` on durable Turso gate (seal advances with ledger `seq`). Memory demo mode also requires the latest seal. Prefer unguessable `policyId`s; seal is the spender capability.
 4. **Lifetime budget** never resets via public tools. `reset_daily_ledger` clears day/hour only.
 5. **Pack credits** — client cannot choose mint size; each paid `buy_evaluate_pack` grants a fixed credit amount.
 
@@ -45,7 +45,7 @@ This document is the public threat model and production checklist. For architect
 | `ALLOWLATCH_OPERATOR_TOKEN` | Operator bypass |
 | `ALLOWLATCH_REQUIRE_OWNER_SIG=1` | Require EIP-712 on every mutate |
 
-Spenders with only `policyId` can evaluate/execute — they **cannot** rewrite limits without owner token or valid owner sig.
+Spenders need `policyId` **and** a valid `sessionSeal` to evaluate on the durable site gate — they **cannot** rewrite limits without owner token or valid owner sig.
 
 ## What the receipt binds
 
@@ -115,17 +115,18 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 | Over spend / loops | Per-order, daily, lifetime, hourly velocity, optional gas day cap (UTC ledger) |
 | Receipt replay | Single-use `jti` in SQLite; consume at execute |
 | Prompt injection into mandate | SERV multipath / prompt_guard / shadow; human confirm draft before apply |
-| Fake USDC / ticker spoof | `tokenAddress` + canonical USDC check; token allowlists |
-| Wrong chain | `chainId` / `networkId` vs policy.chain; receipt `chain` field |
-| Mutated swap calldata | Required `calldataHash`; receipt echo; verify before external submit |
+| Fake USDC / ticker spoof | `tokenAddress` **required** for USDC transfer/x402; must match canonical Base USDC |
+| Wrong chain | `chainId` / `networkId` vs policy.chain; receipt `chain` field; SDK sets Base chainId on transfer |
+| Mutated swap calldata | Swaps **off by default** (`allowSwap: false`). When enabled: required `calldataHash` + `slippageBps` if `maxSlippageBps` set |
 | Lying `amountUsd` on USDC transfer | Require matching `tokenAmount` (atomic) or decoded ERC-20 transfer calldata |
+| Budget DoS via leaked `policyId` | Durable evaluate requires latest `sessionSeal` (HMAC + matching `seq`) |
 | Gate outage | Fail-closed client; no fail-open local bypass for live funds |
 | Forged `apply_policy` | `ownerToken` and/or EIP-712 `ownerSig` over `policyHash`; optional `ALLOWLATCH_REQUIRE_OWNER_SIG` |
 | Spoofed free Origin | Free path also checks browser `Sec-Fetch-Site`; agents still 402 without payment |
-| Stale `sessionSeal` replay | Monotonic `seq` on site gate (same isolate); durable store still required for multi-instance |
+| Stale `sessionSeal` replay | Monotonic `seq` on site gate (memory + durable); client must use latest seal after each evaluate |
 | API abuse | HTTP Bearer off-loopback; CORS + rate limits. Site gate counts limits in Turso (shared across isolates) and keys them by `x-vercel-forwarded-for` so a spoofed `X-Forwarded-For` does not rotate the bucket |
 
-Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. Pair with hybrid Spend Permissions and a low-balance hot wallet.
+Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions and a low-balance hot wallet. Swaps stay off until a router adapter can bind real calldata notional.
 
 ## Production checklist
 
@@ -137,14 +138,15 @@ Before putting meaningful balance behind AllowLatch:
 4. [ ] Receipt binds chain, recipient, amount, asset/token, and (for swaps) calldata hash.
 5. [ ] Daily ledger rolls on UTC day boundaries; lifetime never resets via public APIs (`reset_daily_ledger` only).
 6. [ ] Policy apply requires `ownerId` + returned `ownerToken` (or operator token); no silent cross-tenant mutate.
-7. [ ] Token rules use contract addresses where possible; USDC matches canonical Base contract.
-8. [ ] Adversarial swap/approve calldata tested (selector + calldataHash).
+7. [ ] USDC transfer/x402 always includes canonical `tokenAddress` (engine denies without it).
+8. [ ] `allowSwap` stays false unless a protocol-specific adapter binds amount/slippage from calldata.
 9. [ ] Audit log correlates intent → decision → receipt `jti` → tx hash (scoped by policyId + ownerToken).
 10. [ ] `risk.emergencyStop` (or equivalent kill switch) tested.
-11. [ ] Separate hot wallet with minimal USDC; rotate `ALLOWLATCH_RECEIPT_SECRET` / CDP / `ALLOWLATCH_OPERATOR_TOKEN`.
+11. [ ] Separate hot wallet with minimal USDC; **`ALLOWLATCH_RECEIPT_SECRET` required in production** (no SERV_API_KEY fallback).
 12. [ ] Prefer / keep `hybrid` enforcement + synced Spend Permission for live execute (default mode).
 13. [ ] Prefer EIP-712 `ownerSig` on apply (or keep `ownerToken` secret); enable `ALLOWLATCH_REQUIRE_OWNER_SIG` for high-value tenants.
 14. [ ] `buy_evaluate_pack` ignores client credit amounts; credits bound to paid x402 calls.
+15. [ ] Durable evaluate rejects missing/stale `sessionSeal` (policyId alone is not enough).
 
 ## Reporting
 

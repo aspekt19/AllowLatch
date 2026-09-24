@@ -187,7 +187,7 @@ function buildAgentInstruction(): string {
     'Required enforcement (do not skip):',
     '1) npm i allowlatch@^0.2.2',
     '2) Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })',
-    '   so the signer path cannot bypass the latch. hybrid Spend Permissions when available.',
+    '   so spends go through AllowLatch before signing. Prefer hybrid Spend Permissions; middleware ≠ custody.',
     '3) Never call a raw wallet / CDP transfer in parallel with the gated path.',
     '',
     'assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent }) alone is ADVISORY only —',
@@ -215,7 +215,7 @@ const POLICY_ID = ${JSON.stringify(policyId)}
 const GATE_URL = process.env.ALLOWLATCH_GATE_URL || ${JSON.stringify(`${location.origin}/api/gate`)}
 const SESSION_SEAL = process.env.ALLOWLATCH_SESSION_SEAL || ${JSON.stringify(seal)}
 
-// Required: gate baked into the signer — chat-only assertSpend is advisory only
+// Required: route spends through AllowLatch — chat-only assertSpend is advisory only
 const agent = await createGatedAgentKit({
   policyId: POLICY_ID,
   gate: {

@@ -188,8 +188,22 @@ export function evaluateIntent(
   if (!token && allowedTokens.length > 0) {
     reasons.push('tokenAddress required when a token-contract allowlist is active.')
   }
-  // Symbol USDC must bind to the canonical Base USDC contract when tokenAddress is set.
-  if (token && symbol === 'USDC') {
+  // USDC transfer / x402 must bind to the canonical Base USDC contract (symbol alone is not enough).
+  const usdcSpend =
+    (intent.action === 'transfer' || intent.action === 'x402_pay') &&
+    (symbol === 'USDC' || (!symbol && policy.currency === 'USDC'))
+  if (usdcSpend) {
+    const expectedUsdc = USDC_BY_CHAIN[policy.chain]
+    if (!token) {
+      reasons.push(
+        `tokenAddress required for USDC ${intent.action} (canonical ${policy.chain} USDC ${expectedUsdc}).`
+      )
+    } else if (token !== expectedUsdc) {
+      reasons.push(
+        `tokenAddress ${intent.tokenAddress} is not the canonical USDC for ${policy.chain} (${expectedUsdc}).`
+      )
+    }
+  } else if (token && symbol === 'USDC') {
     const expectedUsdc = USDC_BY_CHAIN[policy.chain]
     if (token !== expectedUsdc) {
       reasons.push(
@@ -245,15 +259,16 @@ export function evaluateIntent(
   }
 
   const maxSlip = policy.risk?.maxSlippageBps
-  if (
-    intent.action === 'swap' &&
-    maxSlip != null &&
-    intent.slippageBps != null &&
-    intent.slippageBps > maxSlip
-  ) {
-    reasons.push(
-      `Slippage ${intent.slippageBps} bps exceeds policy max ${maxSlip} bps.`
-    )
+  if (intent.action === 'swap' && maxSlip != null) {
+    if (intent.slippageBps == null) {
+      reasons.push(
+        `slippageBps required when policy maxSlippageBps is set (${maxSlip} bps).`
+      )
+    } else if (intent.slippageBps > maxSlip) {
+      reasons.push(
+        `Slippage ${intent.slippageBps} bps exceeds policy max ${maxSlip} bps.`
+      )
+    }
   }
 
   // Bind claimed USD to tokenAmount / ERC-20 transfer calldata (USDC transfers).

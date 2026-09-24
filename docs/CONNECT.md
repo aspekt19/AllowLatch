@@ -47,7 +47,9 @@ await agent.transfer({
 })
 ```
 
-**`assertSpend` alone is advisory** — it checks the gate, but does **not** remove a raw AgentKit/CDP signer. Prefer `createGatedAgentKit` so the agent cannot bypass the latch. Hybrid Spend Permissions when configured.
+**`assertSpend` alone is advisory** — it checks the gate, but does **not** remove a raw AgentKit/CDP signer. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing. Hybrid Spend Permissions when configured (middleware alone is not custody-grade).
+
+Durable evaluate requires the latest `sessionSeal` (not `policyId` alone). `createGatedAgentKit` refreshes the seal after each evaluate.
 
 Public card: `GET https://allowlatch.vercel.app/api/host-info` → prefer `primary` (durable site gate); `openserv.isActive` is fallback-only.
 
@@ -55,7 +57,7 @@ Live case (SERV + paid gate): https://allowlatch.vercel.app/#case
 
 ## Operator
 
-- Vercel needs dedicated `ALLOWLATCH_RECEIPT_SECRET`, `CDP_API_KEY_ID` / `CDP_API_KEY_SECRET` + `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO`
+- Operator: Vercel needs dedicated `ALLOWLATCH_RECEIPT_SECRET` (required in production — no `SERV_API_KEY` fallback), `CDP_API_KEY_ID` / `CDP_API_KEY_SECRET` + `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO`
 - OpenServ host (`npm run deploy:host`) is **optional fallback** only — see [HOSTED.md](./HOSTED.md)
 
 Monetization: [MONETIZE.md](./MONETIZE.md) · Embed: [EMBED.md](./EMBED.md) · Security: [SECURITY.md](./SECURITY.md)

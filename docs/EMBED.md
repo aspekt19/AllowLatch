@@ -36,7 +36,7 @@ Local `npm run http:gate` is optional for **offline development** — not the en
 **Keep your agent.** Replace raw transfers with the gated kit:
 
 1. Scaffold / keep AgentKit + CDP  
-2. Wire `createGatedAgentKit({ gate: { kind: 'site', … } })` so spends cannot bypass AllowLatch  
+2. Wire `createGatedAgentKit({ gate: { kind: 'site', … } })` so spends route through AllowLatch before signing  
 3. Apply a mandate once (demo UI **Go live** / Connect pack)
 
 Default host enforcement is **hybrid** (on-chain Spend Permissions when configured). See [WALLET_NATIVE.md](./WALLET_NATIVE.md).

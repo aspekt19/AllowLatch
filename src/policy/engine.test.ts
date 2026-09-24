@@ -9,7 +9,7 @@ process.env.ALLOWLATCH_TENANT_AUTH = '0'
 process.env.ALLOWLATCH_RECEIPT_SECRET = 'test-secret-allowlatch'
 
 import { DEMO_POLICY, type SpendIntent } from './schema.js'
-import { commitIntent, evaluateIntent, freshLedger } from './engine.js'
+import { commitIntent, evaluateIntent, freshLedger, USDC_BY_CHAIN } from './engine.js'
 import {
   hashAction,
   issueAllowReceipt,
@@ -22,6 +22,11 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const router = '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD'
+const SWAP_POLICY = {
+  ...DEMO_POLICY,
+  actions: { ...DEMO_POLICY.actions, allowSwap: true },
+  risk: { ...DEMO_POLICY.risk, maxSlippageBps: 100 },
+}
 
 /** USDC transfer/x402 helper — amountUsd alone is not binding. */
 function usdcIntent(
@@ -32,6 +37,7 @@ function usdcIntent(
     action: extra.action ?? 'transfer',
     amountUsd,
     symbol: 'USDC',
+    tokenAddress: USDC_BY_CHAIN.base,
     tokenAmount: String(Math.round(amountUsd * 1e6)),
     toAddress: router,
     ...extra,
@@ -39,7 +45,7 @@ function usdcIntent(
 }
 
 describe('evaluateIntent', () => {
-  it('allows a small swap under caps', () => {
+  it('allows a small swap under caps when allowSwap is enabled', () => {
     const intent: SpendIntent = {
       action: 'swap',
       amountUsd: 8,
@@ -47,20 +53,38 @@ describe('evaluateIntent', () => {
       toAddress: router,
       contractAddress: router,
       calldataHash: '0x' + 'cd'.repeat(16),
+      slippageBps: 50,
     }
-    const r = evaluateIntent(DEMO_POLICY, intent, freshLedger())
+    const r = evaluateIntent(SWAP_POLICY, intent, freshLedger())
     assert.equal(r.decision, 'allow')
+  })
+
+  it('denies swap when allowSwap is false (default)', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      {
+        action: 'swap',
+        amountUsd: 5,
+        symbol: 'ETH',
+        toAddress: router,
+        calldataHash: '0x' + 'cd'.repeat(16),
+      },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /disabled/i)
   })
 
   it('denies meme symbol', () => {
     const r = evaluateIntent(
-      DEMO_POLICY,
+      SWAP_POLICY,
       {
         action: 'swap',
         amountUsd: 5,
         symbol: 'PEPE',
         toAddress: router,
         calldataHash: '0x' + 'cd'.repeat(16),
+        slippageBps: 50,
       },
       freshLedger()
     )
@@ -69,12 +93,44 @@ describe('evaluateIntent', () => {
 
   it('denies swap without calldataHash', () => {
     const r = evaluateIntent(
-      DEMO_POLICY,
-      { action: 'swap', amountUsd: 5, symbol: 'ETH', toAddress: router },
+      SWAP_POLICY,
+      { action: 'swap', amountUsd: 5, symbol: 'ETH', toAddress: router, slippageBps: 50 },
       freshLedger()
     )
     assert.equal(r.decision, 'deny')
     assert.match(r.reasons.join(' '), /calldataHash/i)
+  })
+
+  it('denies swap without slippageBps when maxSlippageBps is set', () => {
+    const r = evaluateIntent(
+      SWAP_POLICY,
+      {
+        action: 'swap',
+        amountUsd: 5,
+        symbol: 'ETH',
+        toAddress: router,
+        calldataHash: '0x' + 'cd'.repeat(16),
+      },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /slippageBps required/i)
+  })
+
+  it('denies USDC transfer without tokenAddress', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      {
+        action: 'transfer',
+        amountUsd: 2,
+        symbol: 'USDC',
+        tokenAmount: '2000000',
+        toAddress: router,
+      },
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /tokenAddress required/i)
   })
 
   it('escalates above human threshold', () => {
@@ -125,7 +181,13 @@ describe('evaluateIntent', () => {
   it('denies USDC transfer without tokenAmount binding', () => {
     const r = evaluateIntent(
       DEMO_POLICY,
-      { action: 'transfer', amountUsd: 2, symbol: 'USDC', toAddress: router },
+      {
+        action: 'transfer',
+        amountUsd: 2,
+        symbol: 'USDC',
+        tokenAddress: USDC_BY_CHAIN.base,
+        toAddress: router,
+      },
       freshLedger()
     )
     assert.equal(r.decision, 'deny')

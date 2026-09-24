@@ -12,6 +12,8 @@ export type AssertSpendResult = {
   decision: 'allow' | 'deny' | 'escalate'
   evaluation: unknown
   receipt: AllowReceipt | null
+  /** Latest site-gate seal — durable evaluate requires clients to advance with seq. */
+  sessionSeal?: string
   raw: unknown
 }
 
@@ -352,7 +354,16 @@ export async function assertSpend(args: {
     if (!verified) denyClosed(`invalid allow-receipt: ${lastErr}`)
   }
 
-  return { decision, evaluation: decisionSource, receipt, raw }
+  const nextSeal =
+    typeof parsed.sessionSeal === 'string' ? parsed.sessionSeal : undefined
+
+  return {
+    decision,
+    evaluation: decisionSource,
+    receipt,
+    sessionSeal: nextSeal,
+    raw,
+  }
 }
 
 export { verifyAllowReceipt }

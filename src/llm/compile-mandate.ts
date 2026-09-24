@@ -42,11 +42,12 @@ const POLICY_RULES = `MandatePolicy constraints:
 - risk.maxSlippageBps when mandate mentions slippage; risk.emergencyStop only if owner says pause/stop all spends
 - agentWalletBudgetUsd is a HARD lifetime ledger ceiling (not soft metadata)
 - requireHumanConfirmAboveUsd ≤ maxPerOrderUsd; if "ask above $X", use X; else slightly below maxPerOrderUsd
-- Defaults if omitted: agentWalletBudgetUsd 200, maxNotionalUsdPerDay 40, maxPerOrderUsd 10, maxTransactionsPerHour 20; actions true unless forbidden
+- Defaults if omitted: agentWalletBudgetUsd 200, maxNotionalUsdPerDay 40, maxPerOrderUsd 10, maxTransactionsPerHour 20; allowSwap=false unless the mandate allows swaps; allowTransfer/allowX402Pay true unless forbidden
 - Prefer tighter limits when ambiguous; leave arrays empty rather than guessing
 - Preserve fractional dollar amounts exactly (e.g. $0.10 → 0.1, not 10)
 - If wallet budget is stated but no daily cap, set maxNotionalUsdPerDay = agentWalletBudgetUsd
-- "only transfer" / "no swaps" / "no other contracts" → allowSwap=false, allowX402Pay=false`
+- "only transfer" / "no swaps" / "no other contracts" → allowSwap=false, allowX402Pay=false
+- Swaps stay off unless the mandate clearly allows them — AllowLatch does not claim calldata-level swap notional binding yet`
 
 export const DRAFT_SYSTEM_PROMPT = `You are AllowLatch Policy Copilot for AI agent wallets on Base (USDC).
 

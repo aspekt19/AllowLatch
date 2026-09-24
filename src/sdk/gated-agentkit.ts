@@ -19,6 +19,7 @@ import type { AllowReceipt } from '../billing/receipt.js'
 import { assertSpend } from './assert-spend.js'
 import { PlatformClient } from '@openserv-labs/client'
 import { formatUsdcAtomic, usdcAtomicFromUsd } from '../policy/amount-bind.js'
+import { CHAIN_IDS, USDC_BY_CHAIN } from '../policy/engine.js'
 
 export type GatedGateConfig =
   | {
@@ -84,11 +85,11 @@ export type GatedSpendResult = {
   raw: unknown
 }
 
-const SYSTEM_PROMPT = `You are an AgentKit agent with AllowLatch baked in.
+const SYSTEM_PROMPT = `You are an AgentKit agent with AllowLatch on the spend path.
 - Non-spend tasks: do them normally.
-- Any transfer / swap / x402 payment: you MUST go through AllowLatch (gated transfer). Never call raw wallet sign / CDP transfer yourself.
-- If no spending policy is set yet, refuse to spend and ask the owner to apply a mandate (AllowLatch UI, apply_policy, or POST /v1/policies).
-- On DENY: stop. On ESCALATE: ask the human. On ALLOW: only proceed with a valid allow-receipt.`
+- Any transfer / swap / x402 payment: call createGatedAgentKit / assertSpend first. Do not invent ALLOW.
+- Site gate (kind: site): ALLOW + receipt means authorization — then sign only that intent (prefer hybrid Spend Permissions). Middleware is not custody if a raw key still exists.
+- On DENY / timeout: stop. On ESCALATE: ask the human (never set humanApproved yourself).`
 
 function httpHeaders(gate: Extract<GatedGateConfig, { kind: 'http' }>): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -337,17 +338,22 @@ export async function createGatedAgentKit(args?: {
     },
 
     async transfer(input) {
-      const symbol = input.symbol ?? 'USDC'
+      const symbol = (input.symbol ?? 'USDC').toUpperCase()
+      const chain = 'base' as const
       const intent = SpendIntentSchema.parse({
         action: 'transfer',
         amountUsd: input.amountUsd,
         toAddress: input.toAddress,
         symbol,
+        tokenAddress:
+          symbol === 'USDC' ? USDC_BY_CHAIN[chain] : undefined,
         tokenAmount:
-          symbol.toUpperCase() === 'USDC'
+          symbol === 'USDC'
             ? formatUsdcAtomic(usdcAtomicFromUsd(input.amountUsd))
             : undefined,
-        functionSelector: symbol.toUpperCase() === 'USDC' ? '0xa9059cbb' : undefined,
+        functionSelector: symbol === 'USDC' ? '0xa9059cbb' : undefined,
+        chainId: CHAIN_IDS[chain],
+        networkId: chain,
         reason: input.reason ?? 'gated-agentkit transfer',
         requestId: input.requestId,
       })
@@ -376,11 +382,14 @@ export async function createGatedAgentKit(args?: {
         if (asserted.decision !== 'allow') {
           throw new Error(`AllowLatch ${asserted.decision}: refuse to sign`)
         }
+        if (asserted.sessionSeal) {
+          gate.sessionSeal = asserted.sessionSeal
+        }
         return {
           decision: 'allow',
           executed: false,
           message:
-            'ALLOW + receipt verified via site gate. Sign externally only with this receipt (prefer hybrid Spend Permissions).',
+            'ALLOW + receipt verified via site gate. Sign only this intent externally (or use hybrid Spend Permissions). Middleware alone is not custody-grade if a raw signer remains.',
           receipt: asserted.receipt,
           raw: asserted.raw,
         }

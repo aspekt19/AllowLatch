@@ -499,3 +499,20 @@ export async function durableTryConsumePackCredit(
 export async function durableHasPolicy(policyId: string): Promise<boolean> {
   return Boolean(await loadRow(policyId))
 }
+
+/** Read policy row (seq / owner / policy) for seal checks — no mutation. */
+export async function durablePeekPolicy(policyId: string): Promise<{
+  policyId: string
+  ownerId: string
+  policy: MandatePolicy
+  seq: number
+} | null> {
+  const row = await loadRow(policyId)
+  if (!row) return null
+  return {
+    policyId: row.policyId,
+    ownerId: row.ownerId,
+    policy: row.policy,
+    seq: row.seq,
+  }
+}

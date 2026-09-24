@@ -28,7 +28,7 @@ Wallet SDKs (including AgentKit) do not by themselves enforce spend caps, destin
 
 ## Goal
 
-Give the owner of a financial agent a way to say **how money may be spent**, keep those rules maintainable in plain language, and ensure the agent cannot bypass them via prompting or mistakes.
+Give the owner of a financial agent a way to say **how money may be spent**, keep those rules maintainable in plain language, and ensure prompting alone cannot invent ALLOW (pair with createGatedAgentKit + hybrid Spend Permissions for stronger enforcement).
 
 ---
 

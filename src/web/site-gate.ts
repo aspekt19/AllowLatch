@@ -21,6 +21,7 @@ import {
   durableApply,
   durableConsume,
   durableEvaluate,
+  durablePeekPolicy,
   tursoConfigured,
 } from './site-gate-durable.js'
 
@@ -41,13 +42,19 @@ let warnedServFallback = false
 function sealSecret(): string {
   const dedicated = process.env.ALLOWLATCH_RECEIPT_SECRET?.trim()
   if (dedicated) return dedicated
+  const isProd =
+    process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+  if (isProd) {
+    throw new Error(
+      'ALLOWLATCH_RECEIPT_SECRET required in production (do not reuse SERV_API_KEY for session seals)'
+    )
+  }
   const serv = process.env.SERV_API_KEY?.trim()
   if (serv) {
     if (!warnedServFallback) {
       warnedServFallback = true
       console.warn(
-        '[site-gate] ALLOWLATCH_RECEIPT_SECRET unset — falling back to SERV_API_KEY. ' +
-          'Set a dedicated receipt secret in production (do not reuse Reasoning keys).'
+        '[site-gate] ALLOWLATCH_RECEIPT_SECRET unset — falling back to SERV_API_KEY (dev only).'
       )
     }
     return serv
@@ -363,51 +370,54 @@ export async function siteGateEvaluate(args: {
   durable: boolean
 }> {
   if (tursoConfigured()) {
+    if (!args.sessionSeal?.trim()) {
+      throw new Error(
+        'sessionSeal required for durable evaluate — use the seal from Go live / apply (policyId alone is not a spender credential)'
+      )
+    }
+    const sealed = decodeSessionSeal(args.sessionSeal)
+    if (!sealed) {
+      throw new Error('invalid or expired sessionSeal')
+    }
+    if (sealed.policyId !== args.policyId) {
+      throw new Error('sessionSeal policyId mismatch')
+    }
+    const existing = await durablePeekPolicy(args.policyId)
+    if (!existing) {
+      throw new Error(
+        `Unknown policyId "${args.policyId}" on durable site gate — Go live again or apply first`
+      )
+    }
+    if (sealed.seq !== existing.seq) {
+      throw new Error(
+        'stale sessionSeal (ledger moved forward) — use the latest seal from the previous evaluate response'
+      )
+    }
+
     const evaluated = await durableEvaluate({
       policyId: args.policyId,
       intent: args.intent,
     })
+    // Re-read seq after evaluate (parallel allow may have advanced the ledger).
+    const after = (await durablePeekPolicy(args.policyId)) ?? existing
     const known = sessions.get(args.policyId)
-    const sealed = decodeSessionSeal(args.sessionSeal)
-    const placeholderPolicy = MandatePolicySchema.parse({
-      version: '1.0',
-      name: 'durable',
-      chain: 'base',
-      currency: 'USDC',
-      capital: {
-        agentWalletBudgetUsd: 0,
-        maxNotionalUsdPerDay: 1,
-        maxPerOrderUsd: 1,
-        maxTransactionsPerHour: 1,
-      },
-      universe: {
-        allowedSymbols: [],
-        deniedSymbols: [],
-        allowedAddresses: [],
-        deniedAddresses: [],
-        allowedContracts: [],
-        deniedContracts: [],
-        allowedTokenAddresses: [],
-        deniedTokenAddresses: [],
-        allowedFunctionSelectors: [],
-        deniedFunctionSelectors: [],
-      },
-      actions: { allowSwap: false, allowTransfer: true, allowX402Pay: false },
-      risk: { emergencyStop: false },
-      escalation: { requireHumanConfirmAboveUsd: 0 },
-    })
     const sealSession: Session = known
-      ? { ...known, seq: evaluated.seq, updatedAt: Date.now() }
-      : {
-          policyId: args.policyId,
-          ownerId: sealed?.ownerId || 'durable',
-          ownerToken: `durable:${args.policyId}`,
-          policy: placeholderPolicy,
-          ledger: freshLedger(),
-          seq: evaluated.seq,
+      ? {
+          ...known,
+          policy: after.policy,
+          seq: after.seq,
           updatedAt: Date.now(),
         }
-    if (known) sessions.set(args.policyId, sealSession)
+      : {
+          policyId: args.policyId,
+          ownerId: sealed.ownerId || after.ownerId || 'durable',
+          ownerToken: `durable:${args.policyId}`,
+          policy: after.policy,
+          ledger: freshLedger(),
+          seq: after.seq,
+          updatedAt: Date.now(),
+        }
+    sessions.set(args.policyId, sealSession)
     return {
       ok: true,
       mode: 'site-gate',

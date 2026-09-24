@@ -39,7 +39,8 @@ await agent.transfer({ toAddress, amountUsd })
 
 `assertSpend` alone is **advisory** — it does not remove a raw AgentKit/CDP signer.
 
-ALLOW + receipt → sign. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
+ALLOW + receipt → may sign that intent. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
+`createGatedAgentKit({ kind: 'site' })` routes spends through the gate; it does not remove a raw signer — prefer hybrid Spend Permissions. Swaps are off by default.
 
 ## Demo mandate (SERV-safe)
 

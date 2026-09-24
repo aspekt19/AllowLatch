@@ -9,12 +9,18 @@ process.env.ALLOWLATCH_TENANT_AUTH = '0'
 process.env.ALLOWLATCH_RECEIPT_SECRET = 'test-secret-allowlatch-pbt'
 
 import { DEMO_POLICY, type MandatePolicy, type SpendIntent } from './schema.js'
-import { commitIntent, evaluateIntent, freshLedger, rollLedger } from './engine.js'
+import { commitIntent, evaluateIntent, freshLedger, rollLedger, USDC_BY_CHAIN } from './engine.js'
 
 const arbAmount = fc.double({ min: 0.01, max: 500, noNaN: true })
 const arbAction = fc.constantFrom('transfer', 'swap', 'x402_pay') as fc.Arbitrary<
   SpendIntent['action']
 >
+
+const SWAP_ON = {
+  ...DEMO_POLICY,
+  actions: { ...DEMO_POLICY.actions, allowSwap: true },
+  risk: { ...DEMO_POLICY.risk, maxSlippageBps: 100 },
+}
 
 const arbIntent: fc.Arbitrary<SpendIntent> = fc
   .record({
@@ -41,11 +47,13 @@ const arbIntent: fc.Arbitrary<SpendIntent> = fc
     if (r.action === 'swap') {
       intent.calldataHash = r.calldataHash ?? '0x' + 'cd'.repeat(16)
       intent.contractAddress = r.toAddress
+      intent.slippageBps = 50
     } else {
-      // USDC-shaped spends must bind atomic amount (policy currency is USDC).
+      // USDC-shaped spends must bind atomic amount + canonical token (policy currency is USDC).
       const needsBind = !r.symbol || r.symbol === 'USDC'
       if (needsBind) {
         intent.tokenAmount = String(Math.round(r.amountUsd * 1e6))
+        intent.tokenAddress = USDC_BY_CHAIN.base
         if (!r.symbol) intent.symbol = 'USDC'
       }
       if (r.calldataHash) intent.calldataHash = r.calldataHash
@@ -58,7 +66,7 @@ describe('evaluateIntent properties', () => {
   it('never returns empty reasons on deny/escalate', () => {
     fc.assert(
       fc.property(arbIntent, (intent) => {
-        const r = evaluateIntent(DEMO_POLICY, intent, freshLedger())
+        const r = evaluateIntent(SWAP_ON, intent, freshLedger())
         if (r.decision === 'deny' || r.decision === 'escalate') {
           assert.ok(r.reasons.length > 0)
         }
@@ -71,7 +79,7 @@ describe('evaluateIntent properties', () => {
   it('allow never exceeds maxPerOrderUsd', () => {
     fc.assert(
       fc.property(arbIntent, (intent) => {
-        const r = evaluateIntent(DEMO_POLICY, intent, freshLedger())
+        const r = evaluateIntent(SWAP_ON, intent, freshLedger())
         if (r.decision === 'allow') {
           assert.ok(intent.amountUsd <= DEMO_POLICY.capital.maxPerOrderUsd)
         }
@@ -84,8 +92,8 @@ describe('evaluateIntent properties', () => {
     fc.assert(
       fc.property(arbAmount, (amountUsd) => {
         const r = evaluateIntent(
-          DEMO_POLICY,
-          { action: 'swap', amountUsd, symbol: 'ETH' },
+          SWAP_ON,
+          { action: 'swap', amountUsd, symbol: 'ETH', slippageBps: 50 },
           freshLedger()
         )
         assert.equal(r.decision, 'deny')

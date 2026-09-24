@@ -6,7 +6,7 @@ export const MandatePolicySchema = z.object({
   name: z.string().min(1).max(80),
   /** Optional owner identity (wallet / OpenServ user / org id). */
   ownerId: z.string().min(1).max(120).optional(),
-  /** Optional agent / spender identity this policy binds to. */
+  /** Optional agent / spender label (metadata — not enforced as a caller identity). */
   agentId: z.string().min(1).max(120).optional(),
   chain: z.enum(['base', 'base-sepolia']).default('base'),
   currency: z.literal('USDC'),
@@ -44,13 +44,17 @@ export const MandatePolicySchema = z.object({
     deniedFunctionSelectors: z.array(z.string()).default([]),
   }),
   actions: z.object({
-    allowSwap: z.boolean().default(true),
+    /** Off by default — enable only when a router adapter can bind real calldata notional. */
+    allowSwap: z.boolean().default(false),
     allowTransfer: z.boolean().default(true),
     allowX402Pay: z.boolean().default(true),
   }),
   risk: z
     .object({
-      /** Max slippage in basis points for swap intents (deny if intent.slippageBps exceeds). */
+      /**
+       * Max slippage in basis points for swap intents.
+       * When set, swap intents must include slippageBps and must not exceed this cap.
+       */
       maxSlippageBps: z.number().int().nonnegative().optional(),
       /** When true, all spends deny immediately. */
       emergencyStop: z.boolean().default(false),
@@ -282,12 +286,11 @@ export const DEMO_POLICY: MandatePolicy = {
     deniedFunctionSelectors: [],
   },
   actions: {
-    allowSwap: true,
+    allowSwap: false,
     allowTransfer: true,
     allowX402Pay: true,
   },
   risk: {
-    maxSlippageBps: 100,
     emergencyStop: false,
   },
   escalation: {

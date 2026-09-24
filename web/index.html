@@ -151,7 +151,8 @@
               You do not run a server. You do not need <code>SERV_API_KEY</code>.
               Path: SERV Draft on this site → <strong>Go live</strong> → Connect pack
               (<code>gateUrl</code> + <code>sessionSeal</code>) → agent uses
-              <code>createGatedAgentKit({ kind: 'site' })</code> so the signer cannot bypass the latch.
+              <code>createGatedAgentKit({ kind: 'site' })</code> so spends route through AllowLatch
+              before signing (middleware ≠ custody if a raw key remains — prefer hybrid Spend Permissions).
             </p>
           </div>
 
@@ -170,7 +171,7 @@
               <ol class="path-steps">
                 <li>Read Connect pack or <a href="/api/host-info">/api/host-info</a> → <code>primary.gateUrl</code>.</li>
                 <li>Owner already applied MandatePolicy (Go live). Keep <code>sessionSeal</code>.</li>
-                <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', gateUrl, sessionSeal }, … })</code> — gate baked into signing.</li>
+                <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', gateUrl, sessionSeal }, … })</code> — supported spend path goes through the gate before you sign.</li>
                 <li><code>assertSpend</code> alone is <strong>advisory</strong> (does not remove a raw signer). ALLOW + receipt → may sign; else stop.</li>
               </ol>
             </div>
@@ -193,7 +194,7 @@
               <div>
                 <h3>SDK · <code>allowlatch</code></h3>
                 <p>
-                  <strong>Required:</strong> <code>createGatedAgentKit</code> (gate baked into signing).
+                  <strong>Required:</strong> <code>createGatedAgentKit</code> (spend path through AllowLatch before signing).
                   <code>assertSpend</code> is advisory only if a raw signer still exists.
                 </p>
                 <pre class="install-code" tabindex="0"><code>npm i allowlatch@^0.2.2
@@ -256,7 +257,7 @@ Primary gateUrl: https://allowlatch.vercel.app/api/gate (always-on; agents pay $
 I do not run a host and I will not give you SERV_API_KEY or ownerToken.
 
 Required: npm i allowlatch@^0.2.2 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })
-so the signer cannot bypass the latch (hybrid Spend Permissions when available).
+so spends go through AllowLatch before signing (hybrid Spend Permissions when available; middleware ≠ custody).
 assertSpend alone is advisory only — do not use it as the sole control if a raw CDP/wallet signer remains.
 walletPrivateKey is the x402 payer only, not a host key.
 - ALLOW + allow-receipt (jti) → only then may you sign.
@@ -426,7 +427,7 @@ Never invent ALLOW.</pre>
             </p>
           </div>
           <pre class="agentkit-code" tabindex="0"><code>import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2 — gate baked into signing (required)
+// npm i allowlatch@^0.2.2 — required spend path through AllowLatch
 const agent = await createGatedAgentKit({
   gate: { kind: 'site', gateUrl, sessionSeal, walletPrivateKey },
 })

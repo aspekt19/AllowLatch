@@ -26,18 +26,27 @@ export type AllowReceipt = {
 function receiptSecret(): string {
   const dedicated = process.env.ALLOWLATCH_RECEIPT_SECRET?.trim()
   if (dedicated) return dedicated
+  const isProd =
+    process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+  if (isProd) {
+    throw new Error(
+      'ALLOWLATCH_RECEIPT_SECRET required in production (do not reuse SERV_API_KEY for receipts)'
+    )
+  }
   const serv = process.env.SERV_API_KEY?.trim()
   if (serv) {
-    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+    if (!warnedServFallback) {
+      warnedServFallback = true
       console.warn(
-        '[receipt] ALLOWLATCH_RECEIPT_SECRET unset in production — falling back to SERV_API_KEY. ' +
-          'Set a dedicated secret; do not reuse the Reasoning API key long-term.'
+        '[receipt] ALLOWLATCH_RECEIPT_SECRET unset — falling back to SERV_API_KEY (dev only).'
       )
     }
     return serv
   }
   throw new Error('ALLOWLATCH_RECEIPT_SECRET required for receipts (prefer dedicated secret over SERV_API_KEY)')
 }
+
+let warnedServFallback = false
 
 export function hashPolicy(policy: MandatePolicy): string {
   return createHash('sha256').update(JSON.stringify(policy)).digest('hex').slice(0, 32)

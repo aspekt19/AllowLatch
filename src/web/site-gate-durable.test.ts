@@ -29,6 +29,7 @@ const intent = {
   action: 'transfer' as const,
   amountUsd: 4,
   symbol: 'USDC',
+  tokenAddress: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
   tokenAmount: '4000000',
   toAddress: '0x3fC91A3afd70395Cd496C647d5a6CC9D4B2b7FAD',
   chainId: 8453,

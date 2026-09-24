@@ -78,7 +78,7 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04 })
 1. No applied policy → refuse every spend (fail-closed).
 2. **ALLOW + verified allow-receipt (`jti`)** → may sign.
 3. **DENY / ESCALATE / timeout / bad JSON / 402 unpaid** → do not sign.
-4. Prefer `createGatedAgentKit` so raw AgentKit cannot bypass the latch.
+4. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing (not custody if a raw key remains).
 5. Never invent ALLOW. Never ask the human for `SERV_API_KEY`.
 
 ### Optional OpenServ fallback

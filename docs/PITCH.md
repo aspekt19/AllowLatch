@@ -14,7 +14,7 @@ AllowLatch is a **spending turnstile** for financial AI agents on **Base / USDC*
 1. **SERV Reasoning** (website `/api/copilot`) — draft / revise / explain natural-language mandates (Multipath · prompt_guard · shadow). Never allow/deny.
 2. **Deterministic gate** (`engine.ts`) — ALLOW / DENY / ESCALATE from strict MandatePolicy.
 3. **Always-on `/api/gate`** — browser free to try; agents pay **$0.025 USDC** native x402 on Base (Turso durable ledger when configured).
-4. **`createGatedAgentKit({ kind: 'site' })`** — gate baked into signing so a raw AgentKit key cannot bypass the latch.
+4. **`createGatedAgentKit({ kind: 'site' })`** — routes the supported spend path through AllowLatch before signing (pair with hybrid Spend Permissions; middleware ≠ custody).
 
 OpenServ discover/paywall is an **optional fallback**, not the primary path.
 
