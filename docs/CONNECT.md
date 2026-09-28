@@ -4,7 +4,9 @@ Full guide: [GUIDE.md](./GUIDE.md).
 
 You do **not** run a server. You do **not** need `SERV_API_KEY`.
 
-## Two surfaces
+## Surfaces (one primary path)
+
+**Default to the site gate.** OpenServ is optional only if `/api/gate` is unreachable.
 
 | Surface | What it is | Always on? |
 |---------|------------|------------|

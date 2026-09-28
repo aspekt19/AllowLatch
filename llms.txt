@@ -57,3 +57,4 @@ Story: https://allowlatch.vercel.app/#case · Pitch: https://github.com/aspekt19
 - Fail-closed: timeout / network / malformed → DENY.
 - End users never run the local OpenServ host or set `SERV_API_KEY`.
 - AllowLatch does not custody funds (middleware ≠ custody without Spend Permissions / gated signer).
+- Hosted `/api/gate` is **SaaS authorization** (you trust the operator for policy/ledger/receipts) — not a self-custody vault. Keep balances small until external audit.

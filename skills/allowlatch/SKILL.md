@@ -41,6 +41,7 @@ await agent.transfer({ toAddress, amountUsd })
 
 ALLOW + receipt → may sign that intent. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
 `createGatedAgentKit({ kind: 'site' })` routes spends through the gate; it does not remove a raw signer — prefer hybrid Spend Permissions. Swaps are off by default.
+Hosted gate = SaaS authorization (operator trust), not a vault. Keep balances small until audit.
 
 ## Demo mandate (SERV-safe)
 

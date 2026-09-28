@@ -9,7 +9,7 @@ It is a **Policy Copilot + hard turnstile**:
 1. The owner states and revises spending rules in natural language.
 2. **SERV Reasoning on the AllowLatch host** drafts the policy, surfaces conflicts, resists prompt injection, and explains denials (Multipath · prompt_guard · shadow).
 3. Before every spend, **deterministic code** returns allow / deny / escalate - the LLM never overrides the verdict.
-4. The spender agent may move funds **only after ALLOW** (or escalate + explicit human approval), typically via AgentKit/CDP or host `execute_gated_transfer`.
+4. On the **supported signing path**, the spender moves funds **only after ALLOW** + consumed allow-receipt (or escalate + human approval) — typically `createGatedAgentKit` / host `execute_gated_transfer`. A raw ungated key outside that path is out of scope for the middleware.
 
 End users need **no API keys**. Agents connect via always-on Vercel `/api/gate` (native x402); OpenServ is optional fallback. Operator holds SERV (+ CDP for facilitator).
 

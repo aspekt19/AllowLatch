@@ -53,7 +53,7 @@ Operator `.env`: `SERV_API_KEY`, `OPENSERV_USER_API_KEY` (cloud deploy), optiona
 
 ## Pitch
 
-Say the rules in words. SERV turns them into a policy you can review. Without ALLOW, the agent cannot spend.
+Say the rules in words. SERV turns them into a policy you can review. On the gated path (`createGatedAgentKit` + receipt; prefer hybrid Spend Permissions), spends need ALLOW — a raw ungated key can still bypass; keep balances small until audit.
 
 ## License
 

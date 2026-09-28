@@ -8,7 +8,9 @@
 
 ---
 
-## 1. Two surfaces (do not mix them up)
+## 1. Surfaces (one primary path)
+
+**Use the site gate.** OpenServ is optional fallback only — ignore it unless `/api/gate` is down.
 
 | Surface | Who | Price | Always on? |
 |---------|-----|-------|------------|

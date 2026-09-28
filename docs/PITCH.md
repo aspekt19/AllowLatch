@@ -69,7 +69,10 @@ Use this wording on the site (**Load demo mandate**):
 
 ## Honesty
 
-Middleware + gated signer ≠ bank custody. Pair with hybrid Spend Permissions for stronger on-chain caps. End users never get `SERV_API_KEY` / CDP operator secrets.
+- **Authorization SaaS, not a vault.** You trust the hosted `/api/gate` operator for policy, ledger, and receipts — this is not self-custody controls or a cryptographic guarantee.
+- Middleware + gated signer ≠ bank custody. Pair with hybrid Spend Permissions for stronger on-chain caps. A raw ungated key can bypass the turnstile.
+- **No third-party audit yet** — keep live balances small (“coffee money”) until then.
+- End users never get `SERV_API_KEY` / CDP operator secrets.
 
 ## Links
 

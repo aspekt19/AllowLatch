@@ -126,7 +126,7 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 | Stale `sessionSeal` replay | Monotonic `seq` on site gate (memory + durable); client must use latest seal after each evaluate |
 | API abuse | HTTP Bearer off-loopback; CORS + rate limits. Site gate counts limits in Turso (shared across isolates) and keys them by `x-vercel-forwarded-for` so a spoofed `X-Forwarded-For` does not rotate the bucket |
 
-Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions and a low-balance hot wallet. Swaps stay off until a router adapter can bind real calldata notional.
+Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions and a low-balance hot wallet. The always-on site gate is **SaaS authorization** (operator trust for policy, ledger, receipts), not a cryptographic vault. Swaps stay off until a router adapter can bind real calldata notional. No third-party audit yet — coffee-money balances only.
 
 ## Production checklist
 
