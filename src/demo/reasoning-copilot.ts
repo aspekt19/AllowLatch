@@ -3,6 +3,8 @@
  * draft → (optional revise) → apply → gate → explain_decision
  *
  *   npm run reasoning:copilot
+ *
+ * SERV refusals on explain are non-fatal: the gate verdict still stands.
  */
 import dotenv from 'dotenv'
 dotenv.config()
@@ -15,7 +17,12 @@ import {
   revisePolicyWithServ,
 } from '../llm/compile-mandate.js'
 import { explainDecisionWithServ } from '../llm/explain-decision.js'
-import type { SpendIntent } from '../policy/schema.js'
+import type {
+  DecisionExplanation,
+  EvaluationResult,
+  MandatePolicy,
+  SpendIntent,
+} from '../policy/schema.js'
 
 const POLICY_ID = 'copilot'
 const UNISWAP = BASE_UNISWAP_UNIVERSAL_ROUTER
@@ -25,6 +32,23 @@ const MESSY_MANDATE =
   `Agent wallet about $200. Maybe $10 per transfer or wait maybe $25?
 $40 a day but weekends can be higher. Only USDC and ETH, Uniswap ok.
 Ask me above $8. No memes. Also allow any address I guess? Wait no, only Uniswap.`
+
+function isServRefusal(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /refused|content filter|I can't share/i.test(msg)
+}
+
+function localExplain(
+  policy: MandatePolicy,
+  evaluation: EvaluationResult
+): DecisionExplanation {
+  return {
+    headline: `Gate ${evaluation.decision.toUpperCase()} (local fallback)`,
+    explanation: `Deterministic engine returned ${evaluation.decision} for "${policy.name}". ${evaluation.reasons.join(' ')}`,
+    suggestedMandateChanges: [],
+    revisable: evaluation.decision !== 'allow',
+  }
+}
 
 async function main() {
   console.log('=== AllowLatch Policy Copilot ===\n')
@@ -41,16 +65,22 @@ async function main() {
   let policy = draft.policy
   if (!draft.readyToApply) {
     console.log('2) revise_mandate (owner clarifies)\n')
-    const { draft: revised, meta: revMeta } = await revisePolicyWithServ({
-      currentPolicy: policy,
-      revisionText:
-        'Use $10 max per transfer. Keep $40 every day including weekends. Destinations: Uniswap only.',
-    })
-    policy = revised.policy
-    console.log('Revised summary:', revised.summary)
-    console.log('Ready to apply:', revised.readyToApply)
-    for (const q of revised.questions) console.log('  ask ·', q)
-    console.log(`[serv] revise ${revMeta.latencyMs}ms\n`)
+    try {
+      const { draft: revised, meta: revMeta } = await revisePolicyWithServ({
+        currentPolicy: policy,
+        revisionText:
+          'Use $10 max per transfer. Keep $40 every day including weekends. Destinations: Uniswap only. Allow swaps on Uniswap. No direct transfers.',
+      })
+      policy = revised.policy
+      console.log('Revised summary:', revised.summary)
+      console.log('Ready to apply:', revised.readyToApply)
+      for (const q of revised.questions) console.log('  ask ·', q)
+      console.log(`[serv] revise ${revMeta.latencyMs}ms\n`)
+    } catch (err) {
+      if (!isServRefusal(err)) throw err
+      console.log('   ⚠ SERV revise refused — applying conservative draft as-is\n')
+      console.log('  ', err instanceof Error ? err.message : err, '\n')
+    }
   } else {
     console.log('2) revise_mandate skipped (draft already ready)\n')
   }
@@ -65,9 +95,10 @@ async function main() {
     action: 'swap',
     amountUsd: 5,
     calldataHash: '0x' + 'aa'.repeat(16),
-    symbol: 'PEPE',
+    contractAddress: UNISWAP,
+    symbol: 'DOGE',
     toAddress: UNISWAP,
-    reason: 'YOLO meme',
+    reason: 'Buy an unlisted token',
   }
   console.log('4) evaluate_intent (deterministic gate)')
   const evaluation = evaluateIntent(policy, intent, freshLedger())
@@ -75,14 +106,24 @@ async function main() {
   for (const r of evaluation.reasons) console.log('     •', r)
 
   console.log('\n5) explain_decision (SERV Copilot)')
-  const { explanation, meta: exMeta } = await explainDecisionWithServ({ policy, evaluation })
-  console.log('   ', explanation.headline)
-  console.log('   ', explanation.explanation)
-  if (explanation.suggestedMandateChanges.length) {
-    console.log('   Suggested mandate edits:')
-    for (const s of explanation.suggestedMandateChanges) console.log('     →', s)
+  try {
+    const { explanation, meta: exMeta } = await explainDecisionWithServ({ policy, evaluation })
+    console.log('   ', explanation.headline)
+    console.log('   ', explanation.explanation)
+    if (explanation.suggestedMandateChanges.length) {
+      console.log('   Suggested mandate edits:')
+      for (const s of explanation.suggestedMandateChanges) console.log('     →', s)
+    }
+    console.log(`[serv] explain ${exMeta.latencyMs}ms`)
+  } catch (err) {
+    if (!isServRefusal(err)) throw err
+    console.log('   ⚠ SERV explain refused — using local fallback (gate verdict unchanged)')
+    console.log('  ', err instanceof Error ? err.message : err)
+    const explanation = localExplain(policy, evaluation)
+    console.log('   ', explanation.headline)
+    console.log('   ', explanation.explanation)
   }
-  console.log(`[serv] explain ${exMeta.latencyMs}ms`)
+
   console.log('\nDone. Gate stayed deterministic; SERV only drafted / explained.')
 }
 
