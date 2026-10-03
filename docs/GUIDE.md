@@ -68,7 +68,7 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04, reason: 'gated spend
 
 `assertSpend` alone is **advisory** (checks the gate but does not remove a raw signer). Prefer the gated kit above.
 
-**Hybrid ceiling:** `POST action=hybrid_plan` → CDP `createSpendPermission` (owner SA → your spender) → optional `hybrid_report`. Or the owner runs Path A `sync_wallet` on the site. Never hold the treasury private key.
+**Optional AgentKit ceiling:** `POST action=hybrid_plan` → CDP `createSpendPermission` (funded SA → your AgentKit address) → optional `hybrid_report`. Host `sync_wallet` is operator-advanced only. Never hold the treasury private key.
 
 ### Local HTTP host / OpenServ (dev or fallback)
 
@@ -89,7 +89,7 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04 })
 3. **DENY / ESCALATE / timeout / bad JSON / 402 unpaid** → do not sign.
 4. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing (not custody if a raw key remains).
 5. Never invent ALLOW. Never ask the human for `SERV_API_KEY`.
-6. Never accept the funded/treasury private key — USDC on owner Smart Account; you = spender only.
+6. Never accept the funded/treasury private key — prefer USDC on owner Smart Account; AgentKit wallet only.
 
 ### Optional OpenServ fallback
 

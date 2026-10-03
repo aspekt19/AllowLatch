@@ -65,15 +65,15 @@
     },
     {
       "id": "hybrid_plan",
-      "description": "Site gate: return createSpendPermission plan (owner SA → spender) + key invariant for agent CDP path."
+      "description": "Site gate: AgentKit path — createSpendPermission plan (funded SA → AgentKit wallet) + key invariant."
     },
     {
       "id": "sync_wallet",
-      "description": "Site gate: owner sync_wallet with ownerToken + smartAccount + spender (host CDP createSpendPermission)."
+      "description": "Site gate: operator-advanced host sync_wallet (ownerToken + funded SA + AgentKit address)."
     },
     {
       "id": "hybrid_report",
-      "description": "Site gate: agent reports Spend Permission status after creating permission off-site."
+      "description": "Site gate: AgentKit agent reports Spend Permission status after creating permission via CDP."
     },
     {
       "id": "evaluate_intent",
@@ -112,7 +112,7 @@
     "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",
     "Lifetime budget is not reset by public APIs; reset_daily_ledger clears day/hour only",
     "End users never run npm run dev or set SERV_API_KEY \u2014 they connect via /api/gate Connect pack; agents must use createGatedAgentKit({ kind: \"site\" }); assertSpend alone is advisory",
-    "AllowLatch does not custody user funds or private keys (hosted gate = SaaS authorization; prefer hybrid Spend Permissions: treasury on owner SA, agent = spender only; funded treasury key defeats the ceiling)",
+    "AllowLatch does not custody user funds or private keys (hosted gate = SaaS authorization; AgentKit turnstile — Copy for my AI primary; hybrid_plan ceiling optional; funded treasury key in the agent defeats the ceiling; no MetaMask Connect on site)",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],
   "stacks": [

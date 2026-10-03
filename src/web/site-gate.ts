@@ -572,10 +572,10 @@ export async function siteGateHybridPlan(args: {
   })
   const network = plan.networkId.includes('sepolia') ? 'base-sepolia' : 'base'
   const steps = [
-    'Keep USDC on the owner Smart Account. You keep the treasury private key — never give it to the agent.',
-    'Agent address = spender only (spender key or use_spend_permission).',
-    `Call CDP createSpendPermission: account=<owner SA>, spender=<agent>, token=usdc, allowance=$${policy.capital.maxNotionalUsdPerDay}/day, periodInDays=1.`,
-    'Do not create a permission that grants the funded treasury key to itself as a full signer.',
+    'You are an AgentKit/CDP spending agent. Keep USDC on the owner Smart Account when possible — never take the treasury private key.',
+    'Your AgentKit wallet address is the permission spender (or use_spend_permission).',
+    `Call CDP createSpendPermission: account=<funded SA>, spender=<your AgentKit address>, token=usdc, allowance=$${policy.capital.maxNotionalUsdPerDay}/day, periodInDays=1.`,
+    'Do not grant yourself permission using the funded treasury private key as a full signer.',
     'POST action=hybrid_report with smartAccount, spender, status (and userOpHash when synced).',
     'Still route every spend through createGatedAgentKit + AllowLatch gate (addresses / escalate / receipt).',
   ]

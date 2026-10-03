@@ -9,7 +9,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). **Required:** `createGatedAgentKit({ kind: 'site' })` so spends go through AllowLatch before signing (`assertSpend` alone is advisory; middleware ≠ custody — prefer hybrid Spend Permissions). **Hybrid:** keep USDC on an owner Smart Account; agent = spender only (`sync_wallet` or agent `hybrid_plan`) — a funded treasury private key in the agent bypasses the ceiling. **Primary:** always-on https://allowlatch.vercel.app/api/gate (browser free to try; agents pay). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
+For owners of **AI agents with Coinbase AgentKit / CDP** (compatible gated signers welcome). No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). **Required:** Go live → **Copy for my AI** → `createGatedAgentKit({ kind: 'site' })` (`assertSpend` alone is advisory). Optional on-chain ceiling via agent `hybrid_plan` (host `sync_wallet` is operator-advanced). Do not put the funded private key in the agent. The site does **not** ask you to connect MetaMask. **Primary:** https://allowlatch.vercel.app/api/gate. OpenServ is optional fallback. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Guide: [docs/GUIDE.md](./docs/GUIDE.md).
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
@@ -17,7 +17,7 @@ No end-user **SERV/CDP host** keys — **you never run the host**. Agents that c
 
 Tell your agent:
 
-> Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Connect pack). Use createGatedAgentKit({ kind: "site" }) with gateUrl + sessionSeal. assertSpend alone is advisory.
+> Connect to AllowLatch via https://allowlatch.vercel.app (Go live → Copy for my AI). Use createGatedAgentKit({ kind: "site" }) with gateUrl + sessionSeal. AgentKit/CDP wallet. assertSpend alone is advisory.
 
 - Agent skill (any LLM): [`skills/allowlatch/SKILL.md`](./skills/allowlatch/SKILL.md) (Cursor mirror: `.cursor/skills/allowlatch`)
 - Demo UI: https://allowlatch.vercel.app
@@ -53,7 +53,7 @@ Operator `.env`: `SERV_API_KEY`, `OPENSERV_USER_API_KEY` (cloud deploy), optiona
 
 ## Pitch
 
-Say the rules in words. SERV turns them into a policy you can review. On the gated path (`createGatedAgentKit` + receipt; prefer hybrid Spend Permissions), spends need ALLOW — a raw ungated **funded** key can still bypass; keep treasury on the owner Smart Account and balances small until audit.
+Say the rules in words. SERV turns them into a policy you can review. On the AgentKit gated path (`createGatedAgentKit` + receipt; optional `hybrid_plan` ceiling), spends need ALLOW — a funded private key in the agent can still bypass; keep balances small until audit.
 
 ## License
 

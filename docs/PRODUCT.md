@@ -84,7 +84,7 @@ AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 p
 
 Chain focus: **Base**. Policy currency: **USDC**.
 
-Honest scope: AllowLatch is middleware authorization (+ receipt) **and**, by default (`ALLOWLATCH_ENFORCEMENT=hybrid`), mirrors daily USDC caps into Coinbase Spend Permissions when an owner Smart Account grants the agent as spender (`sync_wallet` / `hybrid_plan`, or host `ALLOWLATCH_SMART_ACCOUNT`). Middleware alone is not custody-grade if a signer can bypass the gate — and **a funded treasury private key in the agent defeats the on-chain ceiling**. Put the gate in `createGatedAgentKit` / host execute. Policy mutates require `ownerToken` (spender `evaluate` cannot rewrite limits). See [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [SECURITY.md](./SECURITY.md).
+Honest scope: AllowLatch is middleware authorization (+ receipt) for **AgentKit / CDP agents** **and**, by default (`ALLOWLATCH_ENFORCEMENT=hybrid`), mirrors daily USDC caps into Coinbase Spend Permissions when a funded Smart Account grants the AgentKit wallet (primary: agent `hybrid_plan` via Copy for my AI; operator: `sync_wallet` / host `ALLOWLATCH_SMART_ACCOUNT`). Middleware alone is not custody-grade if a signer can bypass the gate — and **a funded treasury private key in the agent defeats the on-chain ceiling**. The site does not offer MetaMask Connect. Put the gate in `createGatedAgentKit` / host execute. Policy mutates require `ownerToken`. See [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [SECURITY.md](./SECURITY.md).
 
 The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (`/api/gate`). OpenServ is optional fallback. Details: [GUIDE.md](./GUIDE.md) · [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -105,7 +105,7 @@ The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (
 | Step | Do this |
 |------|---------|
 | 1 | `createGatedAgentKit({ kind: 'site' })` only — no parallel raw signer |
-| 2 | Hybrid Spend Permissions — Path A `sync_wallet` or Path B `hybrid_plan` (treasury on owner SA; agent = spender only) |
+| 2 | Optional AgentKit ceiling — Copy for my AI → `hybrid_plan` (operator `sync_wallet` advanced; treasury on SA; AgentKit wallet only) |
 | 3 | Human confirms SERV draft before Go live; Turso + `ALLOWLATCH_RECEIPT_SECRET` for durable gate |
 | 4 | Coffee-money hot wallet; `buy_pack` / `packKey` for micro evaluates; reject → no receipt |
 

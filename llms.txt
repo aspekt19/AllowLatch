@@ -18,7 +18,11 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 
 ### Owner path (no code)
 
-Humans: https://allowlatch.vercel.app/#gate → **Simple rules** (daily cap + addresses) or free-text → **Draft with SERV** → Apply → Go live → **Copy for my AI**. Same SERV Multipath / prompt_guard / shadow. They paste the Connect text into you — then you must use the gated kit below.
+Audience: AI agents with **Coinbase AgentKit / CDP** wallets (or compatible gated signers). The site does not ask humans to connect MetaMask.
+
+Humans: https://allowlatch.vercel.app/#gate → **Simple rules** → **Draft with SERV** → Apply → Go live → **Copy for my AI**. Optional AgentKit daily ceiling via `hybrid_plan` in the pack. Same SERV Multipath / prompt_guard / shadow.
+
+**Hard rule:** never accept the private key to the funded / treasury account. Prefer USDC on an owner Smart Account; you spend via gate (+ optional use_spend_permission).
 
 ### Required install
 
@@ -37,7 +41,7 @@ await createGatedAgentKit({
 })
 ```
 
-`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Prefer **hybrid** Spend Permissions. Check `recommendProductionShape()` / `agent.productionShape`.
+`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Optional AgentKit ceiling: `hybrid_plan` → `hybrid_report` (host `sync_wallet` is operator-advanced). Check `recommendProductionShape()` / `agent.productionShape`.
 
 ### Before every spend
 

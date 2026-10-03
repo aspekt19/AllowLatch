@@ -33,11 +33,11 @@ evaluate_intent
 
 See [WALLET_NATIVE.md](./WALLET_NATIVE.md). Short version:
 
-- `hybrid` - **default** — receipt + CDP Spend Permission daily USDC cap when owner SA → spender is synced (site `sync_wallet` / `hybrid_plan`, or host env)
+- `hybrid` - **default** — receipt + CDP Spend Permission daily USDC cap when funded SA → AgentKit wallet is synced (primary: agent `hybrid_plan`; operator: `sync_wallet` / host env)
 - `middleware` - receipt only (not custody-grade if the signer can bypass the gate)
 - `wallet_native` - live execute blocked until permission is `synced`
 
-**Invariant:** if the agent holds the private key to the funded account, on-chain Spend Permissions do not stop a raw `transfer`. Keep USDC on the owner Smart Account; agent = spender only.
+**Invariant:** if the agent holds the private key to the funded account, on-chain Spend Permissions do not stop a raw `transfer`. Keep USDC on the owner Smart Account; AgentKit wallet only. Site UX is AgentKit turnstile — not consumer wallet connect.
 
 ## Storage
 
