@@ -419,10 +419,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         spender: body.spender,
       })
       res.status(200).json({
+        ...planned,
         ok: true,
         action: 'hybrid_plan',
         backend: 'site',
-        ...planned,
         priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
         settlement: settlement ?? null,
       })
@@ -443,10 +443,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         dryRun: body.dryRun,
       })
       res.status(200).json({
+        ...synced,
         ok: true,
         action: 'sync_wallet',
         backend: 'site',
-        ...synced,
         priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
         settlement: settlement ?? null,
       })
@@ -468,10 +468,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         message: body.message,
       })
       res.status(200).json({
+        ...reported,
         ok: true,
         action: 'hybrid_report',
         backend: 'site',
-        ...reported,
         priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
         settlement: settlement ?? null,
       })
