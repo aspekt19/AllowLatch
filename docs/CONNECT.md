@@ -30,7 +30,7 @@ Demo mandate wording (passes SERV GUARD in live tests):
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2
+// npm i allowlatch@^0.2.3
 
 const agent = await createGatedAgentKit({
   policyId: 'web-…',

@@ -10,7 +10,7 @@ You do **not** run AllowLatch yourself.
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2
+// npm i allowlatch@^0.2.3
 
 const agent = await createGatedAgentKit({
   policyId: 'web-…',
@@ -19,8 +19,11 @@ const agent = await createGatedAgentKit({
     gateUrl: 'https://allowlatch.vercel.app/api/gate',
     sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
     walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
+    packKey: process.env.ALLOWLATCH_PACK_KEY, // optional — micro evaluates (~$0.008)
   },
 })
+
+console.warn(agent.productionShape.summary) // hybrid / Turso / coffee-money checklist
 
 await agent.transfer({
   toAddress: '0x…',

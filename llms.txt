@@ -20,7 +20,7 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2
+// npm i allowlatch@^0.2.3
 
 await createGatedAgentKit({
   gate: {
@@ -28,17 +28,19 @@ await createGatedAgentKit({
     gateUrl: 'https://allowlatch.vercel.app/api/gate',
     sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
     walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+    packKey: process.env.ALLOWLATCH_PACK_KEY, // optional prepaid credits
   },
 })
 ```
 
-`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does).
+`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Prefer **hybrid** Spend Permissions. Check `recommendProductionShape()` / `agent.productionShape`.
 
 ### Before every spend
 
 1. Gated kit (or advisory `assertSpend`) with Connect pack fields.
 2. **ALLOW + allow-receipt (`jti`)** → then sign.
-3. **DENY / ESCALATE / timeout** → do not sign.
+3. **DENY / reject / ESCALATE / timeout** → do not sign (no receipt).
+4. Micro transfers: `buy_pack` + `packKey` (~$0.008) instead of $0.025 every evaluate.
 
 ### Live case (SERV + paid gate · 22 Sep 2026)
 

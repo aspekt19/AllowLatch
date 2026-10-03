@@ -4,6 +4,14 @@
 export { assertSpend, type AssertSpendResult } from './sdk/assert-spend.js'
 export { createGatedAgentKit, type GatedAgentKit, type GatedGateConfig } from './sdk/gated-agentkit.js'
 export {
+  feeAdviceForSpend,
+  recommendProductionShape,
+  formatProductionShapeHint,
+  type FeeAdvice,
+  type ProductionCheck,
+  type ProductionShapeReport,
+} from './sdk/production-shape.js'
+export {
   MandatePolicySchema,
   SpendIntentSchema,
   type MandatePolicy,

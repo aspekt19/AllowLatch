@@ -23,7 +23,7 @@ https://allowlatch.vercel.app/llms.txt · https://allowlatch.vercel.app/agent.js
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2
+// npm i allowlatch@^0.2.3
 
 const agent = await createGatedAgentKit({
   gate: {
@@ -42,6 +42,8 @@ await agent.transfer({ toAddress, amountUsd })
 ALLOW + receipt → may sign that intent. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
 `createGatedAgentKit({ kind: 'site' })` routes spends through the gate; it does not remove a raw signer — prefer hybrid Spend Permissions. Swaps are off by default.
 Hosted gate = SaaS authorization (operator trust), not a vault. Keep balances small until audit.
+DENY / human reject → no receipt → do not sign. Micro evaluates: `packKey` from `buy_pack` (~$0.008) beats $0.025/call.
+Check `agent.productionShape` / `recommendProductionShape()` before putting meaningful balance behind the gate.
 
 ## Demo mandate (SERV-safe)
 

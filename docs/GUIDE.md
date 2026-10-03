@@ -46,7 +46,7 @@ Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) â€
 
 ```ts
 import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2
+// npm i allowlatch@^0.2.3
 
 const agent = await createGatedAgentKit({
   policyId: 'â€¦',

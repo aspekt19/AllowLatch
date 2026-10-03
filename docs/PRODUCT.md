@@ -100,6 +100,17 @@ The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (
 
 ---
 
+## Recommended production shape
+
+| Step | Do this |
+|------|---------|
+| 1 | `createGatedAgentKit({ kind: 'site' })` only — no parallel raw signer |
+| 2 | Hybrid Spend Permissions (`ALLOWLATCH_SMART_ACCOUNT` + sync) for on-chain daily USDC cap |
+| 3 | Human confirms SERV draft before Go live; Turso + `ALLOWLATCH_RECEIPT_SECRET` for durable gate |
+| 4 | Coffee-money hot wallet; `buy_pack` / `packKey` for micro evaluates; reject → no receipt |
+
+Without (1)+(2), AllowLatch is a useful advisor and denial journal — not a physical lock. See [SECURITY.md](./SECURITY.md) · `recommendProductionShape()` in the SDK.
+
 ## One-line pitch
 
 > For a financial agent on Base: state rules in words → SERV drafts → without ALLOW + valid allow-receipt on a gated signer (prefer hybrid Spend Permissions), the wallet should not move money.

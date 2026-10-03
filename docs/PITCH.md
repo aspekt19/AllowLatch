@@ -43,7 +43,7 @@ Operator fee wallet `0xa918…F677` rose with the three $0.025 settlements (**x4
 ## Install (agents)
 
 ```bash
-npm i allowlatch@^0.2.2
+npm i allowlatch@^0.2.3
 ```
 
 ```ts

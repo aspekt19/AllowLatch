@@ -17,6 +17,12 @@
 import { SpendIntentSchema, type SpendIntent } from '../policy/schema.js'
 import type { AllowReceipt } from '../billing/receipt.js'
 import { assertSpend } from './assert-spend.js'
+import {
+  feeAdviceForSpend,
+  formatProductionShapeHint,
+  recommendProductionShape,
+  type ProductionShapeReport,
+} from './production-shape.js'
 import { PlatformClient } from '@openserv-labs/client'
 import { formatUsdcAtomic, usdcAtomicFromUsd } from '../policy/amount-bind.js'
 import { CHAIN_IDS, USDC_BY_CHAIN } from '../policy/engine.js'
@@ -29,12 +35,14 @@ export type GatedGateConfig =
       /** Owner credential — required for escalate + humanApproved on /v1/execute. */
       ownerToken?: string
     }
-  | {
+    | {
       /** Always-on Vercel /api/gate via assertSpend (x402). Prefer over chat-only prompts. */
       kind: 'site'
       gateUrl?: string
       sessionSeal?: string
       walletPrivateKey?: string
+      /** Prepaid evaluate credits from buy_pack — prefer for micro transfers vs $0.025/call. */
+      packKey?: string
       policyId?: string
     }
   | {
@@ -55,6 +63,8 @@ export type GatedAgentKit = {
   gate: GatedGateConfig
   /** Short instruction to paste into the agent system prompt / skill. */
   systemPrompt: string
+  /** Env checklist: hybrid Spend Permissions, Turso, pack credits, coffee-money. */
+  productionShape: ProductionShapeReport
   /** Whether a MandatePolicy is already on the gate (HTTP only; OpenServ returns null). */
   hasPolicy(): Promise<boolean | null>
   /** Apply MandatePolicy JSON (HTTP gate). For OpenServ use paywall / payWorkflow apply_policy. */
@@ -62,6 +72,7 @@ export type GatedAgentKit = {
   /**
    * Propose a spend. Always hits AllowLatch first.
    * No policy / DENY / ESCALATE (without humanApproved) → throws; does not sign.
+   * Reject / DENY never yields a receipt — do not sign.
    */
   transfer(args: {
     toAddress: string
@@ -87,9 +98,12 @@ export type GatedSpendResult = {
 
 const SYSTEM_PROMPT = `You are an AgentKit agent with AllowLatch on the spend path.
 - Non-spend tasks: do them normally.
-- Any transfer / swap / x402 payment: call createGatedAgentKit / assertSpend first. Do not invent ALLOW.
-- Site gate (kind: site): ALLOW + receipt means authorization — then sign only that intent (prefer hybrid Spend Permissions). Middleware is not custody if a raw key still exists.
-- On DENY / timeout: stop. On ESCALATE: ask the human (never set humanApproved yourself).`
+- Any transfer / swap / x402 payment: only via createGatedAgentKit.transfer / .spend. Never call a raw signer in parallel.
+- ALLOW + single-use receipt → may sign that exact intent. DENY / reject / timeout → stop; no receipt, no signature.
+- ESCALATE → ask the human (never set humanApproved yourself). Human reject → no receipt.
+- Prefer hybrid Coinbase Spend Permissions (on-chain daily cap). Middleware alone is not custody if a raw key remains.
+- Micro transfers: use packKey / buy_pack (~$0.008) instead of paying $0.025 every evaluate.
+- Hosted gate is SaaS authorization (operator trust), not a vault. Coffee-money balances until audit.`
 
 function httpHeaders(gate: Extract<GatedGateConfig, { kind: 'http' }>): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -291,6 +305,7 @@ export async function createGatedAgentKit(args?: {
           gateUrl: process.env.ALLOWLATCH_GATE_URL?.trim(),
           sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL?.trim(),
           walletPrivateKey: process.env.WALLET_PRIVATE_KEY,
+          packKey: process.env.ALLOWLATCH_PACK_KEY?.trim(),
           policyId,
         }
       : process.env.ALLOWLATCH_TRIGGER_URL?.trim() || process.env.ALLOWLATCH_WORKFLOW_ID?.trim()
@@ -308,10 +323,16 @@ export async function createGatedAgentKit(args?: {
             baseUrl: process.env.ALLOWLATCH_HTTP_URL?.trim() || 'http://127.0.0.1:8787',
           })
 
+  const productionShape = recommendProductionShape()
+  if (!productionShape.readyForSeriousFunds) {
+    console.warn(formatProductionShapeHint(productionShape))
+  }
+
   const agent: GatedAgentKit = {
     policyId,
     gate,
     systemPrompt: SYSTEM_PROMPT,
+    productionShape,
 
     async hasPolicy() {
       if (gate.kind !== 'http') return null
@@ -366,21 +387,25 @@ export async function createGatedAgentKit(args?: {
         return spendViaHttp(gate, policyId, intent, opts?.humanApproved)
       }
       if (gate.kind === 'site') {
+        const packKey = gate.packKey ?? process.env.ALLOWLATCH_PACK_KEY?.trim()
+        const fee = feeAdviceForSpend(intent.amountUsd, { hasPackKey: Boolean(packKey) })
+        if (fee.preferPack) console.warn(`AllowLatch fee: ${fee.message}`)
         const asserted = await assertSpend({
           intent,
           policyId: gate.policyId ?? policyId,
           gateUrl: gate.gateUrl,
           sessionSeal: gate.sessionSeal,
           walletPrivateKey: gate.walletPrivateKey,
+          packKey,
           requireReceipt: true,
         })
         if (asserted.decision === 'escalate' && !opts?.humanApproved) {
           throw new Error(
-            `AllowLatch ESCALATE: ask the human (never self-approve). ${JSON.stringify(asserted.evaluation).slice(0, 200)}`
+            `AllowLatch ESCALATE: ask the human (never self-approve). Reject → no receipt. ${JSON.stringify(asserted.evaluation).slice(0, 200)}`
           )
         }
         if (asserted.decision !== 'allow') {
-          throw new Error(`AllowLatch ${asserted.decision}: refuse to sign`)
+          throw new Error(`AllowLatch ${asserted.decision}: refuse to sign (no receipt)`)
         }
         if (asserted.sessionSeal) {
           gate.sessionSeal = asserted.sessionSeal
@@ -389,7 +414,7 @@ export async function createGatedAgentKit(args?: {
           decision: 'allow',
           executed: false,
           message:
-            'ALLOW + receipt verified via site gate. Sign only this intent externally (or use hybrid Spend Permissions). Middleware alone is not custody-grade if a raw signer remains.',
+            'ALLOW + receipt verified via site gate. Sign only this intent externally. Prefer hybrid Spend Permissions for on-chain daily caps. Middleware alone is not custody-grade if a raw signer remains.',
           receipt: asserted.receipt,
           raw: asserted.raw,
         }

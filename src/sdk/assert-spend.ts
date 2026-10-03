@@ -7,6 +7,7 @@ import { PlatformClient } from '@openserv-labs/client'
 import { SpendIntentSchema, type SpendIntent } from '../policy/schema.js'
 import type { AllowReceipt } from '../billing/receipt.js'
 import { verifyAllowReceipt } from '../billing/receipt.js'
+import { feeAdviceForSpend } from './production-shape.js'
 
 export type AssertSpendResult = {
   decision: 'allow' | 'deny' | 'escalate'
@@ -129,6 +130,11 @@ export async function assertSpend(args: {
     process.env.ALLOWLATCH_PREFER_OPENSERV === '1'
   const packKey =
     args.packKey?.trim() || process.env.ALLOWLATCH_PACK_KEY?.trim() || undefined
+
+  const fee = feeAdviceForSpend(intent.amountUsd, { hasPackKey: Boolean(packKey) })
+  if (fee.preferPack) {
+    console.warn(`AllowLatch fee: ${fee.message}`)
+  }
 
   let raw: unknown
   let usedSiteGate = false

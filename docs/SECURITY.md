@@ -128,6 +128,17 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 
 Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions and a low-balance hot wallet. The always-on site gate is **SaaS authorization** (operator trust for policy, ledger, receipts), not a cryptographic vault. Swaps stay off until a router adapter can bind real calldata notional. No third-party audit yet — coffee-money balances only.
 
+## Recommended production shape
+
+Use AllowLatch as a lock only when all of these hold:
+
+1. **Gated signer only** — spends go through `createGatedAgentKit({ kind: 'site' })`. No parallel raw `wallet.sendTransaction`. Prefer a session key / smart-account spender, not a long-lived hot key in the agent process.
+2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) + synced Coinbase Spend Permission (`ALLOWLATCH_SMART_ACCOUNT` + CDP). Receipt binds recipient/amount; Spend Permission is the daily USDC hard cap if middleware is bypassed.
+3. **Durable host** — Turso on `/api/gate`, dedicated `ALLOWLATCH_RECEIPT_SECRET`, owner confirms SERV drafts before Go live (compilation residual risk is human, not the gate).
+4. **Coffee-money hot balance** — until independent audit. Reject / DENY never mints a receipt. Micro evaluates should use `buy_pack` + `packKey` (~$0.008) so a $0.10 transfer is not paying 25% in gate fees.
+
+SDK helper: `recommendProductionShape()` / `agent.productionShape` from `allowlatch`. Site lab: [#lab](https://allowlatch.vercel.app/#lab) (local `engine.ts` Sign / Reject — educational; production path is still the site gate + hybrid).
+
 ## Production checklist
 
 Before putting meaningful balance behind AllowLatch:

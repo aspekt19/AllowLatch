@@ -21,6 +21,8 @@
         </a>
         <nav class="nav-links" aria-label="Primary">
           <a href="#how">How it works</a>
+          <a href="#ready">Production</a>
+          <a href="#lab">Sign / Reject</a>
           <a href="#install">Install</a>
           <a href="#case">Live case</a>
           <a href="#pricing">Pricing</a>
@@ -142,6 +144,76 @@
         </div>
       </section>
 
+      <section class="section ready" id="ready" aria-labelledby="ready-title">
+        <div class="shell">
+          <div class="section-intro section-intro-wide">
+            <p class="eyebrow">Production shape</p>
+            <h2 id="ready-title">How to run this with real money.</h2>
+            <p class="section-lead">
+              Middleware is not a vault. Use AllowLatch as a lock only when the signer path cannot
+              skip the gate and the daily USDC cap also lives on-chain.
+            </p>
+          </div>
+          <ol class="ready-list">
+            <li>
+              <h3>Gated signer only</h3>
+              <p>
+                <code>createGatedAgentKit({ kind: 'site' })</code>. No parallel raw
+                <code>sendTransaction</code>. Prefer a session key / smart-account spender.
+              </p>
+            </li>
+            <li>
+              <h3>Hybrid Spend Permissions</h3>
+              <p>
+                Default <code>ALLOWLATCH_ENFORCEMENT=hybrid</code> + synced Coinbase Spend Permission
+                so a bypassed HTTP gate still hits an on-chain daily USDC ceiling.
+              </p>
+            </li>
+            <li>
+              <h3>Human confirms the draft</h3>
+              <p>
+                SERV drafts; you Go live. Compilation residual risk is human review — the gate never
+                lets the model invent ALLOW.
+              </p>
+            </li>
+            <li>
+              <h3>Coffee-money + pack credits</h3>
+              <p>
+                Small hot balance until audit. Reject / DENY → no receipt. Micro evaluates:
+                <code>buy_pack</code> + <code>packKey</code> (~$0.008) instead of $0.025 every time.
+              </p>
+            </li>
+          </ol>
+          <p class="how-rule muted">
+            SDK: <code>recommendProductionShape()</code> · <code>agent.productionShape</code>.
+            Without gated kit + hybrid caps, this is a denial journal — not a physical lock.
+          </p>
+        </div>
+      </section>
+
+      <section class="section lab" id="lab" aria-labelledby="lab-title">
+        <div class="shell">
+          <div class="section-intro section-intro-wide">
+            <p class="eyebrow">Local engine lab</p>
+            <h2 id="lab-title">Sign only after ALLOW. Reject creates nothing.</h2>
+            <p class="section-lead">
+              Same deterministic <code>engine.ts</code> as production, in the browser. Sign issues a
+              demo receipt only on ALLOW (or ESCALATE after Confirm). Reject → no receipt, ledger
+              unchanged. Not a Base transaction — production path is still Go live + gated kit + hybrid.
+            </p>
+          </div>
+          <div class="lab-layout">
+            <div class="lab-meta">
+              <p class="lab-policy" id="lab-policy-label">Policy: demo starter (apply a mandate above to use yours)</p>
+              <p class="lab-spent muted">Lab spent today: <strong id="lab-spent">0.00</strong> USDC</p>
+              <button type="button" class="btn btn-line" id="lab-reset">Reset lab queue</button>
+            </div>
+            <div class="lab-queue" id="lab-queue" aria-live="polite"></div>
+            <div class="lab-log" id="lab-log" aria-label="Lab journal"></div>
+          </div>
+        </div>
+      </section>
+
       <section class="section install" id="install" aria-labelledby="install-title">
         <div class="shell">
           <div class="section-intro section-intro-wide">
@@ -197,7 +269,7 @@
                   <strong>Required:</strong> <code>createGatedAgentKit</code> (spend path through AllowLatch before signing).
                   <code>assertSpend</code> is advisory only if a raw signer still exists.
                 </p>
-                <pre class="install-code" tabindex="0"><code>npm i allowlatch@^0.2.2
+                <pre class="install-code" tabindex="0"><code>npm i allowlatch@^0.2.3
 import { createGatedAgentKit } from 'allowlatch'</code></pre>
               </div>
             </li>
@@ -256,7 +328,7 @@ await client.payments.payWorkflow({ triggerUrl: gate.webhookUrl, input: { prompt
 Primary gateUrl: https://allowlatch.vercel.app/api/gate (always-on; agents pay $0.025 USDC x402 on Base).
 I do not run a host and I will not give you SERV_API_KEY or ownerToken.
 
-Required: npm i allowlatch@^0.2.2 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })
+Required: npm i allowlatch@^0.2.3 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })
 so spends go through AllowLatch before signing (hybrid Spend Permissions when available; middleware ≠ custody).
 assertSpend alone is advisory only — do not use it as the sole control if a raw CDP/wallet signer remains.
 walletPrivateKey is the x402 payer only, not a host key.
@@ -427,12 +499,12 @@ Never invent ALLOW.</pre>
             </p>
           </div>
           <pre class="agentkit-code" tabindex="0"><code>import { createGatedAgentKit } from 'allowlatch'
-// npm i allowlatch@^0.2.2 — required spend path through AllowLatch
+// npm i allowlatch@^0.2.3 — required spend path through AllowLatch
 const agent = await createGatedAgentKit({
-  gate: { kind: 'site', gateUrl, sessionSeal, walletPrivateKey },
+  gate: { kind: 'site', gateUrl, sessionSeal, walletPrivateKey, packKey }, // packKey for micro fees
 })
-await agent.transfer({ toAddress, amountUsd })
-// assertSpend alone is advisory if a raw signer still exists</code></pre>
+await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no receipt → do not sign
+// Prefer hybrid Spend Permissions. assertSpend alone is advisory if a raw signer remains.</code></pre>
         </div>
       </section>
 
@@ -472,6 +544,7 @@ await agent.transfer({ toAddress, amountUsd })
           <p class="pricing-foot muted">
             Agents pay <strong>$0.025 USDC</strong> on always-on <code>/api/gate</code>
             (or burn prepaid <code>buy_pack</code> credits when Turso durable is on).
+            A $0.10 transfer paying $0.025 is a 25% tax — prefer pack credits for coffee-money.
             OpenServ discover is optional fallback. Clients fail-closed on timeout.
             Policy mutates need <code>ownerToken</code>. Details:
             <a href="https://github.com/aspekt19/AllowLatch/blob/main/docs/MONETIZE.md" target="_blank" rel="noreferrer">MONETIZE</a>

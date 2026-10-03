@@ -20,6 +20,10 @@ The **always-on** meter is native **x402 on Vercel** `/api/gate` (Base USDC). Op
 3. **SERV Copilot** on the operator key (draft/explain).
 4. **Fail-closed clients** — unreachable gate → DENY.
 
+## Fee ratio (honest)
+
+A **$0.025** evaluate against a **$0.10** max transfer is a **25%** gate tax. For coffee-money mandates, prefer **`buy_pack` + `packKey`** (~$0.008/check, Turso durable required). The SDK warns via `feeAdviceForSpend()` / `createGatedAgentKit` when the spend is small and no pack key is set.
+
 ## Who receives payment
 
 Site-gate x402 settles to `ALLOWLATCH_X402_PAY_TO` or the address of `WALLET_PRIVATE_KEY` (operator).  

@@ -1,6 +1,6 @@
 {
   "name": "AllowLatch",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "SERV Policy Copilot + spending turnstile for financial AI agents on Base (USDC). Always-on Vercel /api/gate with native x402 ($0.025). Required: createGatedAgentKit({ kind: site }). assertSpend is advisory. OpenServ optional fallback.",
   "homepage": "https://allowlatch.vercel.app",
   "repository": "https://github.com/aspekt19/AllowLatch",
