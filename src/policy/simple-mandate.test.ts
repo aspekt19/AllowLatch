@@ -24,15 +24,29 @@ describe('simple-mandate', () => {
 
   it('builds SERV-safe NL mandate', () => {
     const text = simpleRulesToMandateText({
+      budgetUsd: 100,
       dailyUsd: 20,
       maxPerTransferUsd: 5,
       addresses: [ADDR],
       escalateAboveUsd: 2,
     })
+    assert.match(text, /Budget \$100/)
     assert.match(text, /\$20/)
     assert.match(text, /\$5/)
     assert.match(text, /No swaps/)
     assert.match(text, new RegExp(ADDR, 'i'))
     assert.match(text, /Escalate above \$2/)
+  })
+
+  it('rejects budget below daily', () => {
+    assert.match(
+      validateSimpleRules({
+        budgetUsd: 10,
+        dailyUsd: 20,
+        maxPerTransferUsd: 5,
+        addresses: [ADDR],
+      }) ?? '',
+      /budget/i
+    )
   })
 })

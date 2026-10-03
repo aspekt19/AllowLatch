@@ -576,6 +576,10 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
             </div>
             <div class="simple-rules-grid">
               <label class="simple-field">
+                <span>Total budget (USDC)</span>
+                <input id="simple-budget" type="number" min="0.01" step="0.01" value="100" />
+              </label>
+              <label class="simple-field">
                 <span>Daily max (USDC)</span>
                 <input id="simple-daily" type="number" min="0.01" step="0.01" value="20" />
               </label>

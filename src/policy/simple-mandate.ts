@@ -40,6 +40,14 @@ export function validateSimpleRules(input: SimpleRulesInput): string | null {
   if (input.maxPerTransferUsd > input.dailyUsd) {
     return 'Max per transfer cannot exceed the daily max.'
   }
+  if (input.budgetUsd != null) {
+    if (!Number.isFinite(input.budgetUsd) || input.budgetUsd <= 0) {
+      return 'Total budget must be a positive number.'
+    }
+    if (input.budgetUsd < input.dailyUsd) {
+      return 'Total budget cannot be less than the daily max.'
+    }
+  }
   if (input.addresses.length === 0) {
     return 'Add at least one allowlisted address (0x…).'
   }

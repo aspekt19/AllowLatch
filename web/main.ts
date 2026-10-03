@@ -1142,6 +1142,7 @@ btnCopyAgentMcp?.addEventListener('click', () => {
 })
 
 const DEMO_SIMPLE_ADDR = '0x5cc0Aa9ed773F413f81f78a62F2e94109CE26205'
+const simpleBudget = document.querySelector<HTMLInputElement>('#simple-budget')
 const simpleDaily = document.querySelector<HTMLInputElement>('#simple-daily')
 const simplePerTx = document.querySelector<HTMLInputElement>('#simple-per-tx')
 const simpleEscalate = document.querySelector<HTMLInputElement>('#simple-escalate')
@@ -1151,13 +1152,14 @@ const btnSimpleDraft = document.querySelector<HTMLButtonElement>('#btn-simple-dr
 const btnSimpleFillDemo = document.querySelector<HTMLButtonElement>('#btn-simple-fill-demo')
 
 function readSimpleRulesFromForm() {
+  const budgetUsd = Number(simpleBudget?.value)
   const dailyUsd = Number(simpleDaily?.value)
   const maxPerTransferUsd = Number(simplePerTx?.value)
   const escalateRaw = simpleEscalate?.value.trim()
   const escalateAboveUsd =
     escalateRaw === '' || escalateRaw == null ? undefined : Number(escalateRaw)
   const addresses = parseAddressLines(simpleAddresses?.value ?? '')
-  return { dailyUsd, maxPerTransferUsd, escalateAboveUsd, addresses }
+  return { budgetUsd, dailyUsd, maxPerTransferUsd, escalateAboveUsd, addresses }
 }
 
 async function draftFromSimpleRules() {
@@ -1205,6 +1207,7 @@ async function draftFromSimpleRules() {
 }
 
 btnSimpleFillDemo?.addEventListener('click', () => {
+  if (simpleBudget) simpleBudget.value = '100'
   if (simpleDaily) simpleDaily.value = '20'
   if (simplePerTx) simplePerTx.value = '5'
   if (simpleEscalate) simpleEscalate.value = '2.5'
