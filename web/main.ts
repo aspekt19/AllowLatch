@@ -197,7 +197,7 @@ function buildAgentInstruction(): string {
   const perTx = p?.capital.maxPerOrderUsd
   const addrs = p?.universe.allowedAddresses ?? []
   const sa = hosted?.hybridSmartAccount || hybridSaInput?.value.trim() || ''
-  const spender = hosted?.hybridSpender || hybridSpenderInput?.value.trim() || ''
+  const agentWallet = hosted?.hybridSpender || hybridSpenderInput?.value.trim() || ''
   const limits =
     daily != null && perTx != null
       ? `My limits: max $${perTx}/transfer, $${daily}/day` +
@@ -206,7 +206,7 @@ function buildAgentInstruction(): string {
       : 'My spending limits are already on AllowLatch — do not invent your own.'
 
   return [
-    'You are my spending agent. AllowLatch holds my rules. Do not invent ALLOW or DENY.',
+    'You are my Coinbase AgentKit (CDP) spending agent on Base. AllowLatch is the turnstile. Do not invent ALLOW or DENY.',
     '',
     limits,
     '',
@@ -215,28 +215,33 @@ function buildAgentInstruction(): string {
     sessionSeal
       ? `sessionSeal: ${sessionSeal}`
       : 'sessionSeal: (MISSING — I must Go live first and copy again)',
+    agentWallet ? `My AgentKit wallet address (you): ${agentWallet}` : null,
+    sa ? `My funded Smart Account (treasury — not your key): ${sa}` : null,
     '',
-    'HARD RULE — treasury / private keys:',
-    '- Keep USDC on my owner Smart Account. Never ask for or accept the private key to the funded account.',
-    '- You may only hold a spender key (or use_spend_permission). If you have the treasury key, on-chain ceiling does NOT work — do not sign raw transfers.',
+    'Required: npm i allowlatch@^0.2.3 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } }).',
+    'walletPrivateKey = x402 payer only. Never parallel raw AgentKit/CDP transfer.',
     '',
-    'On-chain ceiling (hybrid Spend Permission) — pick one setup path:',
-    `A) I may sync myself (sync_wallet) with owner SA → your spender.`,
-    `B) You: POST { action: "hybrid_plan", policyId, sessionSeal${sa ? `, smartAccount: "${sa}"` : ', smartAccount: <owner-SA>'}${spender ? `, spender: "${spender}"` : ', spender: <your-spender>'} }`,
-    '   Then CDP createSpendPermission: account=owner SA, spender=your address, token=usdc, allowance=daily cap, periodInDays=1.',
-    '   Then POST { action: "hybrid_report", policyId, sessionSeal, smartAccount, spender, status: "synced", userOpHash }.',
-    '   Do NOT grant yourself permission using the funded treasury private key.',
+    'HARD RULE — funded key:',
+    '- Never ask for or accept the private key to the funded / treasury account.',
+    '- Prefer USDC on my Smart Account; you spend only via gate + optional use_spend_permission.',
+    '- If you hold the funded key, on-chain ceiling does NOT stop a raw transfer.',
+    '',
+    'Optional daily on-chain ceiling (CDP Spend Permission):',
+    `POST { action: "hybrid_plan", policyId, sessionSeal${sa ? `, smartAccount: "${sa}"` : ', smartAccount: <my-funded-SA>'}${agentWallet ? `, spender: "${agentWallet}"` : ', spender: <your-AgentKit-address>'} }`,
+    'Then createSpendPermission: account=funded SA, spender=your AgentKit address, token=usdc, allowance=daily cap, periodInDays=1.',
+    'Then POST { action: "hybrid_report", policyId, sessionSeal, smartAccount, spender, status: "synced", userOpHash }.',
     '',
     'Before every transfer / payment / swap:',
-    '1) Call AllowLatch on gateUrl with this policyId + sessionSeal (use createGatedAgentKit or the allowlatch skill).',
-    '2) ALLOW + allow-receipt → you may sign only that exact spend.',
+    '1) createGatedAgentKit evaluate on gateUrl with policyId + sessionSeal.',
+    '2) ALLOW + allow-receipt → sign only that exact spend.',
     '3) DENY, timeout, unpaid, or error → stop. Do not sign.',
-    '4) ESCALATE → ask me; never set humanApproved yourself. If I say no → no receipt, do not sign.',
+    '4) ESCALATE → ask me; never set humanApproved yourself.',
     '',
     'Never ask for SERV_API_KEY, ownerToken, or CDP host secrets.',
     'Skill: https://allowlatch.vercel.app/llms.txt',
-    'I change limits on https://allowlatch.vercel.app — you only enforce them.',
-  ].join('\n')
+  ]
+    .filter((line): line is string => line != null)
+    .join('\n')
 }
 
 function buildAgentDevInstruction(): string {
@@ -252,10 +257,9 @@ function buildAgentDevInstruction(): string {
     `OpenServ trigger (optional fallback only): ${cachedTriggerUrl}`,
     '',
     'Required: npm i allowlatch@^0.2.3',
-    'Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } }).',
-    'Hybrid: treasury on owner Smart Account; agent = spender only. Never put the funded private key in the agent.',
-    'Actions: hybrid_plan → createSpendPermission(owner SA → spender) → hybrid_report; or owner sync_wallet.',
-    'Prefer hybrid Spend Permissions. assertSpend alone is advisory.',
+    'Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } }) with AgentKit/CDP.',
+    'Optional: hybrid_plan → createSpendPermission(funded SA → AgentKit address) → hybrid_report.',
+    'Never put the funded treasury private key in the agent. assertSpend alone is advisory.',
     'walletPrivateKey = x402 payer only. Never parallel raw CDP transfer.',
     'OpenServ discover /allowlatch/i only if site gate is unreachable.',
   ]
@@ -360,7 +364,7 @@ function openConnectPanel() {
   connectPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   addMessage(
     'guard',
-    `Connect pack ready for policyId=${hosted.policyId}.\n\nCopy the agent instruction (right rail) and paste it into your agent. Optional: set On-chain ceiling (owner SA + spender) or let the agent follow hybrid_plan.\n\nDo not give your agent the private key to the funded account.`
+    `Connect pack ready for policyId=${hosted.policyId}.\n\nMain step: Copy for my AI → paste into your AgentKit agent. Optional AgentKit ceiling is in the right rail (or leave it — the pack includes hybrid_plan).\n\nDo not put the funded private key in the agent.`
   )
 }
 
@@ -392,7 +396,8 @@ async function runHybridSync(dryRun: boolean) {
   const spender = hybridSpenderInput?.value.trim() || ''
   if (!/^0x[a-fA-F0-9]{40}$/.test(smartAccount) || !/^0x[a-fA-F0-9]{40}$/.test(spender)) {
     if (hybridSyncStatus) {
-      hybridSyncStatus.textContent = 'Enter valid owner Smart Account and agent spender (0x…).'
+      hybridSyncStatus.textContent =
+        'Need funded Smart Account + AgentKit wallet addresses (0x…), or skip Sync and use Copy for my AI.'
     }
     return
   }
@@ -427,7 +432,7 @@ async function runHybridSync(dryRun: boolean) {
     if (hybridSyncStatus) hybridSyncStatus.textContent = msg
     addMessage(
       'guard',
-      `${dryRun ? 'Hybrid dry-run' : 'Hybrid sync'}: ${msg}\n\nDo not give your agent the treasury private key — agent = spender only.`
+      `${dryRun ? 'AgentKit ceiling dry-run' : 'AgentKit ceiling sync'}: ${msg}\n\nDo not put the funded private key in the agent.`
     )
   } catch (err) {
     const m = err instanceof Error ? err.message : String(err)
@@ -1597,7 +1602,7 @@ labResetBtn?.addEventListener('click', () => resetLab())
 
 addMessage(
   'guard',
-  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. On-chain ceiling: Path A sync_wallet or Path B hybrid_plan — treasury on owner SA, agent = spender only (funded private key defeats the ceiling).\n4. Connect with createGatedAgentKit({ kind: "site" }) — assertSpend alone is advisory.\n5. No policy applied → every spend is DENY.\n\nSERV drafts and explains; deterministic code decides. See Production shape + Sign / Reject lab, and Live case for a real paid Base USDC run.'
+  'I am AllowLatch — spending turnstile for AI agents with AgentKit/CDP wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. Copy for my AI → createGatedAgentKit({ kind: "site" }).\n4. Optional: AgentKit daily Spend Permission via hybrid_plan (do not put the funded key in the agent).\n5. No policy applied → every spend is DENY.\n\nThis site does not ask you to connect MetaMask. SERV drafts; code decides.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

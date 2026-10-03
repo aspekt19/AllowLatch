@@ -17,7 +17,7 @@ https://allowlatch.vercel.app/llms.txt · https://allowlatch.vercel.app/agent.js
    Website browser (same-site) free to try. Agents pay **$0.025 USDC** x402 on Base.  
    Connect pack: `gateUrl` + `sessionSeal` + x402 `walletPrivateKey` (never `ownerToken` / `SERV_API_KEY`).
 2. **SERV Copilot (owners)** — Draft / revise / explain on the site via `/api/copilot`. Does **not** decide allow/deny.  
-   Owner UX: **Simple rules** (daily + addresses) or free-text → Draft with SERV → Go live → on-chain ceiling (Path A `sync_wallet` or Path B `hybrid_plan`) → **Copy for my AI**.
+   Owner UX: **Simple rules** → Draft with SERV → Go live → **Copy for my AI** (AgentKit agent). Optional `hybrid_plan` ceiling. No MetaMask Connect on the site.
 3. **OpenServ fallback** — discover `/allowlatch/i` · `$0.025` when host online.
 
 ## Before every spend (required)

@@ -163,13 +163,11 @@
               </p>
             </li>
             <li>
-              <h3>Hybrid Spend Permissions</h3>
+              <h3>AgentKit on-chain ceiling (optional)</h3>
               <p>
-                After Go live: <strong>Path A</strong> — you sync owner Smart Account → agent spender
-                (<code>sync_wallet</code>), or <strong>Path B</strong> — agent follows
-                <code>hybrid_plan</code> via Copy for my AI. Treasury stays on the owner SA; the agent
-                is spender-only. If the agent holds the funded private key, on-chain ceiling does
-                <em>not</em> apply.
+                For agents with Coinbase AgentKit / CDP: after Go live, <strong>Copy for my AI</strong>
+                tells the agent to set a daily USDC Spend Permission. Keep USDC off the agent’s signing
+                key when you can. This site does not ask you to connect MetaMask.
               </p>
             </li>
             <li>
@@ -223,11 +221,11 @@
             <p class="eyebrow">Install</p>
             <h2 id="install-title">How you (and your agent) connect.</h2>
             <p class="section-lead">
-              You do not run a server. You do not need <code>SERV_API_KEY</code>.
-              Path: <strong>Simple rules</strong> (or words) → <strong>SERV Draft</strong> → review →
-              <strong>Go live</strong> → on-chain ceiling (Path A sync or Path B in Copy pack) →
-              <strong>Copy for my AI</strong>. Keep USDC on your owner Smart Account; never give the agent
-              the funded private key. OpenServ discover stays an optional fallback if the site gate is down.
+              For owners of an <strong>AI agent with a Coinbase AgentKit / CDP wallet</strong> on Base.
+              You do not run a server. You do not need <code>SERV_API_KEY</code>. Path:
+              <strong>Simple rules</strong> → <strong>SERV Draft</strong> → <strong>Go live</strong> →
+              <strong>Copy for my AI</strong>. This site is a turnstile for that agent — not a place to
+              connect MetaMask and “lock” a personal wallet.
             </p>
           </div>
 
@@ -237,18 +235,17 @@
               <ol class="path-steps">
                 <li>Open <a href="#gate">Try the gate</a> → fill Simple rules (daily cap + addresses) or write a mandate.</li>
                 <li><strong>Draft with SERV</strong> → review conflicts → Apply → <strong>Go live</strong>.</li>
-                <li><strong>On-chain ceiling:</strong> Path A (owner SA + spender → Sync) or Path B (agent follows <code>hybrid_plan</code> in Copy pack).</li>
-                <li><strong>Copy for my AI</strong> — only after Go live + <code>sessionSeal</code>. Paste into Cursor, Claude, ChatGPT, or any agent.</li>
-                <li>Optional: OpenServ discover only if the site gate is unreachable.</li>
+                <li><strong>Copy for my AI</strong> — paste into Cursor / Claude / your AgentKit agent (needs <code>sessionSeal</code>).</li>
+                <li>Optional: AgentKit daily ceiling (right rail) — or let the agent follow <code>hybrid_plan</code> in the pack.</li>
               </ol>
             </div>
             <div class="audience-col">
-              <h3>For your agent</h3>
+              <h3>For your AgentKit agent</h3>
               <ol class="path-steps">
                 <li>Follow the Connect pack (or <a href="/api/host-info">/api/host-info</a> → <code>primary.gateUrl</code>).</li>
                 <li>Owner already applied MandatePolicy (Go live). Keep <code>sessionSeal</code>.</li>
-                <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', … } })</code> — spend path through AllowLatch before signing.</li>
-                <li>Hybrid: you are <strong>spender only</strong> — never accept the funded/treasury private key. Optional <code>hybrid_plan</code> → <code>hybrid_report</code>.</li>
+                <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', … } })</code> before every spend.</li>
+                <li>Optional: <code>hybrid_plan</code> → CDP Spend Permission → <code>hybrid_report</code>. Never take the funded treasury key.</li>
                 <li><code>assertSpend</code> alone is <strong>advisory</strong>. ALLOW + receipt → may sign; else stop.</li>
               </ol>
             </div>
@@ -694,12 +691,12 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
                     <span class="rail-status" id="connect-policy-id">—</span>
                   </div>
                   <p class="muted tight">
-                    Paste this into your AI (Cursor, Claude, ChatGPT…). Limits stay on AllowLatch —
-                    the agent must ask before every spend.
+                    Main step: paste into your <strong>AgentKit</strong> agent (Cursor, Claude, ChatGPT…).
+                    Limits stay on AllowLatch — the agent must ask before every spend.
                   </p>
                   <pre class="connect-pre" id="connect-instruction" tabindex="0"></pre>
                   <div class="connect-actions">
-                    <button type="button" class="btn-policy-action" id="btn-copy-agent-instruction">
+                    <button type="button" class="btn-policy-action btn-policy-primary" id="btn-copy-agent-instruction">
                       Copy for my AI
                     </button>
                     <button type="button" class="btn-policy-action" id="btn-copy-agent-code">
@@ -710,60 +707,62 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
                     </button>
                   </div>
                   <details class="connect-dev">
-                    <summary>For developers (SDK / hybrid)</summary>
+                    <summary>For developers (SDK)</summary>
                     <p class="muted tight">
-                      Agents should use <code>createGatedAgentKit</code>. Prefer hybrid Spend Permissions.
-                      OpenServ discover is optional fallback. Middleware alone is not custody-grade.
+                      Required: <code>createGatedAgentKit({ kind: 'site' })</code> for Coinbase AgentKit
+                      (or a compatible gated signer). OpenServ discover is optional fallback.
                     </p>
                   </details>
                   <p class="muted tight" id="connect-copy-status" aria-live="polite"></p>
                 </div>
 
-                <div class="rail-block hybrid-panel is-hidden" id="hybrid-panel" aria-label="On-chain ceiling">
+                <div class="rail-block hybrid-panel is-hidden" id="hybrid-panel" aria-label="Optional AgentKit daily ceiling">
                   <div class="rail-head">
-                    <h3 class="rail-title">On-chain ceiling</h3>
+                    <h3 class="rail-title">Optional · AgentKit ceiling</h3>
                     <span class="rail-status" id="hybrid-status">Off</span>
                   </div>
                   <p class="hybrid-callout" id="hybrid-callout">
-                    Do not give your agent the private key to the funded account. Keep USDC on your
-                    owner Smart Account; the agent is spender-only. A funded private key bypasses
-                    prompts, gate, and Spend Permissions.
+                    For AI agents with a Coinbase AgentKit / CDP wallet. Prefer
+                    <strong>Copy for my AI</strong> above — the pack tells the agent to set a daily
+                    on-chain USDC limit. Do not put the funded private key in the agent.
                   </p>
                   <p class="muted tight">
-                    <strong>Path A · You sync</strong> — owner SA + agent spender (host CDP). Wallet
-                    need not stay online.
+                    Pre-fill addresses only if you already know them (optional). Most owners skip this
+                    and let the agent follow <code>hybrid_plan</code> from the pack.
                   </p>
-                  <label class="hybrid-label" for="hybrid-sa">Owner Smart Account</label>
-                  <input
-                    id="hybrid-sa"
-                    class="hybrid-input"
-                    type="text"
-                    spellcheck="false"
-                    autocomplete="off"
-                    placeholder="0x… (holds USDC)"
-                  />
-                  <label class="hybrid-label" for="hybrid-spender">Agent spender</label>
+                  <label class="hybrid-label" for="hybrid-spender">Agent wallet (AgentKit / CDP)</label>
                   <input
                     id="hybrid-spender"
                     class="hybrid-input"
                     type="text"
                     spellcheck="false"
                     autocomplete="off"
-                    placeholder="0x… (agent key only)"
+                    placeholder="0x… agent signing address"
                   />
-                  <div class="connect-actions">
-                    <button type="button" class="btn-policy-action" id="btn-hybrid-dry">
-                      Dry-run plan
-                    </button>
-                    <button type="button" class="btn-policy-action" id="btn-hybrid-sync">
-                      Sync Spend Permission
-                    </button>
-                  </div>
-                  <p class="muted tight">
-                    <strong>Path B · Agent CDP</strong> — Copy for my AI includes
-                    <code>hybrid_plan</code> steps. Agent creates the permission (owner SA → spender),
-                    then optional <code>hybrid_report</code>. Never give the agent the treasury key.
-                  </p>
+                  <label class="hybrid-label" for="hybrid-sa">Funded Smart Account (advanced)</label>
+                  <input
+                    id="hybrid-sa"
+                    class="hybrid-input"
+                    type="text"
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder="0x… where USDC sits (not the agent key)"
+                  />
+                  <details class="connect-dev hybrid-advanced">
+                    <summary>Advanced · host Sync (operators)</summary>
+                    <p class="muted tight">
+                      Only if AllowLatch host CDP can manage that Smart Account. Otherwise leave Sync
+                      alone — use Copy for my AI.
+                    </p>
+                    <div class="connect-actions">
+                      <button type="button" class="btn-policy-action" id="btn-hybrid-dry">
+                        Dry-run plan
+                      </button>
+                      <button type="button" class="btn-policy-action" id="btn-hybrid-sync">
+                        Sync Spend Permission
+                      </button>
+                    </div>
+                  </details>
                   <p class="muted tight" id="hybrid-sync-status" aria-live="polite"></p>
                 </div>
 

@@ -27,17 +27,19 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 1. Open https://allowlatch.vercel.app → **Try AllowLatch now**
 2. **Simple rules** or paste a mandate → **Draft** (SERV Reasoning) → **Apply**
 3. **Go live (server gate)** — policy + `sessionSeal` (survives cold starts; production also persists ledger on Turso when configured)
-4. **On-chain ceiling (recommended):** Path A — owner SA + agent spender → Sync (`sync_wallet`); or Path B — leave it for the agent via **Copy for my AI** (`hybrid_plan`)
-5. Click spend chips → see **ALLOW / DENY / ESCALATE** + receipts (free from the site)
-6. **Connect your agent** — **Copy for my AI** only after Go live + `sessionSeal`
+4. **Copy for my AI** — paste into your AgentKit agent (needs `sessionSeal`)
+5. Optional AgentKit daily ceiling (right rail) or leave `hybrid_plan` to the agent
+6. Click spend chips → see **ALLOW / DENY / ESCALATE** + receipts (free from the site)
 7. Optional: **Install** (`#install`) and **Live case** (`#case`) — full SERV + paid Base path
+
+Audience: owners of AI agents with **Coinbase AgentKit / CDP** wallets. The site does not ask you to connect MetaMask.
 
 You never set `SERV_API_KEY`, never run the local OpenServ host, never deploy this repo.
 Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) — that is not a host SERV/CDP key, and it is not custody by AllowLatch.
 
-**Required agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })` (+ hybrid Spend Permissions). `assertSpend` alone is **advisory** if a raw signer still exists.
+**Required agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })`. `assertSpend` alone is **advisory** if a raw signer still exists.
 
-**Hard rule:** do **not** give the agent the private key to the funded account. Keep USDC on the owner Smart Account; the agent is spender-only. Details: [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [CONNECT.md](./CONNECT.md).
+**Hard rule:** do **not** put the funded private key in the agent. Details: [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [CONNECT.md](./CONNECT.md).
 
 **Site-gate honesty:** Production (`GET /api/gate` → `durable: true`) uses Turso for shared ledger + receipts. Without Turso, `sessionSeal` restores policy after cold starts but is not multi-tenant durable. Keep live balances small unless durable + hybrid on-chain caps. Details: [SECURITY.md](./SECURITY.md).
 

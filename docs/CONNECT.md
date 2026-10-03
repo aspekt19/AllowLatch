@@ -4,6 +4,8 @@ Full guide: [GUIDE.md](./GUIDE.md).
 
 You do **not** run a server. You do **not** need `SERV_API_KEY`.
 
+**Audience:** you own an **AI agent with a Coinbase AgentKit / CDP wallet** on Base (or a compatible gated signer). AllowLatch is that agent’s spending turnstile — not a consumer “connect MetaMask to freeze my wallet” product. The website does **not** ask you to connect a browser wallet.
+
 ## Surfaces (one primary path)
 
 **Default to the site gate.** OpenServ is optional only if `/api/gate` is unreachable.
@@ -22,15 +24,13 @@ Skill (any LLM): [`skills/allowlatch/SKILL.md`](../skills/allowlatch/SKILL.md)
 2. **Simple rules:** daily max + max per transfer + allowlisted addresses → **Draft with SERV**  
    (or paste free-text mandate → Draft). Same SERV Copilot: Multipath · prompt_guard · shadow.
 3. Review conflicts → Apply → **Go live** (keeps `sessionSeal`)
-4. **On-chain ceiling (recommended):**
-   - **Path A** — enter owner Smart Account + agent spender → Dry-run / Sync (`sync_wallet`)
-   - **Path B** — **Copy for my AI** includes `hybrid_plan` steps for the agent’s CDP
-5. **Copy for my AI** only after Go live + `sessionSeal`. Paste into Cursor / Claude / ChatGPT.
-6. Optional: OpenServ discover only if `/api/gate` is unreachable.
+4. **Copy for my AI** — paste into Cursor / Claude / your AgentKit agent (needs `sessionSeal`)
+5. **Optional:** AgentKit daily ceiling (right rail) or let the agent follow `hybrid_plan` in the pack
+6. Optional: OpenServ discover only if `/api/gate` is unreachable
 
-### Private-key invariant
+### Funded key
 
-Do **not** give your agent the private key to the funded account. Keep USDC on the owner Smart Account; the agent is **spender-only**. If the agent holds the treasury key, prompts / gate / Spend Permissions cannot stop a raw transfer. Details: [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+Do **not** put the private key to the funded account in the agent. Prefer USDC on an owner Smart Account; the AgentKit wallet spends under the gate (+ optional Spend Permission). Details: [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 
 Demo mandate wording (passes SERV GUARD in live tests):
 
@@ -61,7 +61,7 @@ await agent.transfer({
 
 **`assertSpend` alone is advisory** — it checks the gate, but does **not** remove a raw AgentKit/CDP signer. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing.
 
-**Hybrid:** `POST action=hybrid_plan` → CDP `createSpendPermission` (owner SA → your spender) → optional `hybrid_report`. Never use the funded treasury private key as the agent signer. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+**Optional ceiling:** `POST action=hybrid_plan` → CDP `createSpendPermission` (funded SA → your AgentKit address) → optional `hybrid_report`. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 
 Durable evaluate requires the latest `sessionSeal` (not `policyId` alone). `createGatedAgentKit` refreshes the seal after each evaluate.
 

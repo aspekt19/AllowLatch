@@ -1545,6 +1545,13 @@ button {
   background: var(--accent-soft);
 }
 
+.btn-policy-action.btn-policy-primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+
 .connect-panel .connect-pre {
   margin: 10px 0 0;
   max-height: 220px;
