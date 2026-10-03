@@ -16,6 +16,10 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 | **SERV Copilot** | `POST /api/copilot` on the website | Owner drafts/revises/explains via SERV Reasoning | Yes (host key; not for agents) |
 | **OpenServ fallback** | discover `/allowlatch/i` · triggerUrl | $0.025 x402 | Only while operator host is reachable |
 
+### Owner path (no code)
+
+Humans: https://allowlatch.vercel.app/#gate → **Simple rules** (daily cap + addresses) or free-text → **Draft with SERV** → Apply → Go live → **Copy for my AI**. Same SERV Multipath / prompt_guard / shadow. They paste the Connect text into you — then you must use the gated kit below.
+
 ### Required install
 
 ```ts

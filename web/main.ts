@@ -3,6 +3,11 @@ import '@fontsource-variable/geist-mono'
 import '@fontsource/instrument-serif'
 import { inject } from '@vercel/analytics'
 import { draftPolicyLocally } from '../src/policy/local-compile.ts'
+import {
+  parseAddressLines,
+  simpleRulesToMandateText,
+  validateSimpleRules,
+} from '../src/policy/simple-mandate.ts'
 import { commitIntent, evaluateIntent, freshLedger, USDC_BY_CHAIN } from '../src/policy/engine.ts'
 import {
   DEMO_POLICY,
@@ -177,30 +182,55 @@ function buildAgentInstruction(): string {
   const policyId = hosted?.policyId || 'default'
   const sessionSeal = hosted?.sessionSeal
   const gateUrl = `${location.origin}/api/gate`
+  const p = hosted?.policy ?? policy
+  const daily = p?.capital.maxNotionalUsdPerDay
+  const perTx = p?.capital.maxPerOrderUsd
+  const addrs = p?.universe.allowedAddresses ?? []
+  const limits =
+    daily != null && perTx != null
+      ? `My limits: max $${perTx}/transfer, $${daily}/day` +
+        (addrs.length ? `, only these addresses: ${addrs.join(', ')}` : '') +
+        '.'
+      : 'My spending limits are already on AllowLatch — do not invent your own.'
+
   return [
-    'You are my spending agent. AllowLatch holds my rules — do not invent allow/deny.',
+    'You are my spending agent. AllowLatch holds my rules. Do not invent ALLOW or DENY.',
+    '',
+    limits,
+    '',
+    `gateUrl: ${gateUrl}`,
+    `policyId: ${policyId}`,
+    sessionSeal ? `sessionSeal: ${sessionSeal}` : 'sessionSeal: (ask me if missing — I get it after Go live)',
+    '',
+    'Before every transfer / payment / swap:',
+    '1) Call AllowLatch on gateUrl with this policyId + sessionSeal (use createGatedAgentKit or the allowlatch skill).',
+    '2) ALLOW + allow-receipt → you may sign only that exact spend.',
+    '3) DENY, timeout, unpaid, or error → stop. Do not sign.',
+    '4) ESCALATE → ask me; never set humanApproved yourself. If I say no → no receipt, do not sign.',
+    '',
+    'Never ask for SERV_API_KEY, ownerToken, or CDP host secrets.',
+    'Skill: https://allowlatch.vercel.app/llms.txt',
+    'I change limits on https://allowlatch.vercel.app — you only enforce them.',
+  ].join('\n')
+}
+
+function buildAgentDevInstruction(): string {
+  const policyId = hosted?.policyId || 'default'
+  const sessionSeal = hosted?.sessionSeal
+  const gateUrl = `${location.origin}/api/gate`
+  return [
+    'Developer path (same gate as Copy for my AI):',
     '',
     `policyId: ${policyId}`,
-    `Primary gateUrl (always-on · agents pay $0.025 USDC x402 on Base): ${gateUrl}`,
+    `gateUrl: ${gateUrl}`,
     sessionSeal ? `sessionSeal: ${sessionSeal}` : null,
     `OpenServ trigger (optional fallback only): ${cachedTriggerUrl}`,
     '',
-    'Required enforcement (do not skip):',
-    '1) npm i allowlatch@^0.2.3',
-    '2) Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })',
-    '   so spends go through AllowLatch before signing. Prefer hybrid Spend Permissions; middleware ≠ custody.',
-    '3) Never call a raw wallet / CDP transfer in parallel with the gated path.',
-    '',
-    'assertSpend({ gateUrl, sessionSeal, walletPrivateKey, intent }) alone is ADVISORY only —',
-    'use it only if createGatedAgentKit is impossible; it does not remove a raw signer.',
-    'walletPrivateKey is the x402 payer only (not a host SERV/CDP key).',
-    '',
-    'Rules:',
-    '- ALLOW + allow-receipt jti → only then may you sign.',
-    '- DENY / timeout / unpaid 402 → stop (fail-closed). ESCALATE → ask me (I approve; you never set humanApproved yourself).',
-    '- Never invent ALLOW. Never ask for SERV_API_KEY, ownerToken, or CDP secrets.',
-    '',
-    'I set and change limits on https://allowlatch.vercel.app — you only enforce them.',
+    'Required: npm i allowlatch@^0.2.3',
+    'Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } }).',
+    'Prefer hybrid Spend Permissions. assertSpend alone is advisory.',
+    'walletPrivateKey = x402 payer only. Never parallel raw CDP transfer.',
+    'OpenServ discover /allowlatch/i only if site gate is unreachable.',
   ]
     .filter((line): line is string => line != null && line !== '')
     .join('\n')
@@ -1102,13 +1132,88 @@ btnEnforceHost.addEventListener('click', () => {
 })
 btnConnectAgent?.addEventListener('click', () => openConnectPanel())
 btnCopyAgentInstruction?.addEventListener('click', () => {
-  void copyText('Agent instruction', buildAgentInstruction())
+  void copyText('Copy for my AI', buildAgentInstruction())
 })
 btnCopyAgentCode?.addEventListener('click', () => {
-  void copyText('Code snippet', buildAgentCodeSnippet())
+  void copyText('Code snippet', `${buildAgentDevInstruction()}\n\n${buildAgentCodeSnippet()}`)
 })
 btnCopyAgentMcp?.addEventListener('click', () => {
   void copyText('MCP config', buildAgentMcpConfig())
+})
+
+const DEMO_SIMPLE_ADDR = '0x5cc0Aa9ed773F413f81f78a62F2e94109CE26205'
+const simpleDaily = document.querySelector<HTMLInputElement>('#simple-daily')
+const simplePerTx = document.querySelector<HTMLInputElement>('#simple-per-tx')
+const simpleEscalate = document.querySelector<HTMLInputElement>('#simple-escalate')
+const simpleAddresses = document.querySelector<HTMLTextAreaElement>('#simple-addresses')
+const simpleStatus = document.querySelector<HTMLElement>('#simple-rules-status')
+const btnSimpleDraft = document.querySelector<HTMLButtonElement>('#btn-simple-draft')
+const btnSimpleFillDemo = document.querySelector<HTMLButtonElement>('#btn-simple-fill-demo')
+
+function readSimpleRulesFromForm() {
+  const dailyUsd = Number(simpleDaily?.value)
+  const maxPerTransferUsd = Number(simplePerTx?.value)
+  const escalateRaw = simpleEscalate?.value.trim()
+  const escalateAboveUsd =
+    escalateRaw === '' || escalateRaw == null ? undefined : Number(escalateRaw)
+  const addresses = parseAddressLines(simpleAddresses?.value ?? '')
+  return { dailyUsd, maxPerTransferUsd, escalateAboveUsd, addresses }
+}
+
+async function draftFromSimpleRules() {
+  if (busy) return
+  const rules = readSimpleRulesFromForm()
+  const invalid = validateSimpleRules(rules)
+  if (invalid) {
+    if (simpleStatus) simpleStatus.textContent = invalid
+    addMessage('guard', invalid)
+    return
+  }
+  let mandateText: string
+  try {
+    mandateText = simpleRulesToMandateText(rules)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (simpleStatus) simpleStatus.textContent = msg
+    return
+  }
+  if (simpleStatus) simpleStatus.textContent = 'Drafting with SERV…'
+  input.value = mandateText
+  busy = true
+  btnSimpleDraft && (btnSimpleDraft.disabled = true)
+  btnSend.disabled = true
+  try {
+    addMessage('you', `Simple rules → mandate:\n${mandateText}`)
+    lastMandate = mandateText
+    const outcome = await draftFromMandate(mandateText)
+    if (!outcome.ok) {
+      if (simpleStatus) simpleStatus.textContent = 'SERV asked to rephrase — try the free-text box.'
+      addMessage('guard', SERV_REFUSAL_HINT)
+      setPhase('mandate')
+      return
+    }
+    if (simpleStatus) {
+      simpleStatus.textContent =
+        outcome.via === 'serv' ? 'SERV draft ready — review below.' : 'Local fallback draft (SERV offline).'
+    }
+    showDraftReview(outcome.draft, outcome.via)
+  } finally {
+    busy = false
+    btnSimpleDraft && (btnSimpleDraft.disabled = false)
+    btnSend.disabled = false
+  }
+}
+
+btnSimpleFillDemo?.addEventListener('click', () => {
+  if (simpleDaily) simpleDaily.value = '20'
+  if (simplePerTx) simplePerTx.value = '5'
+  if (simpleEscalate) simpleEscalate.value = '2.5'
+  if (simpleAddresses) simpleAddresses.value = DEMO_SIMPLE_ADDR
+  if (simpleStatus) simpleStatus.textContent = 'Demo values loaded — click Draft with SERV.'
+})
+
+btnSimpleDraft?.addEventListener('click', () => {
+  void draftFromSimpleRules()
 })
 
 const EMBED_SNIPPET = `import { createGatedAgentKit } from 'allowlatch'

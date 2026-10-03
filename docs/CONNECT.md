@@ -16,11 +16,14 @@ You do **not** run a server. You do **not** need `SERV_API_KEY`.
 Install: https://allowlatch.vercel.app/#install  
 Skill (any LLM): [`skills/allowlatch/SKILL.md`](../skills/allowlatch/SKILL.md)
 
-## Try on the website
+## Try on the website (owner — no code)
 
-1. Open https://allowlatch.vercel.app → **Load demo mandate (SERV-safe)** (or paste your own) → Draft → Apply → **Go live**
-2. Try ALLOW / DENY / ESCALATE (free from the site browser)
-3. **Connect your agent** → copy gated-kit instruction (`gateUrl` + `sessionSeal`; **never** `ownerToken`)
+1. Open https://allowlatch.vercel.app/#gate
+2. **Simple rules:** daily max + max per transfer + allowlisted addresses → **Draft with SERV**  
+   (or paste free-text mandate → Draft). Same SERV Copilot: Multipath · prompt_guard · shadow.
+3. Review conflicts → Apply → **Go live**
+4. **Copy for my AI** — paste into Cursor / Claude / ChatGPT (plain language). SDK/MCP buttons are for builders.
+5. Optional: OpenServ discover only if `/api/gate` is unreachable.
 
 Demo mandate wording (passes SERV GUARD in live tests):
 

@@ -659,6 +659,93 @@ button {
   font-size: 0.9rem;
 }
 
+/* Simple rules (owner shortcut → SERV) */
+.simple-rules {
+  margin: 28px 0 24px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.simple-rules-head h3 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.simple-rules-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.simple-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.simple-field-wide {
+  grid-column: 1 / -1;
+}
+
+.simple-field input,
+.simple-field textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.simple-field textarea {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.simple-rules-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.simple-or {
+  margin: 14px 0 0;
+}
+
+.connect-dev {
+  margin-top: 12px;
+  font-size: 0.88rem;
+}
+
+.connect-dev summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.connect-dev[open] summary {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 800px) {
+  .simple-rules-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Install */
 .audience-split {
   margin-top: 40px;

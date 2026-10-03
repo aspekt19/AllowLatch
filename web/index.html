@@ -73,15 +73,15 @@
           <p id="hero-brand" class="hero-brand">AllowLatch</p>
           <h1 class="hero-title">The spending turnstile for AI agents.</h1>
           <p class="hero-lead">
-            Say the rules in plain language. SERV drafts the policy. Code — not the model — decides
-            ALLOW, DENY, or ESCALATE. Put the gate in the signing path
-            (<code>createGatedAgentKit</code>); prefer <code>hybrid</code> Spend Permissions for on-chain daily caps.
+            Set a daily cap and allowlisted addresses — or write the rules in words. SERV drafts the
+            policy. Code — not the model — decides ALLOW, DENY, or ESCALATE. Then paste one short
+            instruction into your AI.
           </p>
           <div class="hero-cta">
-            <a class="btn btn-solid" href="#gate">Open the live gate</a>
-            <a class="btn btn-line" href="#install">Install paths</a>
+            <a class="btn btn-solid" href="#gate">Set my limits</a>
+            <a class="btn btn-line" href="#install">How to connect</a>
           </div>
-          <p class="hero-meta">No end-user API keys · No policy → DENY on the gate · Base / USDC · coffee-money balances until audit</p>
+          <p class="hero-meta">No end-user API keys · SERV drafts · No policy → DENY · Base / USDC · coffee-money until audit</p>
         </div>
       </section>
 
@@ -221,10 +221,9 @@
             <h2 id="install-title">How you (and your agent) connect.</h2>
             <p class="section-lead">
               You do not run a server. You do not need <code>SERV_API_KEY</code>.
-              Path: SERV Draft on this site → <strong>Go live</strong> → Connect pack
-              (<code>gateUrl</code> + <code>sessionSeal</code>) → agent uses
-              <code>createGatedAgentKit({ kind: 'site' })</code> so spends route through AllowLatch
-              before signing (middleware ≠ custody if a raw key remains — prefer hybrid Spend Permissions).
+              Path: <strong>Simple rules</strong> (or words) → <strong>SERV Draft</strong> → review →
+              <strong>Go live</strong> → <strong>Copy for my AI</strong>. Your agent enforces via the
+              gated kit; OpenServ discover stays an optional fallback if the site gate is down.
             </p>
           </div>
 
@@ -232,19 +231,19 @@
             <div class="audience-col">
               <h3>For you (human)</h3>
               <ol class="path-steps">
-                <li>Open this site → write a mandate → <strong>Draft</strong> (SERV Reasoning) → review.</li>
-                <li><strong>Go live</strong> — policy on the always-on gate + real receipts.</li>
-                <li><strong>Connect your agent</strong> — copy the gated-kit instruction / code / MCP.</li>
+                <li>Open <a href="#gate">Try the gate</a> → fill Simple rules (daily cap + addresses) or write a mandate.</li>
+                <li><strong>Draft with SERV</strong> → review conflicts → Apply → <strong>Go live</strong>.</li>
+                <li><strong>Copy for my AI</strong> — paste into Cursor, Claude, ChatGPT, or any agent.</li>
                 <li>Optional: OpenServ discover only if the site gate is unreachable.</li>
               </ol>
             </div>
             <div class="audience-col">
               <h3>For your agent</h3>
               <ol class="path-steps">
-                <li>Read Connect pack or <a href="/api/host-info">/api/host-info</a> → <code>primary.gateUrl</code>.</li>
+                <li>Follow the Connect pack (or <a href="/api/host-info">/api/host-info</a> → <code>primary.gateUrl</code>).</li>
                 <li>Owner already applied MandatePolicy (Go live). Keep <code>sessionSeal</code>.</li>
-                <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', gateUrl, sessionSeal }, … })</code> — supported spend path goes through the gate before you sign.</li>
-                <li><code>assertSpend</code> alone is <strong>advisory</strong> (does not remove a raw signer). ALLOW + receipt → may sign; else stop.</li>
+                <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', … } })</code> — spend path through AllowLatch before signing.</li>
+                <li><code>assertSpend</code> alone is <strong>advisory</strong>. ALLOW + receipt → may sign; else stop.</li>
               </ol>
             </div>
           </div>
@@ -255,8 +254,8 @@
               <div>
                 <h3>Try + Connect pack</h3>
                 <p>
-                  Fastest for owners: mandate here → Go live → paste Connect instruction into Cursor,
-                  Claude, or any AgentKit bot.
+                  Fastest for owners: Simple rules or words → SERV Draft → Go live →
+                  <strong>Copy for my AI</strong> into Cursor, Claude, or any agent.
                 </p>
                 <a href="#gate">Open the gate ↓</a>
               </div>
@@ -560,11 +559,50 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
             <p class="eyebrow">Use it here</p>
             <h2 id="gate-title">Try AllowLatch now</h2>
             <p class="section-lead">
-              Three steps: <strong>1)</strong> write a spending rule → <strong>2)</strong> SERV Draft → Apply →
-              <strong>3)</strong> Go live. On the gated path, spends need ALLOW + receipt (raw keys can still bypass — prefer hybrid).
+              <strong>1)</strong> Simple rules or words → <strong>2)</strong> SERV Draft → Apply →
+              <strong>3)</strong> Go live → <strong>4)</strong> Copy for my AI.
               SERV drafts and explains; deterministic code returns ALLOW / DENY / ESCALATE.
             </p>
             <p class="muted tight" id="gate-health">Checking hosted Gate…</p>
+          </div>
+
+          <div class="simple-rules" id="simple-rules" aria-labelledby="simple-rules-title">
+            <div class="simple-rules-head">
+              <h3 id="simple-rules-title">Simple rules</h3>
+              <p class="muted tight">
+                Fill this in — we turn it into a mandate and run <strong>SERV Draft</strong> (same
+                Multipath · prompt_guard · shadow as free-text). Not a bypass of the Copilot.
+              </p>
+            </div>
+            <div class="simple-rules-grid">
+              <label class="simple-field">
+                <span>Daily max (USDC)</span>
+                <input id="simple-daily" type="number" min="0.01" step="0.01" value="20" />
+              </label>
+              <label class="simple-field">
+                <span>Max per transfer (USDC)</span>
+                <input id="simple-per-tx" type="number" min="0.01" step="0.01" value="5" />
+              </label>
+              <label class="simple-field">
+                <span>Ask me above (USDC)</span>
+                <input id="simple-escalate" type="number" min="0" step="0.01" value="2.5" />
+              </label>
+              <label class="simple-field simple-field-wide">
+                <span>Allowed addresses (one per line)</span>
+                <textarea
+                  id="simple-addresses"
+                  rows="3"
+                  placeholder="0x5cc0Aa9ed773F413f81f78a62F2e94109CE26205"
+                  spellcheck="false"
+                ></textarea>
+              </label>
+            </div>
+            <div class="simple-rules-actions">
+              <button type="button" class="btn btn-solid" id="btn-simple-draft">Draft with SERV</button>
+              <button type="button" class="btn btn-line" id="btn-simple-fill-demo">Fill demo values</button>
+              <p class="muted tight" id="simple-rules-status" aria-live="polite"></p>
+            </div>
+            <p class="muted tight simple-or">Or write a free-text mandate below — same SERV path.</p>
           </div>
 
           <div class="product-shell">
@@ -646,21 +684,28 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
                     <span class="rail-status" id="connect-policy-id">—</span>
                   </div>
                   <p class="muted tight">
-                    Rules live here. Paste the instruction into your agent (Cursor, OpenServ, AgentKit…).
-                    It must call AllowLatch before every spend — not invent ALLOW.
+                    Paste this into your AI (Cursor, Claude, ChatGPT…). Limits stay on AllowLatch —
+                    the agent must ask before every spend.
                   </p>
                   <pre class="connect-pre" id="connect-instruction" tabindex="0"></pre>
                   <div class="connect-actions">
                     <button type="button" class="btn-policy-action" id="btn-copy-agent-instruction">
-                      Copy instruction
+                      Copy for my AI
                     </button>
                     <button type="button" class="btn-policy-action" id="btn-copy-agent-code">
-                      Copy code snippet
+                      Copy code (developers)
                     </button>
                     <button type="button" class="btn-policy-action" id="btn-copy-agent-mcp">
                       Copy MCP config
                     </button>
                   </div>
+                  <details class="connect-dev">
+                    <summary>For developers (SDK / hybrid)</summary>
+                    <p class="muted tight">
+                      Agents should use <code>createGatedAgentKit</code>. Prefer hybrid Spend Permissions.
+                      OpenServ discover is optional fallback. Middleware alone is not custody-grade.
+                    </p>
+                  </details>
                   <p class="muted tight" id="connect-copy-status" aria-live="polite"></p>
                 </div>
 

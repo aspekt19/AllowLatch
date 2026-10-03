@@ -16,7 +16,8 @@ https://allowlatch.vercel.app/llms.txt · https://allowlatch.vercel.app/agent.js
 1. **Primary (always-on)** — `POST https://allowlatch.vercel.app/api/gate`  
    Website browser (same-site) free to try. Agents pay **$0.025 USDC** x402 on Base.  
    Connect pack: `gateUrl` + `sessionSeal` + x402 `walletPrivateKey` (never `ownerToken` / `SERV_API_KEY`).
-2. **SERV Copilot (owners)** — Draft / revise / explain on the site via `/api/copilot`. Does **not** decide allow/deny.
+2. **SERV Copilot (owners)** — Draft / revise / explain on the site via `/api/copilot`. Does **not** decide allow/deny.  
+   Owner UX: **Simple rules** (daily + addresses) or free-text → Draft with SERV → Go live → **Copy for my AI**.
 3. **OpenServ fallback** — discover `/allowlatch/i` · `$0.025` when host online.
 
 ## Before every spend (required)
