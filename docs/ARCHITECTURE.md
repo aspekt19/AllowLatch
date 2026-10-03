@@ -39,18 +39,22 @@ See [WALLET_NATIVE.md](./WALLET_NATIVE.md). Short version:
 
 ## Storage
 
-SQLite (`data/allowlatch.sqlite`, override with `ALLOWLATCH_SQLITE_PATH`): WAL, `BEGIN IMMEDIATE`, exclusive queue, audit, packs, wallet_bindings, optional `owner_address` for EIP-712. Single-writer host process — an availability SPOF for the hosted ledger; clients must fail-closed when it is down.
+| Surface | Backend |
+|---------|---------|
+| **Primary** always-on `/api/gate` | **Turso** when `ALLOWLATCH_TURSO_*` is set (`durable: true` on `GET /api/gate`); otherwise in-memory + `sessionSeal` (demo) |
+| OpenServ / local HTTP host | **SQLite** (`data/allowlatch.sqlite`, `ALLOWLATCH_SQLITE_PATH`) — WAL, `BEGIN IMMEDIATE`, exclusive queue |
 
-Abstraction: `PolicyStoreApi` (`src/store/types.ts`) + `createStore()` (`ALLOWLATCH_STORE=sqlite` today). Postgres/Turso can implement the same interface without rewriting agent/HTTP.
+Abstraction: `PolicyStoreApi` (`src/store/types.ts`) + `createStore()` / Turso site store. Clients must fail-closed when the ledger is unreachable.
 
 ## Adapters
 
 | Adapter | Entry |
 |---------|--------|
-| Hosted OpenServ gate | Discover **AllowLatch Gate** · [CONNECT.md](./CONNECT.md) · [HOSTED.md](./HOSTED.md) |
-| Operator process | `npm run deploy:openserv` or `npm run dev` |
+| **Primary** Vercel `/api/gate` | https://allowlatch.vercel.app/api/gate · [CONNECT.md](./CONNECT.md) |
+| OpenServ fallback | Discover **AllowLatch Gate** · [HOSTED.md](./HOSTED.md) |
+| Operator process | `npm run deploy:openserv` or `npm run dev` (optional keep-alive) |
 | HTTP gate (dev) | `npm run http:gate` |
-| npm SDK | `import { assertSpend, createGatedAgentKit, allowLatchActionProvider } from 'allowlatch'` |
+| npm SDK | `import { assertSpend, createGatedAgentKit, allowLatchActionProvider, recommendProductionShape } from 'allowlatch'` |
 | AgentKit action provider | `allowLatchActionProvider()` · `src/sdk/allowlatch-action-provider.ts` |
 | MCP | `npm run mcp` / `npx allowlatch-mcp` |
 

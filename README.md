@@ -44,7 +44,7 @@ npm run battle              # Spender → gate → AgentKit dry-run
 npm run connect             # optional: discover OpenServ AllowLatch Gate (fallback)
 npm run agent:gated         # AgentKit spender with gate baked in
 npm run http:gate           # local HTTP evaluate/execute (builder/dev)
-npm run deploy:host         # operator: always-on OpenServ Cloud host
+npm run deploy:host         # operator: optional OpenServ keep-alive (best-effort; not the primary gate)
 npm run dev                 # operator: local tunnel host (dev)
 ```
 

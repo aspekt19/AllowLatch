@@ -85,8 +85,8 @@ function authorized(req: http.IncomingMessage): boolean {
 }
 
 function packsPurchaseAllowed(): boolean {
-  // Never a public billing endpoint — OpenServ/x402 is the real path.
-  // Local operator mint requires loopback + Bearer token (set ALLOWLATCH_DEV_PACKS=1 to acknowledge).
+  // Local HTTP gate is not the public meter — agents buy packs on Vercel /api/gate (buy_pack)
+  // or OpenServ buy_evaluate_pack. Dev mint: loopback + Bearer + ALLOWLATCH_DEV_PACKS=1.
   return LOOPBACK && Boolean(TOKEN) && DEV_PACKS
 }
 

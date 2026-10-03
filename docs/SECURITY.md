@@ -22,7 +22,7 @@ This document is the public threat model and production checklist. For architect
 2. **Update** policy / sync wallet / read claimed policy / reset day ledger → require `ownerToken` or operator.
 3. **Evaluate** (spender path) → `policyId` **+** valid `sessionSeal` on durable Turso gate (seal advances with ledger `seq`). Memory demo mode also requires the latest seal. Prefer unguessable `policyId`s; seal is the spender capability.
 4. **Lifetime budget** never resets via public tools. `reset_daily_ledger` clears day/hour only.
-5. **Pack credits** — client cannot choose mint size; each paid `buy_evaluate_pack` grants a fixed credit amount.
+5. **Pack credits** — client cannot choose mint size; each paid site `buy_pack` (or OpenServ `buy_evaluate_pack`) grants a fixed credit amount.
 
 ## Fail-closed rules
 
@@ -98,7 +98,7 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 | Free website calls | Same-site browser `Sec-Fetch-*` + allowlisted Origin — **UX convenience**, not a cryptographic paywall. Agents without those signals pay x402 |
 | Prepaid packs | `POST action=buy_pack` (paid $0.025) mints a fixed credit count (default 3). `evaluate` with `packKey` burns one credit instead of paying again. Client cannot choose mint size |
 | Amount binding | USDC `transfer` / `x402_pay` require `tokenAmount` (6-decimal atomic) or ERC-20 `transfer` calldata that matches `amountUsd` — claimed USD alone is not enough |
-| Receipt secret | Prefer dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is supported for ops continuity but is poor secret hygiene |
+| Receipt secret | **Production requires** dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is a temporary ops escape hatch only — do not ship that as the prod config |
 | Budget vs settlement | On ALLOW the daily/lifetime ledger is reserved when the receipt is issued (conservative). Durable `consume` marks `jti` settled for replay protection at the execute boundary |
 
 Prefer durable Turso for any balance you care about. Treat demo mode as **always-on smoke path** with small balances. SQLite operator host (`npm run http:gate`) remains the local atomic alternative.
@@ -156,7 +156,7 @@ Before putting meaningful balance behind AllowLatch:
 11. [ ] Separate hot wallet with minimal USDC; **`ALLOWLATCH_RECEIPT_SECRET` required in production** (no SERV_API_KEY fallback).
 12. [ ] Prefer / keep `hybrid` enforcement + synced Spend Permission for live execute (default mode).
 13. [ ] Prefer EIP-712 `ownerSig` on apply (or keep `ownerToken` secret); enable `ALLOWLATCH_REQUIRE_OWNER_SIG` for high-value tenants.
-14. [ ] `buy_evaluate_pack` ignores client credit amounts; credits bound to paid x402 calls.
+14. [ ] Site `buy_pack` / OpenServ `buy_evaluate_pack` ignore client credit amounts; credits bound to paid x402 calls.
 15. [ ] Durable evaluate rejects missing/stale `sessionSeal` (policyId alone is not enough).
 
 ## Reporting

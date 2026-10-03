@@ -6,8 +6,8 @@ AllowLatch has **not** completed a third-party security audit. Use this before p
 
 - [ ] Re-read [SECURITY.md](./SECURITY.md) threat model and production checklist end-to-end
 - [ ] `npm test` green (engine + property + receipt + EIP-712 + store)
-- [ ] Confirm clients use `assertSpend` / `createGatedAgentKit` / `allowLatchActionProvider` — no parallel raw signer
-- [ ] Prefer `createGatedAgentKit({ gate: { kind: 'site' } })` over chat-only prompts; run `npm run bypass:negative`
+- [ ] **Required:** clients use `createGatedAgentKit({ kind: 'site' })` — no parallel raw signer (`assertSpend` / action provider are advisory helpers only)
+- [ ] Run `npm run bypass:negative` against the gated path
 - [ ] Production `/api/gate`: set `ALLOWLATCH_TURSO_DATABASE_URL` (+ auth token) so `GET /api/gate` reports `durable: true`
 - [ ] `ALLOWLATCH_ENFORCEMENT=hybrid` + synced Spend Permission for live USDC
 - [ ] Tenant: `ownerToken` and/or EIP-712 `ownerSig`; consider `ALLOWLATCH_REQUIRE_OWNER_SIG=1`

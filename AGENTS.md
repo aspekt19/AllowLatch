@@ -22,7 +22,8 @@ Entry point for coding agents (Cursor, OpenServ, Claude Code, etc.). Human-facin
 | Cursor skill mirror | [`.cursor/skills/allowlatch/SKILL.md`](./.cursor/skills/allowlatch/SKILL.md) |
 | Policy schema | [`src/policy/schema.ts`](./src/policy/schema.ts) |
 | Deterministic gate | [`src/policy/engine.ts`](./src/policy/engine.ts) |
-| SQLite policy store | [`src/store/fs-store.ts`](./src/store/fs-store.ts) · [`src/store/types.ts`](./src/store/types.ts) |
+| Policy store (SQLite host / Turso site) | [`src/store/fs-store.ts`](./src/store/fs-store.ts) · [`src/store/types.ts`](./src/store/types.ts) · Turso on `/api/gate` when configured |
+| Production shape helper | [`src/sdk/production-shape.ts`](./src/sdk/production-shape.ts) · `recommendProductionShape` |
 | Allow-receipt | [`src/billing/receipt.ts`](./src/billing/receipt.ts) |
 | EIP-712 owner apply | [`src/auth/policy-eip712.ts`](./src/auth/policy-eip712.ts) |
 | npm SDK / AgentKit action / MCP | [`src/index.ts`](./src/index.ts) · [`src/sdk/allowlatch-action-provider.ts`](./src/sdk/allowlatch-action-provider.ts) · [`src/mcp/server.ts`](./src/mcp/server.ts) |

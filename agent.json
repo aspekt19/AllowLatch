@@ -26,12 +26,15 @@
       "url": "https://allowlatch.vercel.app/api/gate",
       "actions": [
         "apply",
-        "evaluate"
+        "evaluate",
+        "consume",
+        "buy_pack"
       ],
       "priceUsd": "0.025",
+      "evaluatePack": "buy_pack \u2014 each paid $0.025 x402 mints fixed credits (default 3); evaluate with packKey (~$0.008/check). Requires Turso durable.",
       "freeForWebsiteOrigin": true,
       "sessionSeal": "HMAC blob returned on apply/evaluate \u2014 client must send it back to survive Vercel cold starts",
-      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base. Required: createGatedAgentKit({ kind: site, gateUrl, sessionSeal, walletPrivateKey }). assertSpend is advisory. OpenServ is optional fallback."
+      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base (or burn packKey credits). Required: createGatedAgentKit({ kind: site, gateUrl, sessionSeal, walletPrivateKey, packKey? }). assertSpend is advisory. OpenServ is optional fallback."
     }
   },
   "agentSkill": {
@@ -65,8 +68,12 @@
       "description": "Deterministic allow | deny | escalate. Issues single-use allow-receipt on ALLOW. No transaction."
     },
     {
+      "id": "buy_pack",
+      "description": "Site gate: paid x402 mints fixed evaluate credits for packKey (Turso durable; client cannot choose amount)."
+    },
+    {
       "id": "buy_evaluate_pack",
-      "description": "Paid x402 call mints fixed evaluate credits for packKey (client cannot choose amount)."
+      "description": "OpenServ fallback: paid x402 mints fixed evaluate credits for packKey (same economics as site buy_pack)."
     },
     {
       "id": "explain_decision",
@@ -93,7 +100,7 @@
     "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",
     "Lifetime budget is not reset by public APIs; reset_daily_ledger clears day/hour only",
     "End users never run npm run dev or set SERV_API_KEY \u2014 they connect via /api/gate Connect pack; agents must use createGatedAgentKit({ kind: \"site\" }); assertSpend alone is advisory",
-    "AllowLatch does not custody user funds or private keys",
+    "AllowLatch does not custody user funds or private keys (hosted gate = SaaS authorization; prefer hybrid Spend Permissions)",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],
   "stacks": [

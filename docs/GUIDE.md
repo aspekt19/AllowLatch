@@ -106,9 +106,10 @@ Do **not** treat `gate.isActive: true` alone as healthy — timeout still means 
 |------|-------|
 | Website UI (AllowLatch Origin) | Free |
 | Agent → `/api/gate` | **$0.025 USDC** on Base → operator `payTo` from host-info |
-| OpenServ fallback | **$0.025** when that host is up |
+| Agent → `buy_pack` + `packKey` | **$0.025** → default **3** credits (~$0.008/check; Turso durable required) |
+| OpenServ fallback | **$0.025** when that host is up (`buy_evaluate_pack` = same pack idea) |
 
-Details: [MONETIZE.md](./MONETIZE.md)
+Details: [MONETIZE.md](./MONETIZE.md). Production checklist: site [#ready](https://allowlatch.vercel.app/#ready) · `recommendProductionShape()`.
 
 ---
 
@@ -124,7 +125,7 @@ Details: [MONETIZE.md](./MONETIZE.md)
 
 ## 6. Operators (maintainers only)
 
-- **Primary uptime** = Vercel (`SERV_API_KEY` / receipt secret, `CDP_*` for x402 facilitator, `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO`).
+- **Primary uptime** = Vercel (`ALLOWLATCH_RECEIPT_SECRET` required in prod, `SERV_API_KEY` for Copilot only, `CDP_*` for x402 facilitator, `WALLET_PRIVATE_KEY` or `ALLOWLATCH_X402_PAY_TO`, prefer `ALLOWLATCH_TURSO_*`).
 - **OpenServ** = optional: [HOSTED.md](./HOSTED.md) · `npm run deploy:host`.
 - Local tunnel `npm run dev` = incident/debug only.
 

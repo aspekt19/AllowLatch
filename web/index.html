@@ -518,7 +518,7 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
             <div class="price-row">
               <div>
                 <h3>x402 gate call</h3>
-                <p>apply · evaluate · explain · execute — or buy_pack for prepaid checks</p>
+                <p>apply · evaluate · consume · buy_pack (explain = /api/copilot; execute = OpenServ/host)</p>
               </div>
               <p class="price-figure">$0.025</p>
             </div>
@@ -561,7 +561,7 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
             <h2 id="gate-title">Try AllowLatch now</h2>
             <p class="section-lead">
               Three steps: <strong>1)</strong> write a spending rule → <strong>2)</strong> SERV Draft → Apply →
-              <strong>3)</strong> Go live. After that your agent cannot move USDC without this gate.
+              <strong>3)</strong> Go live. On the gated path, spends need ALLOW + receipt (raw keys can still bypass — prefer hybrid).
               SERV drafts and explains; deterministic code returns ALLOW / DENY / ESCALATE.
             </p>
             <p class="muted tight" id="gate-health">Checking hosted Gate…</p>
