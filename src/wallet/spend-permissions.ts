@@ -105,11 +105,13 @@ export function planSpendPermission(args: {
 export async function syncSpendPermission(args: {
   policy: MandatePolicy
   spender?: string
+  smartAccount?: string
   dryRun?: boolean
 }): Promise<WalletNativePlan> {
   const plan = planSpendPermission({
     policy: args.policy,
     spender: args.spender,
+    smartAccount: args.smartAccount,
   })
 
   if (plan.status !== 'planned') return plan

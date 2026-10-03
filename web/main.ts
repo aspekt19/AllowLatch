@@ -76,6 +76,13 @@ const connectCopyStatus = document.querySelector<HTMLElement>('#connect-copy-sta
 const btnCopyAgentInstruction = document.querySelector<HTMLButtonElement>('#btn-copy-agent-instruction')
 const btnCopyAgentCode = document.querySelector<HTMLButtonElement>('#btn-copy-agent-code')
 const btnCopyAgentMcp = document.querySelector<HTMLButtonElement>('#btn-copy-agent-mcp')
+const hybridPanel = document.querySelector<HTMLElement>('#hybrid-panel')
+const hybridStatusEl = document.querySelector<HTMLElement>('#hybrid-status')
+const hybridSaInput = document.querySelector<HTMLInputElement>('#hybrid-sa')
+const hybridSpenderInput = document.querySelector<HTMLInputElement>('#hybrid-spender')
+const hybridSyncStatus = document.querySelector<HTMLElement>('#hybrid-sync-status')
+const btnHybridDry = document.querySelector<HTMLButtonElement>('#btn-hybrid-dry')
+const btnHybridSync = document.querySelector<HTMLButtonElement>('#btn-hybrid-sync')
 
 type HostedSession = {
   policyId: string
@@ -85,6 +92,9 @@ type HostedSession = {
   policy?: MandatePolicy
   /** HMAC seal from /api/gate — restores policy after Vercel cold starts. */
   sessionSeal?: string
+  hybridSmartAccount?: string
+  hybridSpender?: string
+  hybridBinding?: Record<string, unknown>
 }
 
 const STORAGE_KEY = 'allowlatch.hosted.v1'
@@ -186,6 +196,8 @@ function buildAgentInstruction(): string {
   const daily = p?.capital.maxNotionalUsdPerDay
   const perTx = p?.capital.maxPerOrderUsd
   const addrs = p?.universe.allowedAddresses ?? []
+  const sa = hosted?.hybridSmartAccount || hybridSaInput?.value.trim() || ''
+  const spender = hosted?.hybridSpender || hybridSpenderInput?.value.trim() || ''
   const limits =
     daily != null && perTx != null
       ? `My limits: max $${perTx}/transfer, $${daily}/day` +
@@ -200,7 +212,20 @@ function buildAgentInstruction(): string {
     '',
     `gateUrl: ${gateUrl}`,
     `policyId: ${policyId}`,
-    sessionSeal ? `sessionSeal: ${sessionSeal}` : 'sessionSeal: (ask me if missing — I get it after Go live)',
+    sessionSeal
+      ? `sessionSeal: ${sessionSeal}`
+      : 'sessionSeal: (MISSING — I must Go live first and copy again)',
+    '',
+    'HARD RULE — treasury / private keys:',
+    '- Keep USDC on my owner Smart Account. Never ask for or accept the private key to the funded account.',
+    '- You may only hold a spender key (or use_spend_permission). If you have the treasury key, on-chain ceiling does NOT work — do not sign raw transfers.',
+    '',
+    'On-chain ceiling (hybrid Spend Permission) — pick one setup path:',
+    `A) I may sync myself (sync_wallet) with owner SA → your spender.`,
+    `B) You: POST { action: "hybrid_plan", policyId, sessionSeal${sa ? `, smartAccount: "${sa}"` : ', smartAccount: <owner-SA>'}${spender ? `, spender: "${spender}"` : ', spender: <your-spender>'} }`,
+    '   Then CDP createSpendPermission: account=owner SA, spender=your address, token=usdc, allowance=daily cap, periodInDays=1.',
+    '   Then POST { action: "hybrid_report", policyId, sessionSeal, smartAccount, spender, status: "synced", userOpHash }.',
+    '   Do NOT grant yourself permission using the funded treasury private key.',
     '',
     'Before every transfer / payment / swap:',
     '1) Call AllowLatch on gateUrl with this policyId + sessionSeal (use createGatedAgentKit or the allowlatch skill).',
@@ -228,6 +253,8 @@ function buildAgentDevInstruction(): string {
     '',
     'Required: npm i allowlatch@^0.2.3',
     'Use createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } }).',
+    'Hybrid: treasury on owner Smart Account; agent = spender only. Never put the funded private key in the agent.',
+    'Actions: hybrid_plan → createSpendPermission(owner SA → spender) → hybrid_report; or owner sync_wallet.',
     'Prefer hybrid Spend Permissions. assertSpend alone is advisory.',
     'walletPrivateKey = x402 payer only. Never parallel raw CDP transfer.',
     'OpenServ discover /allowlatch/i only if site gate is unreachable.',
@@ -294,9 +321,30 @@ function buildAgentMcpConfig(): string {
 function renderConnectPanel() {
   const show = Boolean(hosted)
   connectPanel?.classList.toggle('is-hidden', !show)
+  hybridPanel?.classList.toggle('is-hidden', !show)
   if (!show || !connectInstructionEl) return
   if (connectPolicyIdEl) connectPolicyIdEl.textContent = hosted!.policyId
   connectInstructionEl.textContent = buildAgentInstruction()
+  const hasSeal = Boolean(hosted?.sessionSeal)
+  if (btnCopyAgentInstruction) {
+    btnCopyAgentInstruction.disabled = !hasSeal
+    btnCopyAgentInstruction.title = hasSeal
+      ? 'Copy plain-language Connect pack'
+      : 'Go live first — Copy needs sessionSeal'
+  }
+  if (btnCopyAgentCode) btnCopyAgentCode.disabled = !hasSeal
+  if (btnCopyAgentMcp) btnCopyAgentMcp.disabled = !hasSeal
+  if (hybridSaInput && hosted?.hybridSmartAccount) {
+    hybridSaInput.value = hosted.hybridSmartAccount
+  }
+  if (hybridSpenderInput && hosted?.hybridSpender) {
+    hybridSpenderInput.value = hosted.hybridSpender
+  }
+  const st = hosted?.hybridBinding?.status
+  if (hybridStatusEl) {
+    hybridStatusEl.textContent =
+      typeof st === 'string' ? String(st) : hasSeal ? 'Ready' : 'Off'
+  }
 }
 
 function openConnectPanel() {
@@ -312,11 +360,18 @@ function openConnectPanel() {
   connectPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   addMessage(
     'guard',
-    `Connect pack ready for policyId=${hosted.policyId}.\n\nCopy the agent instruction (right rail) and paste it into your agent. Limits stay on AllowLatch — the agent only evaluates before signing.`
+    `Connect pack ready for policyId=${hosted.policyId}.\n\nCopy the agent instruction (right rail) and paste it into your agent. Optional: set On-chain ceiling (owner SA + spender) or let the agent follow hybrid_plan.\n\nDo not give your agent the private key to the funded account.`
   )
 }
 
 async function copyText(label: string, text: string) {
+  if (!hosted?.sessionSeal) {
+    if (connectCopyStatus) {
+      connectCopyStatus.textContent = 'Go live first — Copy needs sessionSeal.'
+    }
+    addMessage('guard', 'Go live first so Copy for my AI includes a valid sessionSeal.')
+    return
+  }
   try {
     await navigator.clipboard.writeText(text)
     if (connectCopyStatus) connectCopyStatus.textContent = `${label} copied.`
@@ -325,6 +380,63 @@ async function copyText(label: string, text: string) {
     if (connectCopyStatus) {
       connectCopyStatus.textContent = 'Clipboard blocked — select the text and copy manually.'
     }
+  }
+}
+
+async function runHybridSync(dryRun: boolean) {
+  if (!hosted?.ownerToken || !hosted.sessionSeal) {
+    addMessage('guard', 'Go live first (need ownerToken + sessionSeal) before syncing hybrid.')
+    return
+  }
+  const smartAccount = hybridSaInput?.value.trim() || ''
+  const spender = hybridSpenderInput?.value.trim() || ''
+  if (!/^0x[a-fA-F0-9]{40}$/.test(smartAccount) || !/^0x[a-fA-F0-9]{40}$/.test(spender)) {
+    if (hybridSyncStatus) {
+      hybridSyncStatus.textContent = 'Enter valid owner Smart Account and agent spender (0x…).'
+    }
+    return
+  }
+  if (busy) return
+  busy = true
+  if (btnHybridDry) btnHybridDry.disabled = true
+  if (btnHybridSync) btnHybridSync.disabled = true
+  try {
+    const data = await callGate({
+      action: 'sync_wallet',
+      policyId: hosted.policyId,
+      ownerToken: hosted.ownerToken,
+      sessionSeal: hosted.sessionSeal,
+      smartAccount,
+      spender,
+      dryRun,
+    })
+    const binding =
+      (data.binding as Record<string, unknown> | undefined) ||
+      (data.walletNative as Record<string, unknown> | undefined) ||
+      {}
+    saveHosted({
+      ...hosted,
+      hybridSmartAccount: smartAccount,
+      hybridSpender: spender,
+      hybridBinding: binding,
+    })
+    const msg = String(
+      (binding as { message?: string }).message ||
+        (dryRun ? 'Dry-run plan ready' : 'Spend Permission sync submitted')
+    )
+    if (hybridSyncStatus) hybridSyncStatus.textContent = msg
+    addMessage(
+      'guard',
+      `${dryRun ? 'Hybrid dry-run' : 'Hybrid sync'}: ${msg}\n\nDo not give your agent the treasury private key — agent = spender only.`
+    )
+  } catch (err) {
+    const m = err instanceof Error ? err.message : String(err)
+    if (hybridSyncStatus) hybridSyncStatus.textContent = m
+    addMessage('guard', `Hybrid sync failed: ${m}`)
+  } finally {
+    busy = false
+    if (btnHybridDry) btnHybridDry.disabled = false
+    if (btnHybridSync) btnHybridSync.disabled = false
   }
 }
 
@@ -1139,6 +1251,20 @@ btnCopyAgentCode?.addEventListener('click', () => {
 })
 btnCopyAgentMcp?.addEventListener('click', () => {
   void copyText('MCP config', buildAgentMcpConfig())
+})
+btnHybridDry?.addEventListener('click', () => {
+  void runHybridSync(true)
+})
+btnHybridSync?.addEventListener('click', () => {
+  void runHybridSync(false)
+})
+hybridSaInput?.addEventListener('input', () => {
+  if (!hosted) return
+  saveHosted({ ...hosted, hybridSmartAccount: hybridSaInput.value.trim() })
+})
+hybridSpenderInput?.addEventListener('input', () => {
+  if (!hosted) return
+  saveHosted({ ...hosted, hybridSpender: hybridSpenderInput.value.trim() })
 })
 
 const DEMO_SIMPLE_ADDR = '0x5cc0Aa9ed773F413f81f78a62F2e94109CE26205'

@@ -27,6 +27,9 @@ import {
   siteGateConsume,
   siteGateDurable,
   siteGateEvaluate,
+  siteGateHybridPlan,
+  siteGateHybridReport,
+  siteGateSyncWallet,
   siteGateTryConsumePack,
 } from '../src/web/site-gate.js'
 import { durableRateLimit } from '../src/web/site-gate-durable.js'
@@ -73,11 +76,43 @@ const BuyPackSchema = z.object({
   packKey: z.string().min(3).max(120),
 })
 
+const HybridPlanSchema = z.object({
+  action: z.literal('hybrid_plan'),
+  policyId: z.string().min(1).max(80),
+  sessionSeal: z.string().max(50_000).optional(),
+  smartAccount: z.string().optional(),
+  spender: z.string().optional(),
+})
+
+const SyncWalletSchema = z.object({
+  action: z.literal('sync_wallet'),
+  policyId: z.string().min(1).max(80),
+  ownerToken: z.string().min(8).max(200),
+  sessionSeal: z.string().max(50_000).optional(),
+  smartAccount: z.string().min(42).max(42),
+  spender: z.string().min(42).max(42),
+  dryRun: z.boolean().optional(),
+})
+
+const HybridReportSchema = z.object({
+  action: z.literal('hybrid_report'),
+  policyId: z.string().min(1).max(80),
+  sessionSeal: z.string().max(50_000).optional(),
+  smartAccount: z.string().min(42).max(42),
+  spender: z.string().min(42).max(42),
+  status: z.enum(['planned', 'synced', 'skipped', 'error']),
+  userOpHash: z.string().max(200).optional(),
+  message: z.string().max(2000).optional(),
+})
+
 const BodySchema = z.discriminatedUnion('action', [
   ApplySchema,
   EvaluateSchema,
   ConsumeSchema,
   BuyPackSchema,
+  HybridPlanSchema,
+  SyncWalletSchema,
+  HybridReportSchema,
 ])
 
 function backend(): 'site' | 'openserv' {
@@ -144,8 +179,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mode === 'openserv'
           ? 'POST apply|evaluate via OpenServ x402 (fallback)'
           : durable
-            ? 'POST apply|evaluate|consume|buy_pack — Turso durable ledger. Browser same-site free; agents pay $0.025 or burn pack credits (~$0.008/check).'
-            : 'POST apply|evaluate — memory+sessionSeal (demo). Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402.',
+            ? 'POST apply|evaluate|consume|buy_pack|hybrid_plan|sync_wallet|hybrid_report — Turso durable ledger. Browser same-site free; agents pay $0.025 or burn pack credits (~$0.008/check).'
+            : 'POST apply|evaluate|hybrid_plan|sync_wallet|hybrid_report — memory+sessionSeal (demo). Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402.',
     })
     return
   }
@@ -369,6 +404,82 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
         settlement: settlement ?? null,
       })
+      return
+    }
+
+    if (body.action === 'hybrid_plan') {
+      if (mode !== 'site') {
+        res.status(400).json({ ok: false, error: 'hybrid_plan is site-gate only' })
+        return
+      }
+      const planned = await siteGateHybridPlan({
+        policyId: body.policyId,
+        sessionSeal: body.sessionSeal,
+        smartAccount: body.smartAccount,
+        spender: body.spender,
+      })
+      res.status(200).json({
+        ok: true,
+        action: 'hybrid_plan',
+        backend: 'site',
+        ...planned,
+        priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        settlement: settlement ?? null,
+      })
+      return
+    }
+
+    if (body.action === 'sync_wallet') {
+      if (mode !== 'site') {
+        res.status(400).json({ ok: false, error: 'sync_wallet is site-gate only' })
+        return
+      }
+      const synced = await siteGateSyncWallet({
+        policyId: body.policyId,
+        ownerToken: body.ownerToken,
+        sessionSeal: body.sessionSeal,
+        smartAccount: body.smartAccount,
+        spender: body.spender,
+        dryRun: body.dryRun,
+      })
+      res.status(200).json({
+        ok: true,
+        action: 'sync_wallet',
+        backend: 'site',
+        ...synced,
+        priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        settlement: settlement ?? null,
+      })
+      return
+    }
+
+    if (body.action === 'hybrid_report') {
+      if (mode !== 'site') {
+        res.status(400).json({ ok: false, error: 'hybrid_report is site-gate only' })
+        return
+      }
+      const reported = await siteGateHybridReport({
+        policyId: body.policyId,
+        sessionSeal: body.sessionSeal,
+        smartAccount: body.smartAccount,
+        spender: body.spender,
+        status: body.status,
+        userOpHash: body.userOpHash,
+        message: body.message,
+      })
+      res.status(200).json({
+        ok: true,
+        action: 'hybrid_report',
+        backend: 'site',
+        ...reported,
+        priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        settlement: settlement ?? null,
+      })
+      return
+    }
+
+    if (body.action !== 'evaluate') {
+      res.status(400).json({ ok: false, error: 'Unsupported action' })
       return
     }
 

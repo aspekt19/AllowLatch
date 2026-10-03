@@ -290,6 +290,8 @@ agent.addCapability({
   inputSchema: z.object({
     policyId: z.string().default('default'),
     dryRun: z.boolean().default(false),
+    smartAccount: z.string().optional(),
+    spender: z.string().optional(),
     ownerToken: z.string().optional(),
     operatorToken: z.string().optional(),
   }),
@@ -305,7 +307,12 @@ agent.addCapability({
         assertPolicyRead(meta, { ownerToken: args.ownerToken })
       }
       const policy = store.getPolicy(args.policyId)
-      const walletNative = await syncSpendPermission({ policy, dryRun: args.dryRun })
+      const walletNative = await syncSpendPermission({
+        policy,
+        dryRun: args.dryRun,
+        smartAccount: args.smartAccount,
+        spender: args.spender,
+      })
       store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
       await store.audit({
         type: 'wallet.binding',

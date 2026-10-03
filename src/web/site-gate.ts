@@ -21,9 +21,17 @@ import {
   durableApply,
   durableConsume,
   durableEvaluate,
+  durableGetWalletBinding,
   durablePeekPolicy,
+  durableSetWalletBinding,
+  hashOwnerToken as durableHashOwnerToken,
   tursoConfigured,
 } from './site-gate-durable.js'
+import {
+  planSpendPermission,
+  syncSpendPermission,
+  type WalletNativePlan,
+} from '../wallet/spend-permissions.js'
 
 type Session = {
   policyId: string
@@ -37,7 +45,23 @@ type Session = {
 
 const TTL_MS = 1000 * 60 * 60 * 12 // 12h
 const sessions = new Map<string, Session>()
+/** In-memory hybrid binding (demo / non-Turso). */
+const walletBindings = new Map<string, Record<string, unknown>>()
 let warnedServFallback = false
+
+const ETH_ADDR = /^0x[a-fA-F0-9]{40}$/
+
+export const HYBRID_KEY_INVARIANT =
+  'Do not give your agent the private key to the funded account. Keep USDC on an owner Smart Account; the agent gets only a spender key (or use_spend_permission). If the agent holds the treasury key, prompts, gate, and Spend Permissions cannot stop a raw transfer.'
+
+function normalizeAddress(raw: string | undefined): string | undefined {
+  const v = raw?.trim()
+  if (!v) return undefined
+  if (!ETH_ADDR.test(v)) {
+    throw new Error(`Invalid Ethereum address: ${v}`)
+  }
+  return v
+}
 
 function sealSecret(): string {
   const dedicated = process.env.ALLOWLATCH_RECEIPT_SECRET?.trim()
@@ -473,6 +497,223 @@ export async function siteGateConsume(args: {
   }
   const out = await durableConsume(args)
   return { ok: true, jti: out.jti, durable: true }
+}
+
+async function loadPolicyForHybrid(args: {
+  policyId: string
+  sessionSeal?: string
+}): Promise<{ policy: MandatePolicy; durable: boolean }> {
+  if (tursoConfigured()) {
+    if (!args.sessionSeal?.trim()) {
+      throw new Error('sessionSeal required for hybrid actions on durable gate')
+    }
+    const sealed = decodeSessionSeal(args.sessionSeal)
+    if (!sealed || sealed.policyId !== args.policyId) {
+      throw new Error('invalid or mismatched sessionSeal')
+    }
+    const row = await durablePeekPolicy(args.policyId)
+    if (!row) throw new Error(`No policy for policyId=${args.policyId}`)
+    return { policy: row.policy, durable: true }
+  }
+  const session = resolveSession({ policyId: args.policyId, sessionSeal: args.sessionSeal })
+  return { policy: session.policy, durable: false }
+}
+
+async function persistWalletBinding(
+  policyId: string,
+  binding: Record<string, unknown>
+): Promise<void> {
+  if (tursoConfigured()) {
+    await durableSetWalletBinding(policyId, binding)
+  }
+  walletBindings.set(policyId, binding)
+}
+
+export async function siteGateGetWalletBinding(
+  policyId: string
+): Promise<Record<string, unknown> | null> {
+  if (tursoConfigured()) {
+    const row = await durableGetWalletBinding(policyId)
+    if (row) return row
+  }
+  return walletBindings.get(policyId) ?? null
+}
+
+export async function siteGateHybridPlan(args: {
+  policyId: string
+  sessionSeal?: string
+  smartAccount?: string
+  spender?: string
+}): Promise<{
+  ok: true
+  policyId: string
+  plan: WalletNativePlan
+  createSpendPermission: {
+    network: string
+    account: string
+    spender: string
+    token: 'usdc'
+    allowanceAtomic: string
+    periodInDays: 1
+    dailyUsd: number
+  }
+  steps: string[]
+  invariant: string
+  binding: Record<string, unknown> | null
+  durable: boolean
+}> {
+  const smartAccount = normalizeAddress(args.smartAccount)
+  const spender = normalizeAddress(args.spender)
+  const { policy, durable } = await loadPolicyForHybrid(args)
+  const plan = planSpendPermission({
+    policy,
+    smartAccount,
+    spender,
+  })
+  const network = plan.networkId.includes('sepolia') ? 'base-sepolia' : 'base'
+  const steps = [
+    'Keep USDC on the owner Smart Account. You keep the treasury private key — never give it to the agent.',
+    'Agent address = spender only (spender key or use_spend_permission).',
+    `Call CDP createSpendPermission: account=<owner SA>, spender=<agent>, token=usdc, allowance=$${policy.capital.maxNotionalUsdPerDay}/day, periodInDays=1.`,
+    'Do not create a permission that grants the funded treasury key to itself as a full signer.',
+    'POST action=hybrid_report with smartAccount, spender, status (and userOpHash when synced).',
+    'Still route every spend through createGatedAgentKit + AllowLatch gate (addresses / escalate / receipt).',
+  ]
+  const binding = await siteGateGetWalletBinding(args.policyId)
+  return {
+    ok: true,
+    policyId: args.policyId,
+    plan,
+    createSpendPermission: {
+      network,
+      account: plan.smartAccount || '<owner-smart-account>',
+      spender: plan.spender || '<agent-spender>',
+      token: 'usdc',
+      allowanceAtomic: plan.allowanceAtomic,
+      periodInDays: 1,
+      dailyUsd: policy.capital.maxNotionalUsdPerDay,
+    },
+    steps,
+    invariant: HYBRID_KEY_INVARIANT,
+    binding,
+    durable,
+  }
+}
+
+export async function siteGateSyncWallet(args: {
+  policyId: string
+  ownerToken: string
+  sessionSeal?: string
+  smartAccount: string
+  spender: string
+  dryRun?: boolean
+}): Promise<{
+  ok: true
+  policyId: string
+  walletNative: WalletNativePlan
+  binding: Record<string, unknown>
+  invariant: string
+  durable: boolean
+}> {
+  const ownerToken = args.ownerToken?.trim()
+  if (!ownerToken) throw new Error('ownerToken required for sync_wallet')
+  const smartAccount = normalizeAddress(args.smartAccount)
+  const spender = normalizeAddress(args.spender)
+  if (!smartAccount || !spender) {
+    throw new Error('smartAccount and spender required for sync_wallet')
+  }
+
+  let policy: MandatePolicy
+  let durable = false
+
+  if (tursoConfigured()) {
+    if (!args.sessionSeal?.trim()) {
+      throw new Error('sessionSeal required for sync_wallet on durable gate')
+    }
+    const sealed = decodeSessionSeal(args.sessionSeal)
+    if (!sealed || sealed.policyId !== args.policyId) {
+      throw new Error('invalid or mismatched sessionSeal')
+    }
+    const row = await durablePeekPolicy(args.policyId)
+    if (!row) throw new Error(`No policy for policyId=${args.policyId}`)
+    if (durableHashOwnerToken(ownerToken) !== row.ownerTokenHash) {
+      throw new Error('ownerToken mismatch')
+    }
+    policy = row.policy
+    durable = true
+  } else {
+    const session = resolveSession({
+      policyId: args.policyId,
+      sessionSeal: args.sessionSeal,
+    })
+    if (session.ownerToken !== ownerToken) {
+      throw new Error('ownerToken mismatch')
+    }
+    policy = session.policy
+  }
+
+  const walletNative = await syncSpendPermission({
+    policy,
+    smartAccount,
+    spender,
+    dryRun: args.dryRun,
+  })
+  const binding: Record<string, unknown> = {
+    ...walletNative,
+    path: 'human_sa',
+    updatedAt: Date.now(),
+  }
+  await persistWalletBinding(args.policyId, binding)
+  return {
+    ok: true,
+    policyId: args.policyId,
+    walletNative,
+    binding,
+    invariant: HYBRID_KEY_INVARIANT,
+    durable,
+  }
+}
+
+export async function siteGateHybridReport(args: {
+  policyId: string
+  sessionSeal?: string
+  smartAccount: string
+  spender: string
+  status: WalletNativePlan['status']
+  userOpHash?: string
+  message?: string
+}): Promise<{
+  ok: true
+  policyId: string
+  binding: Record<string, unknown>
+  invariant: string
+  durable: boolean
+}> {
+  const smartAccount = normalizeAddress(args.smartAccount)
+  const spender = normalizeAddress(args.spender)
+  if (!smartAccount || !spender) {
+    throw new Error('smartAccount and spender required for hybrid_report')
+  }
+  const { policy, durable } = await loadPolicyForHybrid(args)
+  const plan = planSpendPermission({ policy, smartAccount, spender })
+  const binding: Record<string, unknown> = {
+    ...plan,
+    status: args.status,
+    userOpHash: args.userOpHash,
+    message:
+      args.message ||
+      `Agent-reported hybrid binding (${args.status}) SA=${smartAccount} spender=${spender}`,
+    path: 'agent_cdp',
+    updatedAt: Date.now(),
+  }
+  await persistWalletBinding(args.policyId, binding)
+  return {
+    ok: true,
+    policyId: args.policyId,
+    binding,
+    invariant: HYBRID_KEY_INVARIANT,
+    durable,
+  }
 }
 
 export {

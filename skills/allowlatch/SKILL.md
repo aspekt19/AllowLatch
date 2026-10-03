@@ -41,7 +41,7 @@ await agent.transfer({ toAddress, amountUsd })
 `assertSpend` alone is **advisory** — it does not remove a raw AgentKit/CDP signer.
 
 ALLOW + receipt → may sign that intent. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
-`createGatedAgentKit({ kind: 'site' })` routes spends through the gate; it does not remove a raw signer — prefer hybrid Spend Permissions. Swaps are off by default.
+`createGatedAgentKit({ kind: 'site' })` routes spends through the gate; it does not remove a raw signer — prefer hybrid Spend Permissions (`hybrid_plan` / owner `sync_wallet`). Never accept the funded/treasury private key — USDC on owner Smart Account, you = spender only. Swaps are off by default.
 Hosted gate = SaaS authorization (operator trust), not a vault. Keep balances small until audit.
 DENY / human reject → no receipt → do not sign. Micro evaluates: `packKey` from `buy_pack` (~$0.008) beats $0.025/call.
 Check `agent.productionShape` / `recommendProductionShape()` before putting meaningful balance behind the gate.

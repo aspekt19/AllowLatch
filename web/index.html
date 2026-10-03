@@ -165,8 +165,11 @@
             <li>
               <h3>Hybrid Spend Permissions</h3>
               <p>
-                Default <code>ALLOWLATCH_ENFORCEMENT=hybrid</code> + synced Coinbase Spend Permission
-                so a bypassed HTTP gate still hits an on-chain daily USDC ceiling.
+                After Go live: <strong>Path A</strong> — you sync owner Smart Account → agent spender
+                (<code>sync_wallet</code>), or <strong>Path B</strong> — agent follows
+                <code>hybrid_plan</code> via Copy for my AI. Treasury stays on the owner SA; the agent
+                is spender-only. If the agent holds the funded private key, on-chain ceiling does
+                <em>not</em> apply.
               </p>
             </li>
             <li>
@@ -711,6 +714,54 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
                     </p>
                   </details>
                   <p class="muted tight" id="connect-copy-status" aria-live="polite"></p>
+                </div>
+
+                <div class="rail-block hybrid-panel is-hidden" id="hybrid-panel" aria-label="On-chain ceiling">
+                  <div class="rail-head">
+                    <h3 class="rail-title">On-chain ceiling</h3>
+                    <span class="rail-status" id="hybrid-status">Off</span>
+                  </div>
+                  <p class="hybrid-callout" id="hybrid-callout">
+                    Do not give your agent the private key to the funded account. Keep USDC on your
+                    owner Smart Account; the agent is spender-only. A funded private key bypasses
+                    prompts, gate, and Spend Permissions.
+                  </p>
+                  <p class="muted tight">
+                    <strong>Path A · You sync</strong> — owner SA + agent spender (host CDP). Wallet
+                    need not stay online.
+                  </p>
+                  <label class="hybrid-label" for="hybrid-sa">Owner Smart Account</label>
+                  <input
+                    id="hybrid-sa"
+                    class="hybrid-input"
+                    type="text"
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder="0x… (holds USDC)"
+                  />
+                  <label class="hybrid-label" for="hybrid-spender">Agent spender</label>
+                  <input
+                    id="hybrid-spender"
+                    class="hybrid-input"
+                    type="text"
+                    spellcheck="false"
+                    autocomplete="off"
+                    placeholder="0x… (agent key only)"
+                  />
+                  <div class="connect-actions">
+                    <button type="button" class="btn-policy-action" id="btn-hybrid-dry">
+                      Dry-run plan
+                    </button>
+                    <button type="button" class="btn-policy-action" id="btn-hybrid-sync">
+                      Sync Spend Permission
+                    </button>
+                  </div>
+                  <p class="muted tight">
+                    <strong>Path B · Agent CDP</strong> — Copy for my AI includes
+                    <code>hybrid_plan</code> steps. Agent creates the permission (owner SA → spender),
+                    then optional <code>hybrid_report</code>. Never give the agent the treasury key.
+                  </p>
+                  <p class="muted tight" id="hybrid-sync-status" aria-live="polite"></p>
                 </div>
 
                 <div class="rail-block">

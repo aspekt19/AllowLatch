@@ -18,7 +18,9 @@ You help a human whose agent has a Base wallet (AgentKit or similar). They will 
 
 ### Owner path (no code)
 
-Humans: https://allowlatch.vercel.app/#gate → **Simple rules** (daily cap + addresses) or free-text → **Draft with SERV** → Apply → Go live → **Copy for my AI**. Same SERV Multipath / prompt_guard / shadow. They paste the Connect text into you — then you must use the gated kit below.
+Humans: https://allowlatch.vercel.app/#gate → **Simple rules** (daily cap + addresses) or free-text → **Draft with SERV** → Apply → Go live → on-chain ceiling (Path A sync_wallet or Path B hybrid_plan in Copy pack) → **Copy for my AI**. Same SERV Multipath / prompt_guard / shadow. They paste the Connect text into you — then you must use the gated kit below.
+
+**Hard rule:** never accept the private key to the funded / treasury account. USDC stays on the owner Smart Account; you are spender-only (or use_spend_permission). If you hold the treasury key, on-chain ceiling does not work.
 
 ### Required install
 
@@ -37,7 +39,7 @@ await createGatedAgentKit({
 })
 ```
 
-`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Prefer **hybrid** Spend Permissions. Check `recommendProductionShape()` / `agent.productionShape`.
+`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Prefer **hybrid** Spend Permissions (`hybrid_plan` / `sync_wallet` / `hybrid_report` on `/api/gate`). Check `recommendProductionShape()` / `agent.productionShape`.
 
 ### Before every spend
 

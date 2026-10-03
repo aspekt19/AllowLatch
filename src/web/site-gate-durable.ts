@@ -102,6 +102,11 @@ async function getClient(): Promise<LibsqlClient> {
           credits INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS site_wallet_bindings (
+          policy_id TEXT PRIMARY KEY,
+          json TEXT NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
       `)
       try {
         await client!.execute({ sql: 'PRAGMA busy_timeout = 5000', args: [] })
@@ -504,6 +509,7 @@ export async function durableHasPolicy(policyId: string): Promise<boolean> {
 export async function durablePeekPolicy(policyId: string): Promise<{
   policyId: string
   ownerId: string
+  ownerTokenHash: string
   policy: MandatePolicy
   seq: number
 } | null> {
@@ -512,7 +518,38 @@ export async function durablePeekPolicy(policyId: string): Promise<{
   return {
     policyId: row.policyId,
     ownerId: row.ownerId,
+    ownerTokenHash: row.ownerTokenHash,
     policy: row.policy,
     seq: row.seq,
+  }
+}
+
+export async function durableSetWalletBinding(
+  policyId: string,
+  binding: Record<string, unknown>
+): Promise<void> {
+  const c = await getClient()
+  const now = Date.now()
+  await c.execute({
+    sql: `INSERT INTO site_wallet_bindings (policy_id, json, updated_at) VALUES (?, ?, ?)
+          ON CONFLICT(policy_id) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at`,
+    args: [policyId, JSON.stringify(binding), now],
+  })
+}
+
+export async function durableGetWalletBinding(
+  policyId: string
+): Promise<Record<string, unknown> | null> {
+  const c = await getClient()
+  const res = await c.execute({
+    sql: 'SELECT json FROM site_wallet_bindings WHERE policy_id = ?',
+    args: [policyId],
+  })
+  const row = res.rows[0]
+  if (!row) return null
+  try {
+    return JSON.parse(String(row.json)) as Record<string, unknown>
+  } catch {
+    return null
   }
 }
