@@ -203,42 +203,111 @@ code {
   transform: scale(0.98);
 }
 
-/* —— Hero —— */
+/* —— Hero (Type Tower) —— */
 .hero {
   position: relative;
-  isolation: isolate;
-  min-height: min(92dvh, 820px);
-  display: grid;
-  align-items: end;
-  padding: 48px 0 72px;
+  min-height: min(88dvh, 760px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 0 0;
   overflow: hidden;
 }
 
-.hero-plane {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
+.hero-main {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-bottom: 32px;
 }
 
-.hero-plane::after {
+.hero-column {
+  max-width: 52rem;
+  animation: rise 0.7s var(--ease) both;
+}
+
+.hero-brand {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(4.5rem, 14vw, 9.5rem);
+  letter-spacing: -0.04em;
+  line-height: 0.88;
+  color: var(--ink);
+}
+
+.hero-stack {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 36rem;
+}
+
+.hero-title {
+  margin: 0;
+  font-family: var(--font);
+  font-weight: 600;
+  font-size: clamp(1.25rem, 2.4vw, 1.65rem);
+  letter-spacing: -0.035em;
+  line-height: 1.22;
+  color: var(--ink);
+}
+
+.hero-lead {
+  margin: 0;
+  max-width: 38ch;
+  font-size: 1.02rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.hero-cta {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero-meta {
+  margin: 6px 0 0;
+  max-width: 42ch;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.horizon-band {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: clamp(120px, 18vh, 180px);
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+  overflow: hidden;
+}
+
+.horizon-band::before {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(90deg, rgba(244, 246, 248, 0.94) 0%, rgba(244, 246, 248, 0.72) 42%, rgba(244, 246, 248, 0.35) 70%, rgba(244, 246, 248, 0.55) 100%),
-    linear-gradient(180deg, rgba(244, 246, 248, 0.2) 0%, rgba(244, 246, 248, 0.75) 78%, var(--paper) 100%);
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--paper) 0%, transparent 18%, transparent 82%, var(--paper) 100%);
 }
 
-.hero-diagram {
+.horizon-diagram {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  opacity: 1;
+  display: block;
+  opacity: 0.55;
 }
 
-.hero-arm {
-  transform-origin: 624px 309px;
+.horizon-arm {
+  transform-origin: 600px 52px;
   animation: arm-breathe 5.5s var(--ease) infinite;
 }
 
@@ -253,57 +322,6 @@ code {
   55% {
     transform: rotate(-8deg);
   }
-}
-
-.hero-copy {
-  position: relative;
-  z-index: 1;
-  max-width: 38rem;
-  animation: rise 0.7s var(--ease) both;
-}
-
-.hero-brand {
-  margin: 0 0 18px;
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: clamp(3.4rem, 10vw, 5.75rem);
-  letter-spacing: -0.03em;
-  line-height: 0.92;
-  color: var(--ink);
-}
-
-.hero-title {
-  margin: 0;
-  max-width: 16ch;
-  font-family: var(--font);
-  font-weight: 600;
-  font-size: clamp(1.35rem, 2.6vw, 1.75rem);
-  letter-spacing: -0.035em;
-  line-height: 1.25;
-  color: var(--ink);
-}
-
-.hero-lead {
-  margin: 18px 0 0;
-  max-width: 38ch;
-  font-size: 1.05rem;
-  line-height: 1.55;
-  color: var(--ink-soft);
-}
-
-.hero-cta {
-  margin-top: 28px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.hero-meta {
-  margin: 18px 0 0;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.02em;
-  color: var(--muted);
 }
 
 @keyframes rise {
@@ -1755,8 +1773,8 @@ button {
     scroll-behavior: auto;
   }
 
-  .hero-arm,
-  .hero-copy,
+  .horizon-arm,
+  .hero-column,
   .msg {
     animation: none !important;
   }
@@ -1836,13 +1854,20 @@ button {
   }
 
   .hero {
-    min-height: min(88dvh, 700px);
-    padding: 36px 0 56px;
-    align-items: end;
+    min-height: min(86dvh, 680px);
+    padding: 28px 0 0;
   }
 
-  .hero-diagram {
-    opacity: 0.55;
+  .hero-main {
+    padding-bottom: 24px;
+  }
+
+  .hero-brand {
+    font-size: clamp(3.6rem, 18vw, 5.5rem);
+  }
+
+  .horizon-band {
+    height: clamp(100px, 16vh, 140px);
   }
 
   .section {
