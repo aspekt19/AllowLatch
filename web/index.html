@@ -22,7 +22,6 @@
         <nav class="nav-links" aria-label="Primary">
           <a href="#how">How it works</a>
           <a href="#ready">Production</a>
-          <a href="#lab">Sign / Reject</a>
           <a href="#install">Install</a>
           <a href="#case">Live case</a>
           <a href="#pricing">Pricing</a>
@@ -199,29 +198,6 @@
             SDK: <code>recommendProductionShape()</code> · <code>agent.productionShape</code>.
             Without gated kit + hybrid caps, this is a denial journal — not a physical lock.
           </p>
-        </div>
-      </section>
-
-      <section class="section lab" id="lab" aria-labelledby="lab-title">
-        <div class="shell">
-          <div class="section-intro section-intro-wide">
-            <p class="eyebrow">Local engine lab</p>
-            <h2 id="lab-title">Sign only after ALLOW. Reject creates nothing.</h2>
-            <p class="section-lead">
-              Same deterministic <code>engine.ts</code> as production, in the browser. Sign issues a
-              demo receipt only on ALLOW (or ESCALATE after Confirm). Reject → no receipt, ledger
-              unchanged. Not a Base transaction — production path is still Go live + gated kit + hybrid.
-            </p>
-          </div>
-          <div class="lab-layout">
-            <div class="lab-meta">
-              <p class="lab-policy" id="lab-policy-label">Policy: demo starter (apply a mandate above to use yours)</p>
-              <p class="lab-spent muted">Lab spent today: <strong id="lab-spent">0.00</strong> USDC</p>
-              <button type="button" class="btn btn-line" id="lab-reset">Reset lab queue</button>
-            </div>
-            <div class="lab-queue" id="lab-queue" aria-live="polite"></div>
-            <div class="lab-log" id="lab-log" aria-label="Lab journal"></div>
-          </div>
         </div>
       </section>
 

@@ -10,7 +10,6 @@ import {
 } from '../src/policy/simple-mandate.ts'
 import { commitIntent, evaluateIntent, freshLedger, USDC_BY_CHAIN } from '../src/policy/engine.ts'
 import {
-  DEMO_POLICY,
   type EvaluationResult,
   type MandatePolicy,
   type PolicyDraft,
@@ -863,11 +862,10 @@ function applyDraft(_force: boolean) {
   renderLedger()
   addMessage(
     'guard',
-    `Policy ready in this browser.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nNext: click “Go live on Gate · $0.025” to store it on the hosted Gate, then try spend scenarios (live decisions). Or open Sign / Reject lab (#lab) — same engine.ts, reject never mints a receipt.`
+    `Policy ready in this browser.\n\n$${policy.capital.maxPerOrderUsd}/tx · $${policy.capital.maxNotionalUsdPerDay}/day · confirm above $${policy.escalation.requireHumanConfirmAboveUsd}\n\nNext: click “Go live on Gate · $0.025” to store it on the hosted Gate, then try spend scenarios (live decisions).`
   )
   setPhase('spend')
   addSpendChips()
-  resetLab()
 }
 
 function demoCalldataHash(seed: string): string {
@@ -1406,200 +1404,6 @@ input.addEventListener('keydown', (e) => {
   }
 })
 
-/* —— Sign / Reject lab (local engine.ts; educational) —— */
-type LabItem = {
-  id: string
-  intent: SpendIntent
-  state?: 'SIGNED' | 'REJECTED'
-  confirmed?: boolean
-}
-
-const labQueueEl = document.querySelector<HTMLDivElement>('#lab-queue')
-const labLogEl = document.querySelector<HTMLDivElement>('#lab-log')
-const labSpentEl = document.querySelector<HTMLElement>('#lab-spent')
-const labPolicyLabel = document.querySelector<HTMLElement>('#lab-policy-label')
-const labResetBtn = document.querySelector<HTMLButtonElement>('#lab-reset')
-
-let labLedger: SpendLedger = freshLedger()
-let labQueue: LabItem[] = []
-let labLog: { verdict: string; why: string; receipt: string | null; amount: number; to: string }[] = []
-
-function labPolicy(): MandatePolicy {
-  return policy ?? DEMO_POLICY
-}
-
-function labAllowTo(p: MandatePolicy): string {
-  return (
-    p.universe.allowedAddresses[0] ??
-    DEMO_POLICY.universe.allowedAddresses[0] ??
-    UNISWAP
-  )
-}
-
-function buildLabQueue(p: MandatePolicy): LabItem[] {
-  const to = labAllowTo(p)
-  const esc = Math.min(
-    p.escalation.requireHumanConfirmAboveUsd + 1,
-    p.capital.maxPerOrderUsd
-  )
-  const allowAmt = Math.min(5, p.escalation.requireHumanConfirmAboveUsd * 0.5, p.capital.maxPerOrderUsd)
-  const chain = p.chain === 'base-sepolia' ? 'base-sepolia' : 'base'
-  const token = USDC_BY_CHAIN[chain]
-  const mk = (amountUsd: number, dest: string, reason: string): SpendIntent => ({
-    action: 'transfer',
-    amountUsd,
-    symbol: 'USDC',
-    tokenAddress: token,
-    tokenAmount: usdcTokenAmount(amountUsd),
-    functionSelector: '0xa9059cbb',
-    chainId: chain === 'base' ? 8453 : 84532,
-    networkId: chain,
-    toAddress: dest,
-    reason,
-  })
-  return [
-    { id: 'lab-allow', intent: mk(Number(allowAmt.toFixed(2)) || 2, to, 'allowlisted vendor') },
-    {
-      id: 'lab-deny-addr',
-      intent: mk(3, '0x000000000000000000000000000000000000dEaD', 'unknown paste from chat'),
-    },
-    {
-      id: 'lab-esc',
-      intent: mk(Number(esc.toFixed(2)), to, 'above escalate threshold'),
-    },
-  ]
-}
-
-function resetLab() {
-  labLedger = freshLedger()
-  labLog = []
-  labQueue = buildLabQueue(labPolicy())
-  renderLab()
-}
-
-async function labDemoReceipt(intent: SpendIntent): Promise<string> {
-  const canonical = JSON.stringify({
-    to: intent.toAddress?.toLowerCase(),
-    amountUsd: intent.amountUsd,
-    token: 'USDC',
-    chainId: intent.chainId ?? 8453,
-  })
-  const data = new TextEncoder().encode(canonical)
-  const hash = await crypto.subtle.digest('SHA-256', data)
-  const hex = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
-  return `demo-jti-${crypto.randomUUID().slice(0, 8)} · sha256 ${hex.slice(0, 16)}…`
-}
-
-async function labAct(id: string, kind: 'sign' | 'reject') {
-  const item = labQueue.find((x) => x.id === id)
-  if (!item || item.state) return
-  const p = labPolicy()
-  const decision = evaluateIntent(p, item.intent, labLedger)
-
-  if (kind === 'reject') {
-    item.state = 'REJECTED'
-    labLog.unshift({
-      verdict: 'REJECTED',
-      why: 'Human rejected. No receipt. Ledger unchanged.',
-      receipt: null,
-      amount: item.intent.amountUsd,
-      to: item.intent.toAddress ?? '—',
-    })
-    renderLab()
-    return
-  }
-
-  if (decision.decision === 'deny') return
-
-  if (decision.decision === 'escalate' && !item.confirmed) {
-    item.confirmed = true
-    renderLab()
-    return
-  }
-
-  if (decision.decision === 'allow' || (decision.decision === 'escalate' && item.confirmed)) {
-    labLedger = commitIntent(labLedger, item.intent)
-    const receipt = await labDemoReceipt(item.intent)
-    item.state = 'SIGNED'
-    labLog.unshift({
-      verdict: 'ALLOW',
-      why: decision.reasons.join(' · ') || 'In limits and allowlist.',
-      receipt,
-      amount: item.intent.amountUsd,
-      to: item.intent.toAddress ?? '—',
-    })
-  }
-  renderLab()
-}
-
-function renderLab() {
-  if (!labQueueEl || !labLogEl || !labSpentEl || !labPolicyLabel) return
-  const p = labPolicy()
-  labPolicyLabel.textContent = policy
-    ? `Policy: ${p.name} (your applied mandate)`
-    : 'Policy: demo starter (apply a mandate in Try the gate to use yours)'
-  labSpentEl.textContent = labLedger.spentUsdToday.toFixed(2)
-
-  labQueueEl.innerHTML = labQueue
-    .map((item) => {
-      const decision = item.state
-        ? {
-            decision: item.state === 'SIGNED' ? 'allow' : 'deny',
-            reasons: [item.state === 'SIGNED' ? 'Signed (demo receipt).' : 'Rejected — no receipt.'],
-          }
-        : evaluateIntent(p, item.intent, labLedger)
-      const verdict = item.state
-        ? item.state
-        : decision.decision === 'allow'
-          ? 'ALLOW'
-          : decision.decision === 'escalate'
-            ? 'ESCALATE'
-            : 'DENY'
-      const badgeClass =
-        verdict === 'ALLOW' || verdict === 'SIGNED'
-          ? 'ALLOW'
-          : verdict === 'ESCALATE'
-            ? 'ESCALATE'
-            : 'DENY'
-      const canSign =
-        !item.state &&
-        (decision.decision === 'allow' || (decision.decision === 'escalate' && item.confirmed))
-      const signLabel =
-        decision.decision === 'escalate' && !item.confirmed && !item.state ? 'Confirm' : 'Sign'
-      const why = item.state
-        ? decision.reasons[0]
-        : decision.reasons.slice(0, 2).join(' · ') || '—'
-      return `<div class="lab-intent" data-id="${item.id}">
-        <div class="lab-intent-top">
-          <div class="lab-amt">${item.intent.amountUsd} USDC</div>
-          <span class="badge ${badgeClass}">${verdict}</span>
-        </div>
-        <div class="lab-why">${item.intent.toAddress}<br>${item.intent.reason ?? ''}<br>${why}</div>
-        <div class="lab-actions">
-          <button type="button" class="lab-sign" data-act="sign" data-id="${item.id}" ${canSign || (decision.decision === 'escalate' && !item.confirmed && !item.state) ? '' : 'disabled'}>${signLabel}</button>
-          <button type="button" class="lab-reject" data-act="reject" data-id="${item.id}" ${item.state ? 'disabled' : ''}>Reject</button>
-        </div>
-      </div>`
-    })
-    .join('')
-
-  labLogEl.innerHTML = labLog
-    .map(
-      (e) =>
-        `<pre>${e.verdict} ${e.amount} USDC → ${e.to}
-${e.why}
-${e.receipt ? e.receipt : 'no receipt'}</pre>`
-    )
-    .join('')
-}
-
-labQueueEl?.addEventListener('click', (ev) => {
-  const t = (ev.target as HTMLElement).closest('button[data-act]') as HTMLButtonElement | null
-  if (!t?.dataset.act || !t.dataset.id) return
-  void labAct(t.dataset.id, t.dataset.act as 'sign' | 'reject')
-})
-labResetBtn?.addEventListener('click', () => resetLab())
-
 addMessage(
   'guard',
   'I am AllowLatch — spending turnstile for AI agents with AgentKit/CDP wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. Copy for my AI → createGatedAgentKit({ kind: "site" }).\n4. Optional: AgentKit daily Spend Permission via hybrid_plan (do not put the funded key in the agent).\n5. No policy applied → every spend is DENY.\n\nThis site does not ask you to connect MetaMask. SERV drafts; code decides.'
@@ -1615,4 +1419,3 @@ renderConnectPanel()
 void refreshGateHealth()
 renderPolicy()
 renderLedger()
-resetLab()

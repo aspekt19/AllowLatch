@@ -138,7 +138,7 @@ Use AllowLatch as a lock only when all of these hold:
 3. **Durable host** — Turso on `/api/gate`, dedicated `ALLOWLATCH_RECEIPT_SECRET`, owner confirms SERV drafts before Go live (compilation residual risk is human, not the gate).
 4. **Coffee-money hot balance** — until independent audit. Reject / DENY never mints a receipt. Micro evaluates should use `buy_pack` + `packKey` (~$0.008) so a $0.10 transfer is not paying 25% in gate fees.
 
-SDK helper: `recommendProductionShape()` / `agent.productionShape` — `readyForOrdinaryBalances` needs hybrid/native + SA + CDP + Turso + receipt secret. Site lab: [#lab](https://allowlatch.vercel.app/#lab).
+SDK helper: `recommendProductionShape()` / `agent.productionShape` — `readyForOrdinaryBalances` needs hybrid/native + SA + CDP + Turso + receipt secret. Try the gate: [#gate](https://allowlatch.vercel.app/#gate).
 
 ## Production checklist
 
