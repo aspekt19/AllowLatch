@@ -14,7 +14,7 @@ AllowLatch is a **spending turnstile** for financial AI agents on **Base / USDC*
 1. **SERV Reasoning** (website `/api/copilot`) — draft / revise / explain natural-language mandates (Multipath · prompt_guard · shadow). Never allow/deny.
 2. **Deterministic gate** (`engine.ts`) — ALLOW / DENY / ESCALATE from strict MandatePolicy.
 3. **Always-on `/api/gate`** — browser free to try; agents pay **$0.025 USDC** native x402 on Base (Turso durable ledger when configured).
-4. **`createGatedAgentKit({ kind: 'site' })`** — routes the supported spend path through AllowLatch before signing (pair with hybrid Spend Permissions; middleware ≠ custody).
+4. **`createGatedAgentKit({ kind: 'site' })`** — routes the supported spend path through AllowLatch before signing (pair with hybrid Spend Permissions: treasury on owner SA, agent = spender; middleware ≠ custody).
 
 OpenServ discover/paywall is an **optional fallback**, not the primary path.
 
@@ -70,7 +70,7 @@ Use this wording on the site (**Load demo mandate**):
 ## Honesty
 
 - **Authorization SaaS, not a vault.** You trust the hosted `/api/gate` operator for policy, ledger, and receipts — this is not self-custody controls or a cryptographic guarantee.
-- Middleware + gated signer ≠ bank custody. Pair with hybrid Spend Permissions for stronger on-chain caps. A raw ungated key can bypass the turnstile.
+- Middleware + gated signer ≠ bank custody. Pair with hybrid Spend Permissions (owner SA → spender) for stronger on-chain caps. A raw ungated **funded** key can bypass the turnstile and the Spend Permission ceiling.
 - **No third-party audit yet** — keep live balances small (“coffee money”) until then.
 - End users never get `SERV_API_KEY` / CDP operator secrets.
 

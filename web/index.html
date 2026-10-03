@@ -225,8 +225,9 @@
             <p class="section-lead">
               You do not run a server. You do not need <code>SERV_API_KEY</code>.
               Path: <strong>Simple rules</strong> (or words) → <strong>SERV Draft</strong> → review →
-              <strong>Go live</strong> → <strong>Copy for my AI</strong>. Your agent enforces via the
-              gated kit; OpenServ discover stays an optional fallback if the site gate is down.
+              <strong>Go live</strong> → on-chain ceiling (Path A sync or Path B in Copy pack) →
+              <strong>Copy for my AI</strong>. Keep USDC on your owner Smart Account; never give the agent
+              the funded private key. OpenServ discover stays an optional fallback if the site gate is down.
             </p>
           </div>
 
@@ -236,7 +237,8 @@
               <ol class="path-steps">
                 <li>Open <a href="#gate">Try the gate</a> → fill Simple rules (daily cap + addresses) or write a mandate.</li>
                 <li><strong>Draft with SERV</strong> → review conflicts → Apply → <strong>Go live</strong>.</li>
-                <li><strong>Copy for my AI</strong> — paste into Cursor, Claude, ChatGPT, or any agent.</li>
+                <li><strong>On-chain ceiling:</strong> Path A (owner SA + spender → Sync) or Path B (agent follows <code>hybrid_plan</code> in Copy pack).</li>
+                <li><strong>Copy for my AI</strong> — only after Go live + <code>sessionSeal</code>. Paste into Cursor, Claude, ChatGPT, or any agent.</li>
                 <li>Optional: OpenServ discover only if the site gate is unreachable.</li>
               </ol>
             </div>
@@ -246,6 +248,7 @@
                 <li>Follow the Connect pack (or <a href="/api/host-info">/api/host-info</a> → <code>primary.gateUrl</code>).</li>
                 <li>Owner already applied MandatePolicy (Go live). Keep <code>sessionSeal</code>.</li>
                 <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', … } })</code> — spend path through AllowLatch before signing.</li>
+                <li>Hybrid: you are <strong>spender only</strong> — never accept the funded/treasury private key. Optional <code>hybrid_plan</code> → <code>hybrid_report</code>.</li>
                 <li><code>assertSpend</code> alone is <strong>advisory</strong>. ALLOW + receipt → may sign; else stop.</li>
               </ol>
             </div>

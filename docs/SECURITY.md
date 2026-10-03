@@ -84,7 +84,7 @@ Agent ──┬── assertSpend(...)
         └── wallet.sendTransaction(...)   ← avoid
 ```
 
-Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapper that cannot be skipped. Default `ALLOWLATCH_ENFORCEMENT` is **hybrid** so on-chain Spend Permissions mirror daily USDC caps when `ALLOWLATCH_SMART_ACCOUNT` is set — even if middleware is bypassed.
+Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapper that cannot be skipped. Default `ALLOWLATCH_ENFORCEMENT` is **hybrid** so on-chain Spend Permissions mirror daily USDC caps when an owner Smart Account grants the agent as **spender** (`sync_wallet` / `hybrid_plan` / host `ALLOWLATCH_SMART_ACCOUNT`) — even if middleware is bypassed. **If the agent holds the funded private key, Spend Permissions cannot stop a raw transfer.**
 
 ## Vercel site gate (`/api/gate`) — honest limits
 
@@ -126,14 +126,14 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 | Stale `sessionSeal` replay | Monotonic `seq` on site gate (memory + durable); client must use latest seal after each evaluate |
 | API abuse | HTTP Bearer off-loopback; CORS + rate limits. Site gate counts limits in Turso (shared across isolates) and keys them by `x-vercel-forwarded-for` so a spoofed `X-Forwarded-For` does not rotate the bucket |
 
-Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions and a low-balance hot wallet. The always-on site gate is **SaaS authorization** (operator trust for policy, ledger, receipts), not a cryptographic vault. Swaps stay off until a router adapter can bind real calldata notional. No third-party audit yet — coffee-money balances only.
+Honest limitation: **middleware-only** mode is not custody-grade if the spender retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions (**treasury on owner SA, agent = spender only**) and a low-balance hot wallet. Giving the agent the funded/treasury private key defeats the on-chain ceiling. The always-on site gate is **SaaS authorization** (operator trust for policy, ledger, receipts), not a cryptographic vault. Swaps stay off until a router adapter can bind real calldata notional. No third-party audit yet — coffee-money balances only.
 
 ## Recommended production shape
 
 Use AllowLatch as a lock only when all of these hold:
 
 1. **Gated signer only** — spends go through `createGatedAgentKit({ kind: 'site' })`. No parallel raw `wallet.sendTransaction`. Prefer a session key / smart-account spender, not a long-lived hot key in the agent process.
-2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) + synced Coinbase Spend Permission (`ALLOWLATCH_SMART_ACCOUNT` + CDP). Receipt binds recipient/amount; Spend Permission is the daily USDC hard cap if middleware is bypassed.
+2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) + synced Coinbase Spend Permission: Path A owner `sync_wallet` (SA → spender) or Path B agent `hybrid_plan` / `hybrid_report` (see [WALLET_NATIVE.md](./WALLET_NATIVE.md)). Receipt binds recipient/amount; Spend Permission is the daily USDC hard cap **through that spender** if middleware is bypassed — not if the agent has the treasury key.
 3. **Durable host** — Turso on `/api/gate`, dedicated `ALLOWLATCH_RECEIPT_SECRET`, owner confirms SERV drafts before Go live (compilation residual risk is human, not the gate).
 4. **Coffee-money hot balance** — until independent audit. Reject / DENY never mints a receipt. Micro evaluates should use `buy_pack` + `packKey` (~$0.008) so a $0.10 transfer is not paying 25% in gate fees.
 
@@ -154,7 +154,7 @@ Before putting meaningful balance behind AllowLatch:
 9. [ ] Audit log correlates intent → decision → receipt `jti` → tx hash (scoped by policyId + ownerToken).
 10. [ ] `risk.emergencyStop` (or equivalent kill switch) tested.
 11. [ ] Separate hot wallet with minimal USDC; **`ALLOWLATCH_RECEIPT_SECRET` required in production** (no SERV_API_KEY fallback).
-12. [ ] Prefer / keep `hybrid` enforcement + synced Spend Permission for live execute (default mode).
+12. [ ] Prefer / keep `hybrid` enforcement + synced Spend Permission for live execute (default mode; Path A `sync_wallet` or Path B `hybrid_plan`; treasury on owner SA, agent = spender only).
 13. [ ] Prefer EIP-712 `ownerSig` on apply (or keep `ownerToken` secret); enable `ALLOWLATCH_REQUIRE_OWNER_SIG` for high-value tenants.
 14. [ ] Site `buy_pack` / OpenServ `buy_evaluate_pack` ignore client credit amounts; credits bound to paid x402 calls.
 15. [ ] Durable evaluate rejects missing/stale `sessionSeal` (policyId alone is not enough).

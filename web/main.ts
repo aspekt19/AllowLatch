@@ -1597,7 +1597,7 @@ labResetBtn?.addEventListener('click', () => resetLab())
 
 addMessage(
   'guard',
-  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. Connect with createGatedAgentKit({ kind: "site" }) — assertSpend alone is advisory; prefer hybrid Spend Permissions.\n4. No policy applied → every spend is DENY.\n\nSERV drafts and explains; deterministic code decides. See Production shape + Sign / Reject lab, and Live case for a real paid Base USDC run.'
+  'I am AllowLatch — spending turnstile for AI wallets on Base.\n\n1. Mandate → SERV Draft → Apply.\n2. Go live (always-on /api/gate).\n3. On-chain ceiling: Path A sync_wallet or Path B hybrid_plan — treasury on owner SA, agent = spender only (funded private key defeats the ceiling).\n4. Connect with createGatedAgentKit({ kind: "site" }) — assertSpend alone is advisory.\n5. No policy applied → every spend is DENY.\n\nSERV drafts and explains; deterministic code decides. See Production shape + Sign / Reject lab, and Live case for a real paid Base USDC run.'
 )
 setPhase('mandate')
 setBrain('SERV ready when host key is set', false)

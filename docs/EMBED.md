@@ -42,7 +42,7 @@ Local `npm run http:gate` is optional for **offline development** — not the en
 2. Wire `createGatedAgentKit({ gate: { kind: 'site', … } })` so spends route through AllowLatch before signing  
 3. Apply a mandate once (demo UI **Go live** / Connect pack)
 
-Default host enforcement is **hybrid** (on-chain Spend Permissions when configured). See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+Default host enforcement is **hybrid** (on-chain Spend Permissions when owner SA → spender is synced via `sync_wallet` / `hybrid_plan` or host CDP). Keep the treasury key off the agent. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 
 AgentKit action provider (secondary):
 

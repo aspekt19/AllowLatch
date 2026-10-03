@@ -42,6 +42,6 @@ OpenServ x402 (fallback) settles to the OpenServ trigger payout wallet.
 
 - Market “download JSON and trade all night” as the product.
 - Treat OpenServ `isActive` / `openserv.isActive` as proof the **site** gate works — check `primary.durable` and a real `/api/gate` call.
-- Call middleware-only “custody-grade” when the agent still holds a raw ungated key (use hybrid Spend Permissions).
+- Call middleware-only “custody-grade” when the agent still holds a raw ungated key (use hybrid Spend Permissions: treasury on owner SA, agent = spender only).
 
 See [CONNECT.md](./CONNECT.md) · [HOSTED.md](./HOSTED.md) · [EMBED.md](./EMBED.md).

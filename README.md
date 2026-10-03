@@ -9,7 +9,7 @@
 
 > Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
 
-No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). **Required:** `createGatedAgentKit({ kind: 'site' })` so spends go through AllowLatch before signing (`assertSpend` alone is advisory; middleware ≠ custody — prefer hybrid Spend Permissions). **Primary:** always-on https://allowlatch.vercel.app/api/gate (browser free to try; agents pay). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
+No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). **Required:** `createGatedAgentKit({ kind: 'site' })` so spends go through AllowLatch before signing (`assertSpend` alone is advisory; middleware ≠ custody — prefer hybrid Spend Permissions). **Hybrid:** keep USDC on an owner Smart Account; agent = spender only (`sync_wallet` or agent `hybrid_plan`) — a funded treasury private key in the agent bypasses the ceiling. **Primary:** always-on https://allowlatch.vercel.app/api/gate (browser free to try; agents pay). OpenServ is an **optional fallback**. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Full guide: [docs/GUIDE.md](./docs/GUIDE.md).
 
 > Product name is **AllowLatch**. Unrelated third-party sites with similar names are not this project.
 
@@ -53,7 +53,7 @@ Operator `.env`: `SERV_API_KEY`, `OPENSERV_USER_API_KEY` (cloud deploy), optiona
 
 ## Pitch
 
-Say the rules in words. SERV turns them into a policy you can review. On the gated path (`createGatedAgentKit` + receipt; prefer hybrid Spend Permissions), spends need ALLOW — a raw ungated key can still bypass; keep balances small until audit.
+Say the rules in words. SERV turns them into a policy you can review. On the gated path (`createGatedAgentKit` + receipt; prefer hybrid Spend Permissions), spends need ALLOW — a raw ungated **funded** key can still bypass; keep treasury on the owner Smart Account and balances small until audit.
 
 ## License
 

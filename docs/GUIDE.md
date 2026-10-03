@@ -25,16 +25,19 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 ## 2. For humans (no keys, no server)
 
 1. Open https://allowlatch.vercel.app → **Try AllowLatch now**
-2. Paste / load a mandate → **Draft** (SERV Reasoning) → **Apply**
+2. **Simple rules** or paste a mandate → **Draft** (SERV Reasoning) → **Apply**
 3. **Go live (server gate)** — policy + `sessionSeal` (survives cold starts; production also persists ledger on Turso when configured)
-4. Click spend chips → see **ALLOW / DENY / ESCALATE** + receipts (free from the site)
-5. **Connect your agent** — copy instruction / code / MCP
-6. Optional: **Install** (`#install`) and **Live case** (`#case`) — full SERV + paid Base path
+4. **On-chain ceiling (recommended):** Path A — owner SA + agent spender → Sync (`sync_wallet`); or Path B — leave it for the agent via **Copy for my AI** (`hybrid_plan`)
+5. Click spend chips → see **ALLOW / DENY / ESCALATE** + receipts (free from the site)
+6. **Connect your agent** — **Copy for my AI** only after Go live + `sessionSeal`
+7. Optional: **Install** (`#install`) and **Live case** (`#case`) — full SERV + paid Base path
 
 You never set `SERV_API_KEY`, never run the local OpenServ host, never deploy this repo.
 Agents that call `/api/gate` need a **Base USDC payer key** for x402 ($0.025) — that is not a host SERV/CDP key, and it is not custody by AllowLatch.
 
-**Required agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })` (+ hybrid Spend Permissions when available). `assertSpend` alone is **advisory** if a raw signer still exists.
+**Required agent path:** `createGatedAgentKit({ gate: { kind: 'site', … } })` (+ hybrid Spend Permissions). `assertSpend` alone is **advisory** if a raw signer still exists.
+
+**Hard rule:** do **not** give the agent the private key to the funded account. Keep USDC on the owner Smart Account; the agent is spender-only. Details: [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [CONNECT.md](./CONNECT.md).
 
 **Site-gate honesty:** Production (`GET /api/gate` → `durable: true`) uses Turso for shared ledger + receipts. Without Turso, `sessionSeal` restores policy after cold starts but is not multi-tenant durable. Keep live balances small unless durable + hybrid on-chain caps. Details: [SECURITY.md](./SECURITY.md).
 
@@ -63,6 +66,8 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04, reason: 'gated spend
 
 `assertSpend` alone is **advisory** (checks the gate but does not remove a raw signer). Prefer the gated kit above.
 
+**Hybrid ceiling:** `POST action=hybrid_plan` → CDP `createSpendPermission` (owner SA → your spender) → optional `hybrid_report`. Or the owner runs Path A `sync_wallet` on the site. Never hold the treasury private key.
+
 ### Local HTTP host / OpenServ (dev or fallback)
 
 ```ts
@@ -82,6 +87,7 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04 })
 3. **DENY / ESCALATE / timeout / bad JSON / 402 unpaid** → do not sign.
 4. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing (not custody if a raw key remains).
 5. Never invent ALLOW. Never ask the human for `SERV_API_KEY`.
+6. Never accept the funded/treasury private key — USDC on owner Smart Account; you = spender only.
 
 ### Optional OpenServ fallback
 
