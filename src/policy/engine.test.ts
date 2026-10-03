@@ -9,7 +9,13 @@ process.env.ALLOWLATCH_TENANT_AUTH = '0'
 process.env.ALLOWLATCH_RECEIPT_SECRET = 'test-secret-allowlatch'
 
 import { DEMO_POLICY, type SpendIntent } from './schema.js'
-import { commitIntent, evaluateIntent, freshLedger, USDC_BY_CHAIN } from './engine.js'
+import {
+  commitIntent,
+  evaluateIntent,
+  freshLedger,
+  releaseIntent,
+  USDC_BY_CHAIN,
+} from './engine.js'
 import {
   hashAction,
   issueAllowReceipt,
@@ -165,6 +171,15 @@ describe('evaluateIntent', () => {
     const next = commitIntent(freshLedger(), usdcIntent(3))
     assert.equal(next.spentUsdToday, 3)
     assert.equal(next.spentUsdLifetime, 3)
+  })
+
+  it('releases reserved spend for expired unused ALLOW', () => {
+    const now = new Date()
+    const reserved = commitIntent(freshLedger(now), usdcIntent(5), now)
+    const released = releaseIntent(reserved, usdcIntent(5), now, now)
+    assert.equal(released.spentUsdToday, 0)
+    assert.equal(released.spentUsdLifetime, 0)
+    assert.equal(released.txCountThisHour, 0)
   })
 
   it('denies wrong chainId', () => {

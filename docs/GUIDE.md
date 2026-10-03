@@ -125,7 +125,7 @@ Details: [MONETIZE.md](./MONETIZE.md). Production checklist: site [#ready](https
 
 - Allow / deny / escalate is **deterministic** (`engine.ts`) — never LLM judgment.
 - SERV drafts / revises / explains only.
-- Execute / sign only after ALLOW + consumed allow-receipt (or escalate + human approval).
+- Execute / sign only after ALLOW + consumed allow-receipt (or escalate + `humanApproved` + `ownerToken`). Site `createGatedAgentKit` consumes `jti` before returning the receipt.
 - Fail-closed clients (`createGatedAgentKit` / `assertSpend`).
 - AllowLatch does **not** custody user funds.
 

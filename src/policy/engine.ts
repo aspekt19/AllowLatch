@@ -329,3 +329,26 @@ export function commitIntent(ledger: SpendLedger, intent: SpendIntent, now = new
     gasUsdToday: state.gasUsdToday + (intent.estimatedGasUsd ?? 0),
   }
 }
+
+/**
+ * Undo a reserved ALLOW that never settled (expired receipt).
+ * Day/hour counters only release when still in the same UTC window as `reservedAt`.
+ */
+export function releaseIntent(
+  ledger: SpendLedger,
+  intent: Pick<SpendIntent, 'amountUsd' | 'estimatedGasUsd'>,
+  reservedAt: Date,
+  now = new Date()
+): SpendLedger {
+  const state = rollLedger(ledger, now)
+  const sameDay = utcDayKey(reservedAt) === state.dayKey
+  const sameHour = utcHourKey(reservedAt) === state.hourKey
+  const gas = intent.estimatedGasUsd ?? 0
+  return {
+    ...state,
+    spentUsdToday: sameDay ? Math.max(0, state.spentUsdToday - intent.amountUsd) : state.spentUsdToday,
+    spentUsdLifetime: Math.max(0, state.spentUsdLifetime - intent.amountUsd),
+    txCountThisHour: sameHour ? Math.max(0, state.txCountThisHour - 1) : state.txCountThisHour,
+    gasUsdToday: sameDay ? Math.max(0, (state.gasUsdToday ?? 0) - gas) : state.gasUsdToday,
+  }
+}

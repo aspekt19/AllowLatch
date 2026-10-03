@@ -15,8 +15,13 @@ import {
   type SpendIntent,
   type SpendLedger,
 } from '../policy/schema.js'
-import { commitIntent, evaluateIntent, freshLedger } from '../policy/engine.js'
-import { issueAllowReceipt, type AllowReceipt } from '../billing/receipt.js'
+import { commitIntent, evaluateIntent, freshLedger, releaseIntent } from '../policy/engine.js'
+import {
+  issueAllowReceipt,
+  parseAllowReceipt,
+  verifyAllowReceipt,
+  type AllowReceipt,
+} from '../billing/receipt.js'
 import {
   durableApply,
   durableConsume,
@@ -48,7 +53,41 @@ const TTL_MS = 1000 * 60 * 60 * 12 // 12h
 const sessions = new Map<string, Session>()
 /** In-memory hybrid binding (demo / non-Turso). */
 const walletBindings = new Map<string, Record<string, unknown>>()
+/** Memory-mode receipts for consume + expired budget release. */
+type MemoryReceipt = {
+  jti: string
+  policyId: string
+  amountUsd: number
+  gasUsd: number
+  expiresAt: number
+  createdAt: number
+  receipt: AllowReceipt
+  status: 'authorized' | 'settled' | 'released'
+}
+const memoryReceipts = new Map<string, MemoryReceipt>()
 let warnedServFallback = false
+
+function releaseExpiredMemoryReceipts(session: Session): void {
+  const nowSec = Math.floor(Date.now() / 1000)
+  let ledger = session.ledger
+  let changed = false
+  for (const row of memoryReceipts.values()) {
+    if (row.policyId !== session.policyId || row.status !== 'authorized') continue
+    if (row.expiresAt >= nowSec) continue
+    ledger = releaseIntent(
+      ledger,
+      { amountUsd: row.amountUsd, estimatedGasUsd: row.gasUsd },
+      new Date(row.createdAt)
+    )
+    row.status = 'released'
+    changed = true
+  }
+  if (changed) {
+    session.ledger = ledger
+    session.seq += 1
+    session.updatedAt = Date.now()
+  }
+}
 
 const ETH_ADDR = /^0x[a-fA-F0-9]{40}$/
 
@@ -387,6 +426,9 @@ export async function siteGateEvaluate(args: {
   policyId: string
   intent: SpendIntent
   sessionSeal?: string
+  /** Owner confirmed escalate — requires ownerToken. */
+  humanApproved?: boolean
+  ownerToken?: string
 }): Promise<{
   ok: true
   mode: 'site-gate'
@@ -424,6 +466,8 @@ export async function siteGateEvaluate(args: {
     const evaluated = await durableEvaluate({
       policyId: args.policyId,
       intent: args.intent,
+      humanApproved: args.humanApproved,
+      ownerToken: args.ownerToken,
     })
     // Re-read seq after evaluate (parallel allow may have advanced the ledger).
     const after = (await durablePeekPolicy(args.policyId)) ?? existing
@@ -460,8 +504,26 @@ export async function siteGateEvaluate(args: {
     policyId: args.policyId,
     sessionSeal: args.sessionSeal,
   })
+  releaseExpiredMemoryReceipts(session)
 
-  const evaluation = evaluateIntent(session.policy, args.intent, session.ledger)
+  let evaluation = evaluateIntent(session.policy, args.intent, session.ledger)
+  if (evaluation.decision === 'escalate' && args.humanApproved) {
+    const token = args.ownerToken?.trim()
+    if (!token || token !== session.ownerToken) {
+      throw new Error(
+        'humanApproved requires matching ownerToken (spender cannot self-approve escalation)'
+      )
+    }
+    evaluation = {
+      ...evaluation,
+      decision: 'allow',
+      reasons: [
+        ...evaluation.reasons,
+        'Human approved escalation; treating as ALLOW for this authorization.',
+      ],
+    }
+  }
+
   let receipt: AllowReceipt | null = null
 
   if (evaluation.decision === 'allow') {
@@ -471,8 +533,19 @@ export async function siteGateEvaluate(args: {
       intent: args.intent,
       evaluation,
     })
+    if (!receipt) throw new Error('failed to issue allow-receipt')
     session.ledger = commitIntent(session.ledger, args.intent)
     session.seq += 1
+    memoryReceipts.set(receipt.jti, {
+      jti: receipt.jti,
+      policyId: session.policyId,
+      amountUsd: args.intent.amountUsd,
+      gasUsd: args.intent.estimatedGasUsd ?? 0,
+      expiresAt: receipt.expiresAt,
+      createdAt: Date.now(),
+      receipt,
+      status: 'authorized',
+    })
   }
   session.updatedAt = Date.now()
   sessions.set(session.policyId, session)
@@ -493,13 +566,29 @@ export async function siteGateConsume(args: {
   receipt: unknown
   intent?: SpendIntent
 }): Promise<{ ok: true; jti: string; durable: boolean }> {
-  if (!tursoConfigured()) {
-    throw new Error(
-      'siteGateConsume requires durable Turso backend (ALLOWLATCH_TURSO_DATABASE_URL)'
-    )
+  if (tursoConfigured()) {
+    const out = await durableConsume(args)
+    return { ok: true, jti: out.jti, durable: true }
   }
-  const out = await durableConsume(args)
-  return { ok: true, jti: out.jti, durable: true }
+
+  const receipt = parseAllowReceipt(args.receipt)
+  if (!receipt) throw new Error('invalid receipt')
+  if (receipt.policyId !== args.policyId) throw new Error('receipt policyId mismatch')
+
+  const row = memoryReceipts.get(receipt.jti)
+  if (!row || row.policyId !== args.policyId) throw new Error('unknown receipt jti')
+  if (row.status === 'settled') throw new Error('receipt jti already settled')
+  if (row.status === 'released') throw new Error('receipt jti expired and released')
+
+  const session = sessions.get(args.policyId)
+  const verified = verifyAllowReceipt(receipt, {
+    policy: session?.policy,
+    intent: args.intent,
+  })
+  if (!verified.ok) throw new Error(verified.error)
+
+  row.status = 'settled'
+  return { ok: true, jti: receipt.jti, durable: false }
 }
 
 async function loadPolicyForHybrid(args: {

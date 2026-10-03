@@ -506,8 +506,8 @@ Never invent ALLOW.</pre>
 const agent = await createGatedAgentKit({
   gate: { kind: 'site', gateUrl, sessionSeal, walletPrivateKey, packKey }, // packKey for micro fees
 })
-await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no receipt → do not sign
-// Prefer hybrid Spend Permissions. assertSpend alone is advisory if a raw signer remains.</code></pre>
+await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; kit consumes jti on ALLOW
+// ESCALATE → ask human, retry with humanApproved + ownerToken. Prefer hybrid Spend Permissions.</code></pre>
         </div>
       </section>
 
@@ -521,7 +521,7 @@ await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; no 
             <div class="price-row">
               <div>
                 <h3>x402 gate call</h3>
-                <p>apply · evaluate · consume · buy_pack (explain = /api/copilot; execute = OpenServ/host)</p>
+                <p>apply · evaluate · buy_pack (consume settles jti free with valid receipt; explain = /api/copilot; execute = OpenServ/host)</p>
               </div>
               <p class="price-figure">$0.025</p>
             </div>

@@ -17,11 +17,14 @@ AllowLatch is a **payment policy turnstile** for financial AI agents on Base (US
 evaluate_intent
    → ALLOW + action-bound allow-receipt
       (jti, policyHash, chain, action digest, calldataHash for swaps, HMAC)
-   → execute_gated_transfer(receipt)
-   → verify + consume jti
+   → ESCALATE → humanApproved + ownerToken → re-evaluate mints receipt
+   → createGatedAgentKit / execute_gated_transfer
+   → verify + consume jti (site kit consumes before returning receipt)
    → [wallet_native/hybrid] use_spend_permission (pull USDC under on-chain cap)
    → AgentKit transfer (or dry-run)
 ```
+
+Unused authorized receipts past `expiresAt` release reserved daily/lifetime budget on the next evaluate.
 
 **Fail-closed:** timeouts, payment failures, malformed decisions, missing/invalid receipts, and **host unavailability** are DENY on the client (`assertSpend`) — never fail-open. See [SECURITY.md](./SECURITY.md).
 

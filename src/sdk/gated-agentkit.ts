@@ -44,6 +44,11 @@ export type GatedGateConfig =
       /** Prepaid evaluate credits from buy_pack — prefer for micro transfers vs $0.025/call. */
       packKey?: string
       policyId?: string
+      /**
+       * Owner credential from Go live — required for escalate + humanApproved on site evaluate.
+       * Never paste into public Connect packs; keep on the owner side.
+       */
+      ownerToken?: string
     }
   | {
       kind: 'openserv'
@@ -100,7 +105,8 @@ const SYSTEM_PROMPT = `You are an AgentKit agent with AllowLatch on the spend pa
 - Non-spend tasks: do them normally.
 - Any transfer / swap / x402 payment: only via createGatedAgentKit.transfer / .spend. Never call a raw signer in parallel.
 - ALLOW + single-use receipt → may sign that exact intent. DENY / reject / timeout → stop; no receipt, no signature.
-- ESCALATE → ask the human (never set humanApproved yourself). Human reject → no receipt.
+- ESCALATE → ask the human (never set humanApproved yourself). Retry with humanApproved=true + ownerToken. Human reject → no receipt.
+- After ALLOW the kit consumes the receipt jti before returning it for external sign (single-use).
 - Prefer hybrid Coinbase Spend Permissions (on-chain daily cap). Middleware alone is not custody if a raw key remains.
 - Micro transfers: use packKey / buy_pack (~$0.008) instead of paying $0.025 every evaluate.
 - Hosted gate is SaaS authorization (operator trust), not a vault. Coffee-money balances until audit.`
@@ -208,6 +214,93 @@ async function spendViaHttp(
   }
 }
 
+async function consumeSiteReceipt(args: {
+  gateUrl: string
+  policyId: string
+  receipt: AllowReceipt
+  intent: SpendIntent
+}): Promise<void> {
+  // consume is free — valid receipt is the credential (evaluate already paid).
+  const res = await fetch(args.gateUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'consume',
+      policyId: args.policyId,
+      receipt: args.receipt,
+      intent: args.intent,
+    }),
+  })
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+  if (!res.ok || json.ok === false) {
+    throw new Error(json.error || `consume HTTP ${res.status}`)
+  }
+}
+
+async function spendViaSite(
+  gate: Extract<GatedGateConfig, { kind: 'site' }>,
+  policyId: string,
+  intent: SpendIntent,
+  humanApproved?: boolean
+): Promise<GatedSpendResult> {
+  const packKey = gate.packKey ?? process.env.ALLOWLATCH_PACK_KEY?.trim()
+  const fee = feeAdviceForSpend(intent.amountUsd, { hasPackKey: Boolean(packKey) })
+  if (fee.preferPack) console.warn(`AllowLatch fee: ${fee.message}`)
+  const ownerToken =
+    gate.ownerToken?.trim() || process.env.ALLOWLATCH_OWNER_TOKEN?.trim() || undefined
+  const gateUrl =
+    gate.gateUrl?.trim() ||
+    process.env.ALLOWLATCH_GATE_URL?.trim() ||
+    'https://allowlatch.vercel.app/api/gate'
+  const pid = gate.policyId ?? policyId
+
+  const asserted = await assertSpend({
+    intent,
+    policyId: pid,
+    gateUrl,
+    sessionSeal: gate.sessionSeal,
+    walletPrivateKey: gate.walletPrivateKey,
+    packKey,
+    requireReceipt: true,
+    humanApproved,
+    ownerToken,
+  })
+  if (asserted.sessionSeal) {
+    gate.sessionSeal = asserted.sessionSeal
+  }
+
+  if (asserted.decision === 'escalate' && !humanApproved) {
+    throw new Error(
+      `AllowLatch ESCALATE: ask the human, then retry with humanApproved=true and ownerToken. ${JSON.stringify(asserted.evaluation).slice(0, 240)}`
+    )
+  }
+  if (asserted.decision === 'escalate' && humanApproved && !ownerToken) {
+    throw new Error(
+      'AllowLatch ESCALATE: humanApproved requires gate.ownerToken (spender cannot self-approve)'
+    )
+  }
+  if (asserted.decision !== 'allow' || !asserted.receipt) {
+    throw new Error(`AllowLatch ${asserted.decision}: refuse to sign (no receipt)`)
+  }
+
+  // Claim single-use jti before returning receipt for external sign (fail closed on replay gaps).
+  await consumeSiteReceipt({
+    gateUrl,
+    policyId: pid,
+    receipt: asserted.receipt,
+    intent,
+  })
+
+  return {
+    decision: 'allow',
+    executed: false,
+    message:
+      'ALLOW + receipt verified and jti consumed via site gate. Sign only this intent externally. Prefer hybrid Spend Permissions for on-chain daily caps. Middleware alone is not custody-grade if a raw signer remains.',
+    receipt: asserted.receipt,
+    raw: asserted.raw,
+  }
+}
+
 async function spendViaOpenServ(
   gate: Extract<GatedGateConfig, { kind: 'openserv' }>,
   policyId: string,
@@ -221,14 +314,24 @@ async function spendViaOpenServ(
     workflowId: gate.workflowId,
     walletPrivateKey: gate.walletPrivateKey,
     requireReceipt: true,
+    humanApproved,
   })
+
+  if (asserted.decision === 'escalate' && !humanApproved) {
+    throw new Error(
+      `AllowLatch ESCALATE: ask the human, then retry with humanApproved=true. ${JSON.stringify(asserted.evaluation).slice(0, 240)}`
+    )
+  }
+  if (asserted.decision !== 'allow' || !asserted.receipt) {
+    throw new Error(`AllowLatch ${asserted.decision}: refuse to sign (no receipt)`)
+  }
 
   if (!gate.executeOnHost) {
     return {
       decision: 'allow',
       executed: false,
       message:
-        'ALLOW + receipt verified. Sign externally only with this receipt, or set executeOnHost:true.',
+        'ALLOW + receipt verified. Sign externally only with this receipt, or set executeOnHost:true. Prefer createGatedAgentKit({ kind: "site" }) which also consumes jti.',
       receipt: asserted.receipt,
       raw: asserted.raw,
     }
@@ -387,37 +490,7 @@ export async function createGatedAgentKit(args?: {
         return spendViaHttp(gate, policyId, intent, opts?.humanApproved)
       }
       if (gate.kind === 'site') {
-        const packKey = gate.packKey ?? process.env.ALLOWLATCH_PACK_KEY?.trim()
-        const fee = feeAdviceForSpend(intent.amountUsd, { hasPackKey: Boolean(packKey) })
-        if (fee.preferPack) console.warn(`AllowLatch fee: ${fee.message}`)
-        const asserted = await assertSpend({
-          intent,
-          policyId: gate.policyId ?? policyId,
-          gateUrl: gate.gateUrl,
-          sessionSeal: gate.sessionSeal,
-          walletPrivateKey: gate.walletPrivateKey,
-          packKey,
-          requireReceipt: true,
-        })
-        if (asserted.decision === 'escalate' && !opts?.humanApproved) {
-          throw new Error(
-            `AllowLatch ESCALATE: ask the human (never self-approve). Reject → no receipt. ${JSON.stringify(asserted.evaluation).slice(0, 200)}`
-          )
-        }
-        if (asserted.decision !== 'allow') {
-          throw new Error(`AllowLatch ${asserted.decision}: refuse to sign (no receipt)`)
-        }
-        if (asserted.sessionSeal) {
-          gate.sessionSeal = asserted.sessionSeal
-        }
-        return {
-          decision: 'allow',
-          executed: false,
-          message:
-            'ALLOW + receipt verified via site gate. Sign only this intent externally. Prefer hybrid Spend Permissions for on-chain daily caps. Middleware alone is not custody-grade if a raw signer remains.',
-          receipt: asserted.receipt,
-          raw: asserted.raw,
-        }
+        return spendViaSite(gate, policyId, intent, opts?.humanApproved)
       }
       return spendViaOpenServ(gate, policyId, intent, opts?.humanApproved)
     },

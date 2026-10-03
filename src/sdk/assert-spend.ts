@@ -114,8 +114,15 @@ export async function assertSpend(args: {
   preferOpenServ?: boolean
   /** Payer wallet — pays site-gate x402 and/or OpenServ x402 */
   walletPrivateKey?: string
-  /** If true, throw unless decision===allow and receipt verifies (default true). */
+  /**
+   * If true (default): ALLOW requires a verified receipt; DENY throws.
+   * ESCALATE returns without receipt (caller must retry with humanApproved + ownerToken).
+   */
   requireReceipt?: boolean
+  /** Owner confirmed escalate — forwarded to site gate evaluate. */
+  humanApproved?: boolean
+  /** Required with humanApproved on site escalate — spender cannot self-approve. */
+  ownerToken?: string
 }): Promise<AssertSpendResult> {
   const intent = SpendIntentSchema.parse(args.intent)
   const policyId = args.policyId ?? 'default'
@@ -151,6 +158,13 @@ export async function assertSpend(args: {
       intent,
       sessionSeal: args.sessionSeal || process.env.ALLOWLATCH_SESSION_SEAL || undefined,
       packKey,
+      ...(args.humanApproved
+        ? {
+            humanApproved: true as const,
+            ownerToken:
+              args.ownerToken?.trim() || process.env.ALLOWLATCH_OWNER_TOKEN?.trim() || undefined,
+          }
+        : {}),
     }
 
     // Prefer burning a pack credit when available (no wallet needed for that hop).
@@ -288,6 +302,22 @@ export async function assertSpend(args: {
   }
 
   if (requireReceipt) {
+    if (decision === 'deny') {
+      throw new Error(
+        `AllowLatch deny: ${JSON.stringify(decisionSource.reasons ?? parsed.reasons ?? parsed)}`
+      )
+    }
+    if (decision === 'escalate') {
+      // Surface escalate to createGatedAgentKit — do not throw before humanApproved retry.
+      return {
+        decision: 'escalate',
+        evaluation: decisionSource,
+        receipt: null,
+        sessionSeal:
+          typeof parsed.sessionSeal === 'string' ? parsed.sessionSeal : undefined,
+        raw,
+      }
+    }
     if (decision !== 'allow') {
       throw new Error(
         `AllowLatch ${decision}: ${JSON.stringify(decisionSource.reasons ?? parsed.reasons ?? parsed)}`

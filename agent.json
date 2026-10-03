@@ -77,7 +77,11 @@
     },
     {
       "id": "evaluate_intent",
-      "description": "Deterministic allow | deny | escalate. Issues single-use allow-receipt on ALLOW. No transaction."
+      "description": "Deterministic allow | deny | escalate. Issues single-use allow-receipt on ALLOW. Site escalate clears with humanApproved+ownerToken. No transaction."
+    },
+    {
+      "id": "consume",
+      "description": "Site gate: settle allow-receipt jti (free with valid receipt). createGatedAgentKit({ kind: site }) calls this before returning the receipt."
     },
     {
       "id": "buy_pack",
@@ -106,7 +110,7 @@
   ],
   "invariants": [
     "Allow/deny/escalate is deterministic code - never LLM judgment",
-    "Execute requires verified single-use allow-receipt (or escalate + humanApproved)",
+    "Execute requires verified single-use allow-receipt (or escalate + humanApproved + ownerToken); site kit consumes jti before external sign",
     "Fail-closed: timeout, network error, malformed decision, or missing receipt \u2192 DENY",
     "Receipt binds chain, action digest, and calldataHash for swaps; prefer tokenAddress over symbol",
     "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",

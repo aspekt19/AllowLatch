@@ -4,6 +4,7 @@ import {
   decodeSessionSeal,
   encodeSessionSeal,
   siteGateApply,
+  siteGateConsume,
   siteGateEvaluate,
 } from './site-gate.js'
 import { DEMO_POLICY } from '../policy/schema.js'
@@ -116,5 +117,81 @@ describe('site-gate sessionSeal', () => {
       updatedAt: decodeSessionSeal(applied.sessionSeal)!.updatedAt,
     })
     assert.equal(again, applied.sessionSeal)
+  })
+})
+
+describe('site-gate escalate + consume', () => {
+  const to = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
+  const usdc = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+
+  it('escalate without humanApproved has no receipt; approve mints + consume settles', async () => {
+    const policyId = 'seal-escalate-a'
+    const applied = await siteGateApply({
+      policyId,
+      ownerId: 'owner-esc',
+      policy: {
+        ...DEMO_POLICY,
+        universe: { ...DEMO_POLICY.universe, allowedAddresses: [to] },
+        escalation: { requireHumanConfirmAboveUsd: 5 },
+        capital: { ...DEMO_POLICY.capital, maxPerOrderUsd: 20 },
+      },
+    })
+
+    const intent = {
+      action: 'transfer' as const,
+      amountUsd: 8,
+      symbol: 'USDC',
+      tokenAddress: usdc,
+      tokenAmount: '8000000',
+      toAddress: to,
+      chainId: 8453,
+    }
+
+    const esc = await siteGateEvaluate({
+      policyId,
+      sessionSeal: applied.sessionSeal,
+      intent,
+    })
+    assert.equal(esc.decision, 'escalate')
+    assert.equal(esc.receipt, null)
+
+    await assert.rejects(
+      () =>
+        siteGateEvaluate({
+          policyId,
+          sessionSeal: esc.sessionSeal,
+          intent,
+          humanApproved: true,
+          ownerToken: 'wrong-token',
+        }),
+      /ownerToken/
+    )
+
+    const allowed = await siteGateEvaluate({
+      policyId,
+      sessionSeal: esc.sessionSeal,
+      intent,
+      humanApproved: true,
+      ownerToken: applied.ownerToken,
+    })
+    assert.equal(allowed.decision, 'allow')
+    assert.ok(allowed.receipt)
+
+    const consumed = await siteGateConsume({
+      policyId,
+      receipt: allowed.receipt!,
+      intent,
+    })
+    assert.equal(consumed.jti, allowed.receipt!.jti)
+
+    await assert.rejects(
+      () =>
+        siteGateConsume({
+          policyId,
+          receipt: allowed.receipt!,
+          intent,
+        }),
+      /already settled/
+    )
   })
 })

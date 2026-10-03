@@ -10,7 +10,7 @@ import {
   type SpendIntent,
   type SpendLedger,
 } from '../policy/schema.js'
-import { commitIntent, evaluateIntent, freshLedger } from '../policy/engine.js'
+import { commitIntent, evaluateIntent, freshLedger, releaseIntent } from '../policy/engine.js'
 import {
   issueAllowReceipt,
   parseAllowReceipt,
@@ -90,7 +90,10 @@ async function getClient(): Promise<LibsqlClient> {
           status TEXT NOT NULL,
           receipt_json TEXT NOT NULL,
           created_at INTEGER NOT NULL,
-          settled_at INTEGER
+          settled_at INTEGER,
+          amount_usd REAL,
+          expires_at INTEGER,
+          gas_usd REAL
         );
         CREATE TABLE IF NOT EXISTS site_rate (
           bucket TEXT PRIMARY KEY,
@@ -114,10 +117,86 @@ async function getClient(): Promise<LibsqlClient> {
       } catch {
         /* remote Turso ignores local pragmas */
       }
+      for (const sql of [
+        'ALTER TABLE site_receipts ADD COLUMN amount_usd REAL',
+        'ALTER TABLE site_receipts ADD COLUMN expires_at INTEGER',
+        'ALTER TABLE site_receipts ADD COLUMN gas_usd REAL',
+      ]) {
+        try {
+          await client!.execute({ sql, args: [] })
+        } catch {
+          /* column already exists */
+        }
+      }
     })()
   }
   await ready
   return client
+}
+
+/**
+ * Release budget for authorized receipts past expiresAt (unused ALLOW → avoid ledger DoS).
+ * Marks status=released. Safe to call before evaluate.
+ */
+export async function durableReleaseExpired(policyId?: string): Promise<number> {
+  const c = await getClient()
+  const nowSec = Math.floor(Date.now() / 1000)
+  const rs = await c.execute({
+    sql: policyId
+      ? `SELECT jti, policy_id, amount_usd, gas_usd, created_at, receipt_json
+         FROM site_receipts
+         WHERE status = 'authorized' AND policy_id = ? AND expires_at IS NOT NULL AND expires_at < ?`
+      : `SELECT jti, policy_id, amount_usd, gas_usd, created_at, receipt_json
+         FROM site_receipts
+         WHERE status = 'authorized' AND expires_at IS NOT NULL AND expires_at < ?`,
+    args: policyId ? [policyId, nowSec] : [nowSec],
+  })
+  let released = 0
+  for (const row of rs.rows) {
+    const jti = String(row.jti)
+    const pid = String(row.policy_id)
+    const amountUsd = Number(row.amount_usd)
+    const gasUsd = Number(row.gas_usd ?? 0)
+    // Legacy rows without amount_usd: mark released without ledger undo (cannot safely reverse).
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) {
+      await c.execute({
+        sql: `UPDATE site_receipts SET status = 'released', settled_at = ?
+              WHERE jti = ? AND status = 'authorized'`,
+        args: [Date.now(), jti],
+      })
+      released += 1
+      continue
+    }
+    try {
+      await withWriteTx(async (tx) => {
+        const existing = await loadRowOn(tx, pid)
+        if (!existing) return
+        const reservedAt = new Date(Number(row.created_at) || Date.now())
+        const ledger = releaseIntent(
+          existing.ledger,
+          { amountUsd, estimatedGasUsd: Number.isFinite(gasUsd) ? gasUsd : 0 },
+          reservedAt
+        )
+        const seq = existing.seq + 1
+        const upd = await tx.execute({
+          sql: `UPDATE site_policies SET ledger_json=?, seq=?, updated_at=?
+                WHERE policy_id=? AND seq=?`,
+          args: [JSON.stringify(ledger), seq, Date.now(), pid, existing.seq],
+        })
+        if (Number(upd.rowsAffected) !== 1) return RETRY
+        const mark = await tx.execute({
+          sql: `UPDATE site_receipts SET status = 'released', settled_at = ?
+                WHERE jti = ? AND status = 'authorized'`,
+          args: [Date.now(), jti],
+        })
+        if (Number(mark.rowsAffected) !== 1) return RETRY
+      })
+      released += 1
+    } catch {
+      /* concurrent settle/release — skip */
+    }
+  }
+  return released
 }
 
 /** Test hook — drop the cached client so a file: URL can be swapped. */
@@ -313,6 +392,9 @@ export async function durableApply(args: {
 export async function durableEvaluate(args: {
   policyId: string
   intent: SpendIntent
+  /** Owner confirmed escalate — mints receipt + reserves budget (spender cannot self-approve). */
+  humanApproved?: boolean
+  ownerToken?: string
 }): Promise<{
   decision: 'allow' | 'deny' | 'escalate'
   result: ReturnType<typeof evaluateIntent> & { receipt?: AllowReceipt }
@@ -328,19 +410,76 @@ export async function durableEvaluate(args: {
       )
     }
 
-    const evaluation = evaluateIntent(existing.policy, args.intent, existing.ledger)
+    // Release expired authorized receipts inside this tx so client seal seq stays valid at entry.
+    let ledger = existing.ledger
+    let releasedBudget = false
+    const nowSec = Math.floor(Date.now() / 1000)
+    const expired = await tx.execute({
+      sql: `SELECT jti, amount_usd, gas_usd, created_at FROM site_receipts
+            WHERE policy_id = ? AND status = 'authorized'
+              AND expires_at IS NOT NULL AND expires_at < ?`,
+      args: [args.policyId, nowSec],
+    })
+    for (const row of expired.rows) {
+      const amountUsd = Number(row.amount_usd)
+      if (Number.isFinite(amountUsd) && amountUsd > 0) {
+        ledger = releaseIntent(
+          ledger,
+          {
+            amountUsd,
+            estimatedGasUsd: Number(row.gas_usd ?? 0) || 0,
+          },
+          new Date(Number(row.created_at) || Date.now())
+        )
+        releasedBudget = true
+      }
+      await tx.execute({
+        sql: `UPDATE site_receipts SET status = 'released', settled_at = ?
+              WHERE jti = ? AND status = 'authorized'`,
+        args: [Date.now(), String(row.jti)],
+      })
+    }
+    let seq = existing.seq + (releasedBudget ? 1 : 0)
+
+    let evaluation = evaluateIntent(existing.policy, args.intent, ledger)
+    if (evaluation.decision === 'escalate' && args.humanApproved) {
+      const token = args.ownerToken?.trim()
+      if (!token || hashOwnerToken(token) !== existing.ownerTokenHash) {
+        throw new Error(
+          'humanApproved requires matching ownerToken (spender cannot self-approve escalation)'
+        )
+      }
+      evaluation = {
+        ...evaluation,
+        decision: 'allow',
+        reasons: [
+          ...evaluation.reasons,
+          'Human approved escalation; treating as ALLOW for this authorization.',
+        ],
+      }
+    }
+
     if (evaluation.decision !== 'allow') {
+      if (seq !== existing.seq) {
+        const now = Date.now()
+        const upd = await tx.execute({
+          sql: `UPDATE site_policies SET ledger_json=?, seq=?, updated_at=?
+                WHERE policy_id=? AND seq=?`,
+          args: [JSON.stringify(ledger), seq, now, args.policyId, existing.seq],
+        })
+        if (Number(upd.rowsAffected) !== 1) return RETRY
+      }
       return {
         decision: evaluation.decision,
         result: evaluation,
         receipt: null,
-        seq: existing.seq,
+        seq,
         durable: true as const,
       }
     }
 
-    const ledger = commitIntent(existing.ledger, args.intent)
-    const seq = existing.seq + 1
+    ledger = commitIntent(ledger, args.intent)
+    seq += 1
     const now = Date.now()
     const upd = await tx.execute({
       sql: `UPDATE site_policies SET ledger_json=?, seq=?, updated_at=?
@@ -358,14 +497,18 @@ export async function durableEvaluate(args: {
     if (!receipt) throw new Error('failed to issue allow-receipt')
 
     await tx.execute({
-      sql: `INSERT INTO site_receipts (jti, policy_id, intent_hash, status, receipt_json, created_at)
-            VALUES (?, ?, ?, 'authorized', ?, ?)`,
+      sql: `INSERT INTO site_receipts
+            (jti, policy_id, intent_hash, status, receipt_json, created_at, amount_usd, expires_at, gas_usd)
+            VALUES (?, ?, ?, 'authorized', ?, ?, ?, ?, ?)`,
       args: [
         receipt.jti,
         args.policyId,
         receipt.intentHash,
         JSON.stringify(receipt),
         now,
+        args.intent.amountUsd,
+        receipt.expiresAt,
+        args.intent.estimatedGasUsd ?? 0,
       ],
     })
     return {
@@ -407,7 +550,9 @@ export async function durableConsume(args: {
   })
   const row = rs.rows[0]
   if (!row) throw new Error('unknown receipt jti')
-  if (String(row.status) === 'settled') throw new Error('receipt jti already settled')
+  const status = String(row.status)
+  if (status === 'settled') throw new Error('receipt jti already settled')
+  if (status === 'released') throw new Error('receipt jti expired and released')
 
   const upd = await c.execute({
     sql: `UPDATE site_receipts SET status = 'settled', settled_at = ?
@@ -415,7 +560,7 @@ export async function durableConsume(args: {
     args: [Date.now(), receipt.jti],
   })
   if (Number(upd.rowsAffected) !== 1) {
-    throw new Error('receipt jti already settled or missing')
+    throw new Error('receipt jti already settled, released, or missing')
   }
   return { ok: true, jti: receipt.jti, durable: true }
 }

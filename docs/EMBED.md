@@ -20,6 +20,8 @@ const agent = await createGatedAgentKit({
     sessionSeal: process.env.ALLOWLATCH_SESSION_SEAL,
     walletPrivateKey: process.env.WALLET_PRIVATE_KEY, // x402 payer only
     packKey: process.env.ALLOWLATCH_PACK_KEY, // optional — micro evaluates (~$0.008)
+    // Keep ownerToken on the owner side only — required to clear ESCALATE:
+    // ownerToken: process.env.ALLOWLATCH_OWNER_TOKEN,
   },
 })
 
@@ -30,6 +32,9 @@ await agent.transfer({
   amountUsd: 5,
   reason: 'gated spend',
 })
+
+// If the gate returns ESCALATE: ask the human, then retry with humanApproved
+// (requires gate.ownerToken). createGatedAgentKit consumes jti before returning the receipt.
 ```
 
 Local `npm run http:gate` is optional for **offline development** — not the end-user product.

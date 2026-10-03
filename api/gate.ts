@@ -61,6 +61,9 @@ const EvaluateSchema = z.object({
   sessionSeal: z.string().max(50_000).optional(),
   /** Prepaid evaluate credit from buy_pack — burns 1 instead of paying x402. */
   packKey: z.string().min(3).max(120).optional(),
+  /** Owner confirmed escalate — requires matching ownerToken. */
+  humanApproved: z.boolean().optional(),
+  ownerToken: z.string().min(8).max(200).optional(),
 })
 
 const ConsumeSchema = z.object({
@@ -179,8 +182,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mode === 'openserv'
           ? 'POST apply|evaluate via OpenServ x402 (fallback)'
           : durable
-            ? 'POST apply|evaluate|consume|buy_pack|hybrid_plan|sync_wallet|hybrid_report — Turso durable ledger. Browser same-site free; agents pay $0.025 or burn pack credits (~$0.008/check).'
-            : 'POST apply|evaluate|hybrid_plan|sync_wallet|hybrid_report — memory+sessionSeal (demo). Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402.',
+            ? 'POST apply|evaluate|consume|buy_pack|hybrid_plan|sync_wallet|hybrid_report — Turso durable ledger. evaluate: agents pay $0.025 or pack credits; escalate retry with humanApproved+ownerToken; consume settles jti (free with valid receipt); expired authorized receipts release reserved budget.'
+            : 'POST apply|evaluate|consume|hybrid_plan|sync_wallet|hybrid_report — memory+sessionSeal (demo). evaluate supports humanApproved+ownerToken; consume settles jti. Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402 on evaluate.',
     })
     return
   }
@@ -289,7 +292,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (paidVia !== 'pack') {
+    // consume settles an already-paid ALLOW receipt — no second x402 charge.
+    const skipPaywall = body.action === 'consume'
+
+    if (paidVia !== 'pack' && !skipPaywall) {
       const paid = await enforceSiteGateX402({
         origin,
         headers: req.headers as Record<string, unknown>,
@@ -488,6 +494,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         policyId: body.policyId,
         intent: body.intent,
         sessionSeal: body.sessionSeal,
+        humanApproved: body.humanApproved,
+        ownerToken: body.ownerToken,
       })
       res.status(200).json({
         ok: true,

@@ -90,8 +90,8 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 
 | Property | Behavior |
 |----------|----------|
-| **Durable mode** | Set `ALLOWLATCH_TURSO_DATABASE_URL` (+ `ALLOWLATCH_TURSO_AUTH_TOKEN`). Shared ledger + unique `jti` across isolates. Ledger writes are compare-and-swap on `seq` inside a write transaction (a lost update cannot double-spend). Policy updates do not rewrite the ledger. Seal is **v3 reference** (no ledger in client). `POST action=consume` settles a receipt after use. |
-| **Demo mode** (no Turso) | `sessionSeal` (HMAC) + in-memory `Map` — survives cold starts only if the client returns the latest seal. **Not** multi-instance safe. |
+| **Durable mode** | Set `ALLOWLATCH_TURSO_DATABASE_URL` (+ `ALLOWLATCH_TURSO_AUTH_TOKEN`). Shared ledger + unique `jti` across isolates. Ledger writes are compare-and-swap on `seq` inside a write transaction (a lost update cannot double-spend). Policy updates do not rewrite the ledger. Seal is **v3 reference** (no ledger in client). `POST action=consume` settles a receipt (free — valid receipt is the credential). Expired `authorized` receipts release reserved daily/lifetime budget on the next evaluate. |
+| **Demo mode** (no Turso) | `sessionSeal` (HMAC) + in-memory `Map` — survives cold starts only if the client returns the latest seal. **Not** multi-instance safe. Memory mode also supports `consume` + expired-budget release. |
 | `ownerToken` | Returned on apply to the **browser**; **not** embedded in `sessionSeal` (v2/v3). Never paste `ownerToken` into agent Connect packs |
 | Freshness (demo) | Monotonic `seq` rejects rolling the ledger back when this process already has a newer seal |
 | Multi-instance races | **Fixed in durable mode** via `seq` compare-and-swap. In demo mode two concurrent evaluates on different isolates can both ALLOW against the same old seal |
@@ -99,11 +99,12 @@ Use `createGatedAgentKit`, host `execute_gated_transfer`, or an RPC/signer wrapp
 | Prepaid packs | `POST action=buy_pack` (paid $0.025) mints a fixed credit count (default 3). `evaluate` with `packKey` burns one credit instead of paying again. Client cannot choose mint size |
 | Amount binding | USDC `transfer` / `x402_pay` require `tokenAmount` (6-decimal atomic) or ERC-20 `transfer` calldata that matches `amountUsd` — claimed USD alone is not enough |
 | Receipt secret | **Production requires** dedicated `ALLOWLATCH_RECEIPT_SECRET`. Falling back to `SERV_API_KEY` is a temporary ops escape hatch only — do not ship that as the prod config |
-| Budget vs settlement | On ALLOW the daily/lifetime ledger is reserved when the receipt is issued (conservative). Durable `consume` marks `jti` settled for replay protection at the execute boundary |
+| Budget vs settlement | On ALLOW the daily/lifetime ledger is reserved when the receipt is issued (conservative). `consume` marks `jti` settled for replay protection. Unused receipts past `expiresAt` are **released** (budget returned) on the next evaluate |
+| Site escalate | `evaluate` with `humanApproved=true` + matching `ownerToken` mints a receipt for an escalate decision. `createGatedAgentKit({ kind: 'site' })` surfaces ESCALATE, then on retry consumes `jti` before returning the receipt for external sign |
 
 Prefer durable Turso for any balance you care about. Treat demo mode as **always-on smoke path** with small balances. SQLite operator host (`npm run http:gate`) remains the local atomic alternative.
 
-Escalate + `humanApproved` on HTTP `/v1/execute` requires `ownerToken` (or operator) — the spender cannot self-approve.
+Escalate + `humanApproved` requires `ownerToken` (or operator on HTTP `/v1/execute`) — the spender cannot self-approve. Site path: pass both on `evaluate` (or via `createGatedAgentKit.transfer({ humanApproved: true })` with `gate.ownerToken`).
 
 Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 

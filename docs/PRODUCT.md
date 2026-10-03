@@ -57,7 +57,7 @@ Financial agent (Spender)
 AllowLatch Gate (code, no LLM)
   → ALLOW | DENY | ESCALATE
 Wallet / AgentKit / CDP (after ALLOW)
-  → sign Base USDC only on ALLOW (+ humanApproved on escalate)
+  → sign Base USDC only on ALLOW (+ humanApproved+ownerToken on escalate; site kit consumes jti)
 ```
 
 | Layer | Tech | Role |
