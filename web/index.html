@@ -247,7 +247,7 @@
                 <li>Owner already applied MandatePolicy (Go live). Keep <code>sessionSeal</code>.</li>
                 <li><strong>Required:</strong> <code>createGatedAgentKit({ gate: { kind: 'site', … } })</code> before every spend.</li>
                 <li>Optional: <code>hybrid_plan</code> → CDP Spend Permission → <code>hybrid_report</code>. Never take the funded treasury key.</li>
-                <li><code>assertSpend</code> alone is <strong>advisory</strong>. ALLOW + receipt → may sign; else stop.</li>
+                <li><code>assertSpend</code> alone is <strong>advisory</strong>. The gated kit consumes <code>jti</code> on ALLOW, then you may sign; else stop.</li>
               </ol>
             </div>
           </div>
@@ -335,8 +335,9 @@ Required: npm i allowlatch@^0.2.3 → createGatedAgentKit({ gate: { kind: "site"
 so spends go through AllowLatch before signing (hybrid Spend Permissions when available; middleware ≠ custody).
 assertSpend alone is advisory only — do not use it as the sole control if a raw CDP/wallet signer remains.
 walletPrivateKey is the x402 payer only, not a host key.
-- ALLOW + allow-receipt (jti) → only then may you sign.
-- DENY, ESCALATE (ask me — never set humanApproved yourself), timeout → do not sign (fail-closed).
+- The kit consumes allow-receipt jti on ALLOW → only then may you sign that intent.
+- DENY or timeout → do not sign (fail-closed).
+- ESCALATE → ask me, then retry with humanApproved + ownerToken (never set humanApproved yourself; never paste ownerToken into this pack).
 OpenServ triggerUrl is optional fallback only.
 Never invent ALLOW.</pre>
             <p class="muted tight" id="owner-prompt-copy-status" aria-live="polite"></p>
@@ -365,7 +366,7 @@ Never invent ALLOW.</pre>
             <p class="section-lead">
               Full product path: SERV Reasoning drafts the mandate → Go live on
               <code>/api/gate</code> → agent pays $0.025 x402 → deterministic DENY / ESCALATE / ALLOW →
-              SERV explains the DENY → only ALLOW + receipt may sign on Base.
+              SERV explains the DENY → only ALLOW + a consumed receipt may sign on Base.
             </p>
           </div>
 

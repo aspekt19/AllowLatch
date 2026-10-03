@@ -59,7 +59,7 @@ await agent.transfer({
 })
 ```
 
-**`assertSpend` alone is advisory** — it checks the gate, but does **not** remove a raw AgentKit/CDP signer. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing.
+**`assertSpend` alone is advisory** — it checks the gate, but does **not** remove a raw AgentKit/CDP signer. Prefer `createGatedAgentKit({ kind: 'site' })`: it evaluates, consumes `jti`, then returns the receipt to sign. ESCALATE retries need `humanApproved` + `ownerToken`.
 
 **Optional ceiling:** `POST action=hybrid_plan` → CDP `createSpendPermission` (funded SA → your AgentKit address) → optional `hybrid_report`. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 

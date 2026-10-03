@@ -254,6 +254,12 @@ async function spendViaSite(
     'https://allowlatch.vercel.app/api/gate'
   const pid = gate.policyId ?? policyId
 
+  if (humanApproved && !ownerToken) {
+    throw new Error(
+      'AllowLatch ESCALATE: humanApproved requires gate.ownerToken (spender cannot self-approve)'
+    )
+  }
+
   const asserted = await assertSpend({
     intent,
     policyId: pid,
@@ -272,11 +278,6 @@ async function spendViaSite(
   if (asserted.decision === 'escalate' && !humanApproved) {
     throw new Error(
       `AllowLatch ESCALATE: ask the human, then retry with humanApproved=true and ownerToken. ${JSON.stringify(asserted.evaluation).slice(0, 240)}`
-    )
-  }
-  if (asserted.decision === 'escalate' && humanApproved && !ownerToken) {
-    throw new Error(
-      'AllowLatch ESCALATE: humanApproved requires gate.ownerToken (spender cannot self-approve)'
     )
   }
   if (asserted.decision !== 'allow' || !asserted.receipt) {

@@ -3,7 +3,7 @@
 AllowLatch combines two layers for **AI agents with Coinbase AgentKit / CDP** (compatible gated signers welcome; day‑1 UX is AgentKit):
 
 ```text
-NL mandate → engine.ts (ALLOW + receipt) → AgentKit
+NL mandate → engine.ts (ALLOW + receipt, or escalate + ownerToken) → consume jti → AgentKit
                     ↕ mirrored
          Coinbase Spend Permission (on-chain daily USDC cap)
 ```

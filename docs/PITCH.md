@@ -5,7 +5,7 @@ No API keys for end users. Repo: https://github.com/aspekt19/AllowLatch
 
 ## One line
 
-**SERV drafts the spending law. Deterministic code judges every spend. The agent signs on Base only after ALLOW + receipt — and agents pay $0.025 USDC x402 for the always-on gate.**
+**SERV drafts the spending law. Deterministic code judges every spend. On the gated path the agent signs on Base only after ALLOW and a consumed receipt — and agents pay $0.025 USDC x402 for the always-on gate.**
 
 ## What it is
 

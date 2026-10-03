@@ -31,7 +31,7 @@ This document is the public threat model and production checklist. For architect
 3. **ALLOW without receipt** → DENY.
 4. **Receipt verify fails** (sig, expiry, policyHash, intentHash, chain, calldataHash) → DENY.
 5. **`jti` already consumed** → DENY (replay).
-6. **Escalate** without explicit `humanApproved` → do not mint/consume a receipt for auto-execute.
+6. **Escalate** without explicit `humanApproved` **and** matching `ownerToken` → do not mint/consume a receipt for auto-execute.
 7. **Host / SQLite unavailable** → client DENY (`assertSpend`); never fail-open to a local bypass for live funds.
 
 `src/sdk/assert-spend.ts` throws `AllowLatch DENY (fail-closed): …` on (1)–(4).

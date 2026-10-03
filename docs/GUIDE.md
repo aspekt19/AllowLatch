@@ -4,7 +4,7 @@
 **Live:** https://allowlatch.vercel.app  
 **Repo:** https://github.com/aspekt19/AllowLatch
 
-> Reasoning drafts the mandate. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
+> Reasoning drafts the mandate. Code judges every spend. On the gated path the agent signs only after ALLOW, a consumed receipt, or an owner-cleared escalate.
 
 ---
 
@@ -85,8 +85,8 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04 })
 ### Rules
 
 1. No applied policy → refuse every spend (fail-closed).
-2. **ALLOW + verified allow-receipt (`jti`)** → may sign.
-3. **DENY / ESCALATE / timeout / bad JSON / 402 unpaid** → do not sign.
+2. **ALLOW + consumed allow-receipt (`jti`)** → may sign. Site `createGatedAgentKit` consumes before it returns the receipt.
+3. **DENY / timeout / bad JSON / 402 unpaid** → do not sign. **ESCALATE** → ask the human, then retry with `humanApproved` + `ownerToken` (the spender cannot self-approve).
 4. Prefer `createGatedAgentKit` so the supported spend path hits AllowLatch before signing (not custody if a raw key remains).
 5. Never invent ALLOW. Never ask the human for `SERV_API_KEY`.
 6. Never accept the funded/treasury private key — prefer USDC on owner Smart Account; AgentKit wallet only.

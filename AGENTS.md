@@ -64,7 +64,7 @@ Docs: https://docs.openserv.ai/serv-reasoning/
 1. Never commit `.env` / `.openserv.json` / CDP secrets.
 2. Never ask end users for `SERV_API_KEY`.
 3. Policy allow/deny must go through `evaluateIntent` in `engine.ts`.
-4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + humanApproved mint).
+4. AgentKit signs only after ALLOW **and** a consumed allow-receipt (or escalate + `humanApproved` + `ownerToken`). Site `createGatedAgentKit` consumes `jti` before returning the receipt.
 5. Clients are **fail-closed**: network/timeout/malformed → DENY (`assertSpend` / gated kit). Trust `gate.isActive` only as a hint — still fail closed on hang/timeout. **Required agent path:** `createGatedAgentKit({ kind: 'site' })`; `assertSpend` alone is advisory.
 6. Product name is **AllowLatch**.
 7. Live proof (SERV draft + paid `/api/gate` + Base transfer): [`0x399dd9…`](https://basescan.org/tx/0x399dd953a96332dfbb0e27dfc19dea0898c0a1a236f065216ef4e6759a2792b5); fees to operator — see site [`#case`](https://allowlatch.vercel.app/#case).

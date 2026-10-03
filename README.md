@@ -7,7 +7,7 @@
 **Guide:** [docs/GUIDE.md](./docs/GUIDE.md) · **Connect:** [docs/CONNECT.md](./docs/CONNECT.md) · **Pitch:** [docs/PITCH.md](./docs/PITCH.md) · [llms.txt](./llms.txt) · [agent.json](./agent.json)  
 **Security:** [docs/SECURITY.md](./docs/SECURITY.md) · [docs/AUDIT.md](./docs/AUDIT.md)
 
-> Reasoning drafts the law. Code judges every spend. The agent signs only after ALLOW + allow-receipt.
+> Reasoning drafts the law. Code judges every spend. On the gated path the agent signs only after ALLOW and a consumed allow-receipt (escalate needs owner approval).
 
 For owners of **AI agents with Coinbase AgentKit / CDP** (compatible gated signers welcome). No end-user **SERV/CDP host** keys — **you never run the host**. Agents that call the gate still need a **Base USDC payer** for x402 ($0.025). **Required:** Go live → **Copy for my AI** → `createGatedAgentKit({ kind: 'site' })` (`assertSpend` alone is advisory). Optional on-chain ceiling via agent `hybrid_plan` (host `sync_wallet` is operator-advanced). Do not put the funded private key in the agent. The site does **not** ask you to connect MetaMask. **Primary:** https://allowlatch.vercel.app/api/gate. OpenServ is optional fallback. Embed: `npm i allowlatch` · MCP: `npx allowlatch-mcp` · skill: `skills/allowlatch`. Guide: [docs/GUIDE.md](./docs/GUIDE.md).
 

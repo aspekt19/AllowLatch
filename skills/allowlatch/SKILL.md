@@ -40,8 +40,9 @@ await agent.transfer({ toAddress, amountUsd })
 
 `assertSpend` alone is **advisory** — it does not remove a raw AgentKit/CDP signer.
 
-ALLOW + receipt → may sign that intent. DENY / timeout → stop. Never invent ALLOW. Never set `humanApproved` yourself.
-`createGatedAgentKit({ kind: 'site' })` routes AgentKit spends through the gate; it does not remove a raw signer — optional ceiling via `hybrid_plan` (host `sync_wallet` is operator-advanced). Never accept the funded/treasury private key. Swaps are off by default.
+`createGatedAgentKit({ kind: 'site' })` evaluates, **consumes** the receipt `jti`, then you may sign that intent. DENY / timeout → stop. Never invent ALLOW.
+ESCALATE → ask the human, then retry `transfer({ humanApproved: true })` with `gate.ownerToken`. Never set `humanApproved` yourself. Never put `ownerToken` in a public Connect pack.
+The kit does not remove a raw signer — optional ceiling via `hybrid_plan` (host `sync_wallet` is operator-advanced). Never accept the funded/treasury private key. Swaps are off by default. Unused receipts expire and release reserved budget.
 Hosted gate = SaaS authorization (operator trust), not a vault. Keep balances small until audit.
 DENY / human reject → no receipt → do not sign. Micro evaluates: `packKey` from `buy_pack` (~$0.008) beats $0.025/call.
 Check `agent.productionShape` / `recommendProductionShape()` before putting meaningful balance behind the gate.

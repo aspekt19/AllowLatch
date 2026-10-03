@@ -9,7 +9,7 @@ It is a **Policy Copilot + hard turnstile**:
 1. The owner states and revises spending rules in natural language.
 2. **SERV Reasoning on the AllowLatch host** drafts the policy, surfaces conflicts, resists prompt injection, and explains denials (Multipath · prompt_guard · shadow).
 3. Before every spend, **deterministic code** returns allow / deny / escalate - the LLM never overrides the verdict.
-4. On the **supported signing path**, the spender moves funds **only after ALLOW** + consumed allow-receipt (or escalate + human approval) — typically `createGatedAgentKit` / host `execute_gated_transfer`. A raw ungated key outside that path is out of scope for the middleware.
+4. On the **supported signing path**, the spender moves funds **only after ALLOW** + a consumed allow-receipt (or escalate + `humanApproved` + `ownerToken`) — `createGatedAgentKit({ kind: 'site' })` consumes `jti` before it returns the receipt; host `execute_gated_transfer` consumes before it signs. A raw ungated key outside that path is out of scope for the middleware.
 
 End users need **no API keys**. Agents connect via always-on Vercel `/api/gate` (native x402); OpenServ is optional fallback. Operator holds SERV (+ CDP for facilitator).
 
@@ -90,6 +90,19 @@ The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (
 
 ---
 
+## MVP
+
+This is the shipped product on https://allowlatch.vercel.app (`GET /api/gate` → `durable: true`):
+
+1. Owner writes a mandate → SERV drafts a `MandatePolicy` (never the verdict).
+2. Every spend hits `engine.ts`: **allow / deny / escalate**.
+3. ALLOW (or escalate cleared with `humanApproved` + `ownerToken`) issues an action-bound receipt and reserves budget.
+4. `createGatedAgentKit({ kind: 'site' })` **consumes** `jti`, then the caller may sign that intent.
+5. Unused receipts past `expiresAt` release the reserved budget on the next evaluate.
+6. Agents pay **$0.025** USDC x402, or `buy_pack` credits. Optional hybrid Spend Permission is a daily on-chain ceiling when the treasury key stays off the agent.
+
+Not in this MVP: a third-party audit, swap-calldata economics (swaps stay off), or a vault that can stop an agent who already holds the funded private key.
+
 ## What we are not
 
 - Not a replacement for Coinbase / CDP wallets  
@@ -113,7 +126,7 @@ Without (1)+(2), AllowLatch is a useful advisor and denial journal — not a phy
 
 ## One-line pitch
 
-> For a financial agent on Base: state rules in words → SERV drafts → without ALLOW + valid allow-receipt on a gated signer (prefer hybrid Spend Permissions), the wallet should not move money.
+> For a financial agent on Base: state rules in words → SERV drafts → on the gated path, sign only after ALLOW, a consumed receipt, and (when escalated) owner approval. Hybrid Spend Permissions add a daily on-chain ceiling. A funded raw key outside that path can still move funds.
 
 ---
 

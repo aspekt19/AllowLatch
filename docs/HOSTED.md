@@ -18,7 +18,7 @@ End users and their agents **never** run `npm run dev`, never set `SERV_API_KEY`
 You / your agent
     → Prefer always-on https://allowlatch.vercel.app/api/gate (native x402)
     → Optional: OpenServ discoverServices() / paywall when site gate unreachable
-    → ALLOW + receipt → your wallet signs
+    → ALLOW (or escalate + humanApproved + ownerToken) → consume jti → your wallet signs
 ```
 
 ## Public connection (OpenServ fallback)

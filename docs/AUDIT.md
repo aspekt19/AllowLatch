@@ -15,6 +15,7 @@ AllowLatch has **not** completed a third-party security audit. Use this before p
 - [ ] Host keep-alive ([HOSTED.md](./HOSTED.md)); clients fail-closed on outage
 - [ ] Hot wallet only; lifetime budget set; emergency stop tested; swaps off unless calldata adapter exists
 - [ ] Durable evaluate requires latest `sessionSeal` (policyId alone is not a spender credential)
+- [ ] Site `createGatedAgentKit` consumes `jti` before returning a receipt; escalate mints a receipt only with `humanApproved` + `ownerToken`
 
 ## External audit (recommended before scale)
 
@@ -25,6 +26,6 @@ Engage an auditor familiar with:
 3. x402 payment + multi-tenant hosts
 4. Coinbase Spend Permissions / AgentKit signing paths
 
-Scope should include `src/policy/engine.ts`, `src/billing/receipt.ts`, `src/auth/*`, `src/store/fs-store.ts`, `src/sdk/assert-spend.ts`, `src/executor/gated-executor.ts`.
+Scope should include `src/policy/engine.ts`, `src/billing/receipt.ts`, `src/auth/*`, `src/store/fs-store.ts`, `src/web/site-gate.ts`, `src/sdk/assert-spend.ts`, `src/sdk/gated-agentkit.ts`, `src/executor/gated-executor.ts`.
 
 Until then: treat middleware as **authorization**, not custody; keep balances small. A funded private key in the agent defeats gate + Spend Permissions.
