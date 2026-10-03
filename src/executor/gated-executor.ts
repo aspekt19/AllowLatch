@@ -18,6 +18,7 @@ import {
 import {
   requiresSyncedPermission,
   resolveEnforcementMode,
+  spendPermissionMatchesPolicy,
 } from '../wallet/spend-permissions.js'
 
 /** USDC on Base mainnet */
@@ -262,19 +263,80 @@ export async function gatedTransfer(
         mode: resolveExecuteMode(),
         evaluation,
         executed: false,
+        receiptConsumed: false,
         message: `Invalid allow-receipt: ${verified.error}`,
         requestId,
       }
     }
+
+    const mode = resolveExecuteMode()
+    const enforcement = resolveEnforcementMode()
+    const binding = store.getWalletBinding(input.policyId)
+
+    // Prerequisites BEFORE consume — do not burn receipt on wallet_native gaps.
+    if (requiresSyncedPermission() && !spendPermissionMatchesPolicy(binding, policy)) {
+      return {
+        mode,
+        evaluation,
+        executed: false,
+        receiptConsumed: false,
+        message:
+          binding?.status === 'synced'
+            ? 'wallet_native: Spend Permission is stale vs policy daily cap — re-sync (sync_wallet_permissions / sync_wallet / hybrid_report).'
+            : 'wallet_native enforcement requires a synced Spend Permission matching the policy daily cap. Call sync_wallet_permissions / apply_policy with ALLOWLATCH_SMART_ACCOUNT + CDP credentials.',
+        requestId,
+      }
+    }
+
+    let kit: Awaited<ReturnType<typeof getKitBundle>>['kit'] | undefined
+    let walletAddress: string | undefined
+    let networkId = process.env.NETWORK_ID || 'base-sepolia'
+
+    if (mode === 'live') {
+      try {
+        const bundle = await getKitBundle()
+        kit = bundle.kit
+        walletAddress = bundle.walletAddress
+        networkId = bundle.networkId
+      } catch (err) {
+        if (enforcement === 'wallet_native') {
+          return {
+            mode,
+            evaluation,
+            executed: false,
+            receiptConsumed: false,
+            message: `wallet_native: AgentKit unavailable before consume — ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+            requestId,
+          }
+        }
+      }
+      if (enforcement === 'wallet_native' && kit) {
+        const usePerm = kit.getActions().find((a: { name: string }) => a.name === 'use_spend_permission')
+        if (!usePerm) {
+          return {
+            mode,
+            evaluation,
+            executed: false,
+            receiptConsumed: false,
+            message: 'use_spend_permission action unavailable on this AgentKit wallet provider.',
+            requestId,
+          }
+        }
+      }
+    }
+
     const consumed = store.tryConsumeReceipt(receipt.jti, {
       policyId: input.policyId,
       intentHash: receipt.intentHash,
     })
     if (!consumed) {
       return {
-        mode: resolveExecuteMode(),
+        mode,
         evaluation,
         executed: false,
+        receiptConsumed: false,
         message: 'Allow-receipt already consumed (replay blocked).',
         requestId,
       }
@@ -285,8 +347,6 @@ export async function gatedTransfer(
       requestId,
       payload: { jti: receipt.jti, intentHash: receipt.intentHash },
     })
-
-    const mode = resolveExecuteMode()
 
     if (mode === 'dry-run') {
       await store.setLedger(input.policyId, commitIntent(ledger, input.intent))
@@ -308,29 +368,22 @@ export async function gatedTransfer(
       return dry
     }
 
-    const enforcement = resolveEnforcementMode()
-    const binding = store.getWalletBinding(input.policyId)
-    if (requiresSyncedPermission() && binding?.status !== 'synced') {
-      return {
-        mode,
-        evaluation,
-        executed: false,
-        receiptConsumed: true,
-        message:
-          'wallet_native enforcement requires a synced Spend Permission. Call sync_wallet_permissions / apply_policy with ALLOWLATCH_SMART_ACCOUNT + CDP credentials.',
-        requestId,
-      }
+    if (!kit) {
+      const bundle = await getKitBundle()
+      kit = bundle.kit
+      walletAddress = bundle.walletAddress
+      networkId = bundle.networkId
     }
 
-    const { kit, walletAddress, networkId } = await getKitBundle()
     const tokenAddress = usdcAddressForNetwork(networkId)
     const smartAccount = process.env.ALLOWLATCH_SMART_ACCOUNT?.trim()
 
-    // Hybrid / wallet_native: pull USDC via Spend Permission into the AgentKit wallet, then transfer.
+    // Hybrid: defense-in-depth — use Spend Permission when synced; else fall through to transfer.
+    // wallet_native: already verified use_spend_permission exists above.
     if (
       (enforcement === 'hybrid' || enforcement === 'wallet_native') &&
       smartAccount &&
-      binding?.status === 'synced'
+      spendPermissionMatchesPolicy(binding, policy)
     ) {
       const usePerm = kit.getActions().find((a: { name: string }) => a.name === 'use_spend_permission')
       if (usePerm) {
@@ -345,15 +398,6 @@ export async function gatedTransfer(
           requestId,
           payload: { smartAccount, amountUsd: input.intent.amountUsd },
         })
-      } else if (enforcement === 'wallet_native') {
-        return {
-          mode,
-          evaluation,
-          executed: false,
-          receiptConsumed: true,
-          message: 'use_spend_permission action unavailable on this AgentKit wallet provider.',
-          requestId,
-        }
       }
     }
 

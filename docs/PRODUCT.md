@@ -105,7 +105,7 @@ The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (
 | Step | Do this |
 |------|---------|
 | 1 | `createGatedAgentKit({ kind: 'site' })` only — no parallel raw signer |
-| 2 | Optional AgentKit ceiling — Copy for my AI → `hybrid_plan` (operator `sync_wallet` advanced; treasury on SA; AgentKit wallet only) |
+| 2 | Optional AgentKit ceiling — Copy for my AI → `hybrid_plan` (hybrid = defense-in-depth daily USDC; re-sync after capital changes; `wallet_native` for hard stop) |
 | 3 | Human confirms SERV draft before Go live; Turso + `ALLOWLATCH_RECEIPT_SECRET` for durable gate |
 | 4 | Coffee-money hot wallet; `buy_pack` / `packKey` for micro evaluates; reject → no receipt |
 

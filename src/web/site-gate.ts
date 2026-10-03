@@ -28,6 +28,7 @@ import {
   tursoConfigured,
 } from './site-gate-durable.js'
 import {
+  invalidateWalletBindingIfStale,
   planSpendPermission,
   syncSpendPermission,
   type WalletNativePlan,
@@ -311,6 +312,7 @@ export async function siteGateApply(args: {
       updatedAt: Date.now(),
     }
     sessions.set(session.policyId, session)
+    await refreshBindingAfterPolicyApply(applied.policyId, applied.policy)
     return {
       ok: true,
       policyId: applied.policyId,
@@ -367,6 +369,7 @@ export async function siteGateApply(args: {
     updatedAt: Date.now(),
   }
   sessions.set(args.policyId, session)
+  await refreshBindingAfterPolicyApply(args.policyId, policy)
 
   return {
     ok: true,
@@ -527,6 +530,18 @@ async function persistWalletBinding(
     await durableSetWalletBinding(policyId, binding)
   }
   walletBindings.set(policyId, binding)
+}
+
+/** Mark Spend Permission binding stale when daily capital no longer matches. */
+async function refreshBindingAfterPolicyApply(
+  policyId: string,
+  policy: MandatePolicy
+): Promise<void> {
+  const previous = await siteGateGetWalletBinding(policyId)
+  const next = invalidateWalletBindingIfStale(previous, policy)
+  if (next && next !== previous) {
+    await persistWalletBinding(policyId, next)
+  }
 }
 
 export async function siteGateGetWalletBinding(

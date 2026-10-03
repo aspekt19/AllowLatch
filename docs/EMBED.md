@@ -23,7 +23,7 @@ const agent = await createGatedAgentKit({
   },
 })
 
-console.warn(agent.productionShape.summary) // hybrid / Turso / coffee-money checklist
+console.warn(agent.productionShape.summary) // productionPrerequisitesSatisfied / hybrid ceiling checklist
 
 await agent.transfer({
   toAddress: '0x…',

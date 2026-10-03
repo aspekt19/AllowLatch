@@ -41,7 +41,7 @@ await createGatedAgentKit({
 })
 ```
 
-`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Optional AgentKit ceiling: `hybrid_plan` → `hybrid_report` (host `sync_wallet` is operator-advanced). Check `recommendProductionShape()` / `agent.productionShape`.
+`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Optional AgentKit ceiling: `hybrid_plan` → `hybrid_report` (hybrid = defense-in-depth daily USDC; re-sync after capital changes). Check `recommendProductionShape()` / `agent.productionShape.productionPrerequisitesSatisfied`.
 
 ### Before every spend
 

@@ -185,3 +185,52 @@ function resolveExecuteIsDry(): boolean {
 export function requiresSyncedPermission(): boolean {
   return resolveEnforcementMode() === 'wallet_native'
 }
+
+/** Expected daily USDC allowance (atomic 6-decimal) for a policy. */
+export function dailyAllowanceAtomic(policy: MandatePolicy): string {
+  return parseUnits(String(policy.capital.maxNotionalUsdPerDay), 6).toString()
+}
+
+/**
+ * True when binding is synced and still matches policy daily cap.
+ * Stale after owner lowers/raises maxNotionalUsdPerDay without re-sync.
+ */
+export function spendPermissionMatchesPolicy(
+  binding: Record<string, unknown> | null | undefined,
+  policy: MandatePolicy
+): boolean {
+  if (!binding || binding.status !== 'synced') return false
+  return String(binding.allowanceAtomic ?? '') === dailyAllowanceAtomic(policy)
+}
+
+/**
+ * After policy apply: if a previously synced binding no longer matches the daily cap,
+ * mark it planned/stale so wallet_native fails closed until re-sync.
+ */
+export function invalidateWalletBindingIfStale(
+  previous: Record<string, unknown> | null | undefined,
+  policy: MandatePolicy
+): Record<string, unknown> | null {
+  if (!previous) return null
+  const expected = dailyAllowanceAtomic(policy)
+  const prevAllowance = String(previous.allowanceAtomic ?? '')
+  if (previous.status === 'synced' && prevAllowance === expected) {
+    return previous
+  }
+  if (previous.status !== 'synced' && prevAllowance === expected) {
+    return previous
+  }
+  const smartAccount =
+    typeof previous.smartAccount === 'string' ? previous.smartAccount : undefined
+  const spender = typeof previous.spender === 'string' ? previous.spender : undefined
+  const plan = planSpendPermission({ policy, smartAccount, spender })
+  return {
+    ...previous,
+    ...plan,
+    status: 'planned',
+    stale: true,
+    previousAllowanceAtomic: prevAllowance || null,
+    message: `Policy daily cap changed (permission ${prevAllowance || 'n/a'} → ${expected}). Re-sync Spend Permission (hybrid_plan / sync_wallet / sync_wallet_permissions).`,
+    updatedAt: Date.now(),
+  }
+}

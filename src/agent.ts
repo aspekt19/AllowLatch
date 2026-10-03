@@ -158,12 +158,28 @@ agent.addCapability({
         ownerAddress: args.ownerAddress,
         ownerSig: args.ownerSig,
       })
+      const prevBinding = store.getWalletBinding(args.policyId)
       const walletNative = await syncSpendPermission({ policy })
-      store.setWalletBinding(args.policyId, walletNative as unknown as Record<string, unknown>)
+      // Always overwrite; if sync skips/errors, still clear stale synced allowance vs new daily cap.
+      const binding =
+        walletNative.status === 'synced'
+          ? walletNative
+          : {
+              ...walletNative,
+              stale:
+                prevBinding?.status === 'synced' &&
+                String(prevBinding.allowanceAtomic ?? '') !== walletNative.allowanceAtomic,
+              previousAllowanceAtomic: prevBinding?.allowanceAtomic,
+            }
+      store.setWalletBinding(args.policyId, binding as unknown as Record<string, unknown>)
       await store.audit({
         type: 'wallet.binding',
         policyId: args.policyId,
-        payload: { status: walletNative.status, mode: walletNative.mode },
+        payload: {
+          status: walletNative.status,
+          mode: walletNative.mode,
+          stale: Boolean((binding as { stale?: boolean }).stale),
+        },
       })
       await logUsage({
         at: new Date().toISOString(),

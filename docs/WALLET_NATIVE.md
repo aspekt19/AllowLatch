@@ -36,9 +36,11 @@ AllowLatch gate              (addresses, escalate, receipt)
 
 | Mode | Behavior |
 |------|----------|
-| `hybrid` | **Default.** Receipt gate **and** mirror daily cap via CDP Spend Permission when an owner Smart Account + agent wallet are set. Without that, still receipt-only but labeled hybrid intent. |
+| `hybrid` | **Default.** Receipt gate + **defense-in-depth** on-chain daily ceiling when SA → AgentKit is synced. If `use_spend_permission` is unavailable, hybrid may still fall through to a normal AgentKit transfer (not hard stop). |
 | `middleware` | Receipt gate only — **not custody-grade** if the signer can bypass the gate. |
-| `wallet_native` | Live execute **refuses** unless Spend Permission status is `synced`; pulls via `use_spend_permission` then transfers. |
+| `wallet_native` | Live execute **refuses** unless Spend Permission is `synced` **and** matches the current policy daily cap; requires `use_spend_permission` **before** receipt consume. |
+
+On-chain permission mirrors **daily** USDC (`maxNotionalUsdPerDay`) only. Per-tx / allowlists stay in `engine.ts`. Changing the daily cap marks a synced binding stale until re-sync (`hybrid_plan` / `sync_wallet` / `sync_wallet_permissions`).
 
 ## How owners set this up
 

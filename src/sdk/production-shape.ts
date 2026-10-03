@@ -1,6 +1,6 @@
 /**
  * Recommended production shape for AllowLatch — distilled from security reviews.
- * Middleware alone is not a lock; hybrid Spend Permissions are the on-chain ceiling.
+ * hybrid = defense-in-depth (receipt + optional on-chain ceiling); not hard enforcement alone.
  */
 import { SITE_GATE_PRICE_USD } from '../http/x402-site-gate-config.js'
 
@@ -12,8 +12,19 @@ export type ProductionCheck = {
 }
 
 export type ProductionShapeReport = {
+  /**
+   * Small live balances OK only when gated path + on-chain ceiling are actually configured
+   * (SA + CDP). Middleware / hybrid-intent-without-SA is not coffee-ready.
+   */
   readyForCoffeeMoney: boolean
+  /** @deprecated Use productionPrerequisitesSatisfied — name implied unaudited custody. */
   readyForSeriousFunds: boolean
+  /** Infra checklist for small live AgentKit balances (still not a third-party audit). */
+  productionPrerequisitesSatisfied: boolean
+  /** hybrid/wallet_native + Smart Account + CDP credentials present. */
+  readyForHybridCeiling: boolean
+  /** wallet_native mode + SA + CDP (execution refuses without synced permission). */
+  readyForWalletNative: boolean
   checks: ProductionCheck[]
   summary: string
 }
@@ -55,11 +66,20 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
   const smartAccount = Boolean(env.ALLOWLATCH_SMART_ACCOUNT?.trim())
   const enforcement = (env.ALLOWLATCH_ENFORCEMENT ?? 'hybrid').trim().toLowerCase()
   const hybridOrNative = enforcement === 'hybrid' || enforcement === 'wallet_native'
+  const walletNative = enforcement === 'wallet_native'
   const receiptSecret = Boolean(env.ALLOWLATCH_RECEIPT_SECRET?.trim())
   const turso = Boolean(env.ALLOWLATCH_TURSO_DATABASE_URL?.trim())
   const packKey = Boolean(env.ALLOWLATCH_PACK_KEY?.trim())
   const hasCdp =
     Boolean(env.CDP_API_KEY_ID?.trim()) && Boolean(env.CDP_API_KEY_SECRET?.trim())
+
+  const readyForHybridCeiling = hybridOrNative && smartAccount && hasCdp
+  const readyForWalletNative = walletNative && smartAccount && hasCdp
+  const productionPrerequisitesSatisfied =
+    readyForHybridCeiling && turso && receiptSecret
+  // Coffee-money needs the on-chain ceiling configured — hybrid intent alone is a journal.
+  const readyForCoffeeMoney = readyForHybridCeiling
+  const readyForSeriousFunds = productionPrerequisitesSatisfied
 
   const checks: ProductionCheck[] = [
     {
@@ -74,14 +94,14 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
       ok: true,
       severity: 'required',
       message:
-        'Do not give the agent a parallel ungated wallet.sendTransaction. Prefer a session key / smart-account spender.',
+        'Do not put the funded private key in the agent. Prefer Smart Account treasury + AgentKit spender.',
     },
     {
       id: 'hybrid',
       ok: hybridOrNative,
       severity: 'required',
       message: hybridOrNative
-        ? `Enforcement=${enforcement} (receipt + on-chain ceiling intent).`
+        ? `Enforcement=${enforcement} (receipt + on-chain ceiling intent; hybrid is defense-in-depth).`
         : 'ALLOWLATCH_ENFORCEMENT=middleware — not custody-grade. Use hybrid or wallet_native.',
     },
     {
@@ -90,8 +110,8 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
       severity: 'required',
       message:
         smartAccount && hasCdp
-          ? 'Smart account + CDP set — sync Spend Permission so daily USDC cap holds on-chain.'
-          : 'Set ALLOWLATCH_SMART_ACCOUNT + CDP_* and sync Spend Permission (hybrid). Without this, middleware can be bypassed.',
+          ? 'Smart account + CDP set — sync Spend Permission so daily USDC cap holds on-chain (re-sync after policy capital changes).'
+          : 'Set ALLOWLATCH_SMART_ACCOUNT + CDP_* and sync Spend Permission. Without this, hybrid is receipt-only defense-in-depth.',
     },
     {
       id: 'receipt-secret',
@@ -126,18 +146,20 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
     },
   ]
 
-  // Serious funds need the on-chain ceiling actually configured, not just hybrid intent.
-  const readyForSeriousFunds = hybridOrNative && smartAccount && hasCdp && turso && receiptSecret
-
   return {
-    readyForCoffeeMoney: hybridOrNative,
+    readyForCoffeeMoney,
     readyForSeriousFunds,
+    productionPrerequisitesSatisfied,
+    readyForHybridCeiling,
+    readyForWalletNative,
     checks,
-    summary: readyForSeriousFunds
-      ? 'Production shape looks solid for small live balances (still not audited custody).'
-      : smartAccount && hasCdp
-        ? 'Gated path + hybrid intent present — finish Turso + receipt secret; keep balances small.'
-        : 'Use createGatedAgentKit + hybrid Spend Permissions; without on-chain caps this is a journal/advisor, not a lock.',
+    summary: productionPrerequisitesSatisfied
+      ? 'Production prerequisites satisfied for small live AgentKit balances (hybrid = defense-in-depth; not audited custody).'
+      : readyForHybridCeiling
+        ? 'Hybrid ceiling configured — finish Turso + receipt secret; keep balances small.'
+        : hybridOrNative
+          ? 'Enforcement intent set but Smart Account/CDP missing — this is a journal/advisor until Spend Permission sync.'
+          : 'Use createGatedAgentKit + hybrid Spend Permissions; middleware alone is not a lock.',
   }
 }
 

@@ -104,4 +104,41 @@ describe('site-gate hybrid ceiling', () => {
     assert.equal(reported.binding.status, 'synced')
     assert.equal(reported.binding.userOpHash, '0xabc')
   })
+
+  it('apply with lower daily cap invalidates synced Spend Permission binding', async () => {
+    const high = {
+      ...DEMO_POLICY,
+      capital: { ...DEMO_POLICY.capital, maxNotionalUsdPerDay: 10 },
+    }
+    const applied = await siteGateApply({
+      policyId: 'hybrid-stale-a',
+      ownerId: 'owner-stale',
+      policy: high,
+    })
+    await siteGateHybridReport({
+      policyId: applied.policyId,
+      sessionSeal: applied.sessionSeal,
+      smartAccount: SA,
+      spender: SPENDER,
+      status: 'synced',
+    })
+    const before = await siteGateGetWalletBinding(applied.policyId)
+    assert.equal(before?.status, 'synced')
+
+    const low = {
+      ...DEMO_POLICY,
+      capital: { ...DEMO_POLICY.capital, maxNotionalUsdPerDay: 2 },
+    }
+    const again = await siteGateApply({
+      policyId: applied.policyId,
+      ownerId: 'owner-stale',
+      ownerToken: applied.ownerToken,
+      policy: low,
+      sessionSeal: applied.sessionSeal,
+    })
+    const after = await siteGateGetWalletBinding(again.policyId)
+    assert.equal(after?.status, 'planned')
+    assert.equal(after?.stale, true)
+    assert.match(String(after?.message ?? ''), /re-sync|changed/i)
+  })
 })

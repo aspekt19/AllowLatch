@@ -133,11 +133,11 @@ Honest limitation: **middleware-only** mode is not custody-grade if the AgentKit
 Use AllowLatch as a lock only when all of these hold:
 
 1. **Gated signer only** — spends go through `createGatedAgentKit({ kind: 'site' })`. No parallel raw `wallet.sendTransaction`. Prefer a session key / smart-account spender, not a long-lived hot key in the agent process.
-2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) + synced Coinbase Spend Permission: primary agent `hybrid_plan` / `hybrid_report` via Copy for my AI; operator-advanced host `sync_wallet` (see [WALLET_NATIVE.md](./WALLET_NATIVE.md)). Receipt binds recipient/amount; Spend Permission is the daily USDC hard cap **through the AgentKit wallet** if middleware is bypassed — not if the agent has the treasury key.
+2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) = defense-in-depth: synced Coinbase Spend Permission (daily USDC only) via agent `hybrid_plan` / operator `sync_wallet`. Not a full on-chain MandatePolicy. Re-sync after capital changes. `wallet_native` fails closed without a matching synced permission (prereqs before receipt consume). See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 3. **Durable host** — Turso on `/api/gate`, dedicated `ALLOWLATCH_RECEIPT_SECRET`, owner confirms SERV drafts before Go live (compilation residual risk is human, not the gate).
 4. **Coffee-money hot balance** — until independent audit. Reject / DENY never mints a receipt. Micro evaluates should use `buy_pack` + `packKey` (~$0.008) so a $0.10 transfer is not paying 25% in gate fees.
 
-SDK helper: `recommendProductionShape()` / `agent.productionShape` from `allowlatch`. Site lab: [#lab](https://allowlatch.vercel.app/#lab) (local `engine.ts` Sign / Reject — educational; production path is still the site gate + hybrid).
+SDK helper: `recommendProductionShape()` / `agent.productionShape` — use `productionPrerequisitesSatisfied` / `readyForHybridCeiling` (hybrid = defense-in-depth; coffee-ready requires SA+CDP, not mode alone). Site lab: [#lab](https://allowlatch.vercel.app/#lab).
 
 ## Production checklist
 

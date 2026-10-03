@@ -324,7 +324,7 @@ export async function createGatedAgentKit(args?: {
           })
 
   const productionShape = recommendProductionShape()
-  if (!productionShape.readyForSeriousFunds) {
+  if (!productionShape.productionPrerequisitesSatisfied) {
     console.warn(formatProductionShapeHint(productionShape))
   }
 
