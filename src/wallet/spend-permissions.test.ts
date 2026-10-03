@@ -5,6 +5,7 @@ import {
   dailyAllowanceAtomic,
   invalidateWalletBindingIfStale,
   planSpendPermission,
+  requiresSyncedPermission,
   spendPermissionMatchesPolicy,
 } from './spend-permissions.js'
 
@@ -66,6 +67,21 @@ describe('spend-permissions', () => {
     assert.equal(invalidated.stale, true)
     assert.equal(String(invalidated.allowanceAtomic), dailyAllowanceAtomic(low))
     assert.equal(spendPermissionMatchesPolicy(invalidated, low), false)
+  })
+
+  it('hybrid and wallet_native require a synced permission; middleware does not', () => {
+    delete process.env.ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND
+    process.env.ALLOWLATCH_ENFORCEMENT = 'hybrid'
+    assert.equal(requiresSyncedPermission(), true)
+    process.env.ALLOWLATCH_ENFORCEMENT = 'wallet_native'
+    assert.equal(requiresSyncedPermission(), true)
+    process.env.ALLOWLATCH_ENFORCEMENT = 'middleware'
+    assert.equal(requiresSyncedPermission(), false)
+    process.env.ALLOWLATCH_ENFORCEMENT = 'hybrid'
+    process.env.ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND = '1'
+    assert.equal(requiresSyncedPermission(), false)
+    delete process.env.ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND
+    process.env.ALLOWLATCH_ENFORCEMENT = 'hybrid'
   })
 
   it('keeps matching synced binding after apply with same daily cap', () => {

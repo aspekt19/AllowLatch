@@ -6,6 +6,7 @@ import {
   siteGateApply,
   siteGateHybridPlan,
   siteGateHybridReport,
+  siteGateHybridStatus,
   siteGateSyncWallet,
   siteGateGetWalletBinding,
 } from './site-gate.js'
@@ -103,6 +104,69 @@ describe('site-gate hybrid ceiling', () => {
     assert.equal(reported.binding.path, 'agent_cdp')
     assert.equal(reported.binding.status, 'synced')
     assert.equal(reported.binding.userOpHash, '0xabc')
+  })
+
+  it('hybrid_status is unmatched until a synced binding matches the daily cap', async () => {
+    const applied = await siteGateApply({
+      policyId: 'hybrid-status-a',
+      ownerId: 'owner-status',
+      policy: DEMO_POLICY,
+    })
+    const before = await siteGateHybridStatus({
+      policyId: applied.policyId,
+      sessionSeal: applied.sessionSeal,
+    })
+    assert.equal(before.matchesPolicy, false)
+    assert.equal(before.required, true)
+
+    const reported = await siteGateHybridReport({
+      policyId: applied.policyId,
+      sessionSeal: applied.sessionSeal,
+      smartAccount: SA,
+      spender: SPENDER,
+      status: 'synced',
+    })
+    assert.equal(reported.binding.status, 'synced')
+    const after = await siteGateHybridStatus({
+      policyId: applied.policyId,
+      sessionSeal: before.binding ? applied.sessionSeal : applied.sessionSeal,
+    })
+    assert.equal(after.matchesPolicy, true)
+  })
+
+  it('hybrid_status rejects a stale synced allowance', async () => {
+    const high = {
+      ...DEMO_POLICY,
+      capital: { ...DEMO_POLICY.capital, maxNotionalUsdPerDay: 10 },
+    }
+    const applied = await siteGateApply({
+      policyId: 'hybrid-status-stale',
+      ownerId: 'owner-status-stale',
+      policy: high,
+    })
+    await siteGateHybridReport({
+      policyId: applied.policyId,
+      sessionSeal: applied.sessionSeal,
+      smartAccount: SA,
+      spender: SPENDER,
+      status: 'synced',
+    })
+    const low = {
+      ...DEMO_POLICY,
+      capital: { ...DEMO_POLICY.capital, maxNotionalUsdPerDay: 2 },
+    }
+    const again = await siteGateApply({
+      policyId: applied.policyId,
+      ownerId: 'owner-status-stale',
+      ownerToken: applied.ownerToken,
+      policy: low,
+      sessionSeal: applied.sessionSeal,
+    })
+    const status = await siteGateHybridStatus({
+      policyId: again.policyId,
+      sessionSeal: again.sessionSeal,
+    })
+    assert.equal(status.matchesPolicy, false)
   })
 
   it('apply with lower daily cap invalidates synced Spend Permission binding', async () => {

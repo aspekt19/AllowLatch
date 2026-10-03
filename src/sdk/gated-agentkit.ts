@@ -107,9 +107,10 @@ const SYSTEM_PROMPT = `You are an AgentKit agent with AllowLatch on the spend pa
 - ALLOW + single-use receipt → may sign that exact intent. DENY / reject / timeout → stop; no receipt, no signature.
 - ESCALATE → ask the human (never set humanApproved yourself). Retry with humanApproved=true + ownerToken. Human reject → no receipt.
 - After ALLOW the kit consumes the receipt jti before returning it for external sign (single-use).
-- Prefer hybrid Coinbase Spend Permissions (on-chain daily cap). Middleware alone is not custody if a raw key remains.
+- Prefer hybrid Coinbase Spend Permissions (on-chain daily cap) — fail-closed without synced binding.
+- Middleware-only demo: ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1 (not for ordinary balances).
 - Micro transfers: use packKey / buy_pack (~$0.008) instead of paying $0.025 every evaluate.
-- Hosted gate is SaaS authorization (operator trust), not a vault. Coffee-money balances until audit.`
+- Hosted gate is SaaS authorization (operator trust), not a vault. Ordinary small balances need SA + synced permission + durable Turso.`
 
 function httpHeaders(gate: Extract<GatedGateConfig, { kind: 'http' }>): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -237,6 +238,48 @@ async function consumeSiteReceipt(args: {
   }
 }
 
+function middlewareSpendAllowed(): boolean {
+  return (
+    process.env.ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND === '1' ||
+    (process.env.ALLOWLATCH_ENFORCEMENT || '').trim().toLowerCase() === 'middleware'
+  )
+}
+
+async function assertSiteHybridCeiling(args: {
+  gateUrl: string
+  policyId: string
+  sessionSeal?: string
+}): Promise<void> {
+  if (middlewareSpendAllowed()) return
+  const res = await fetch(args.gateUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'hybrid_status',
+      policyId: args.policyId,
+      sessionSeal: args.sessionSeal,
+    }),
+  })
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean
+    error?: string
+    matchesPolicy?: boolean
+    required?: boolean
+    binding?: { status?: string } | null
+  }
+  if (!res.ok || json.ok === false) {
+    throw new Error(
+      `AllowLatch hybrid_status failed: ${json.error || `HTTP ${res.status}`} — sync Spend Permission before spend`
+    )
+  }
+  if (json.required === false) return
+  if (json.matchesPolicy) return
+  const status = json.binding?.status ?? 'missing'
+  throw new Error(
+    `AllowLatch hybrid fail-closed: synced Spend Permission matching policy daily cap required before spend (binding=${status}). Run hybrid_plan → createSpendPermission → hybrid_report, or set ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1 for demo-only middleware.`
+  )
+}
+
 async function spendViaSite(
   gate: Extract<GatedGateConfig, { kind: 'site' }>,
   policyId: string,
@@ -259,6 +302,13 @@ async function spendViaSite(
       'AllowLatch ESCALATE: humanApproved requires gate.ownerToken (spender cannot self-approve)'
     )
   }
+
+  // Fail-closed ceiling check before paid evaluate when possible (uses current seal).
+  await assertSiteHybridCeiling({
+    gateUrl,
+    policyId: pid,
+    sessionSeal: gate.sessionSeal,
+  })
 
   const asserted = await assertSpend({
     intent,
@@ -284,7 +334,13 @@ async function spendViaSite(
     throw new Error(`AllowLatch ${asserted.decision}: refuse to sign (no receipt)`)
   }
 
-  // Claim single-use jti before returning receipt for external sign (fail closed on replay gaps).
+  // Re-check after evaluate (policy/binding may have changed) — never consume without ceiling.
+  await assertSiteHybridCeiling({
+    gateUrl,
+    policyId: pid,
+    sessionSeal: gate.sessionSeal,
+  })
+
   await consumeSiteReceipt({
     gateUrl,
     policyId: pid,
@@ -296,7 +352,7 @@ async function spendViaSite(
     decision: 'allow',
     executed: false,
     message:
-      'ALLOW + receipt verified and jti consumed via site gate. Sign only this intent externally. Prefer hybrid Spend Permissions for on-chain daily caps. Middleware alone is not custody-grade if a raw signer remains.',
+      'ALLOW + receipt verified, hybrid Spend Permission synced, jti consumed. Sign only this intent via AgentKit spender / use_spend_permission. Funded treasury key in the agent defeats the ceiling.',
     receipt: asserted.receipt,
     raw: asserted.raw,
   }

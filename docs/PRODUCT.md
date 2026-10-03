@@ -84,7 +84,7 @@ AllowLatch does **not** hold user funds. Host SERV credits are covered by x402 p
 
 Chain focus: **Base**. Policy currency: **USDC**.
 
-Honest scope: AllowLatch is middleware authorization (+ receipt) for **AgentKit / CDP agents** **and**, by default (`ALLOWLATCH_ENFORCEMENT=hybrid`), mirrors daily USDC caps into Coinbase Spend Permissions when a funded Smart Account grants the AgentKit wallet (primary: agent `hybrid_plan` via Copy for my AI; operator: `sync_wallet` / host `ALLOWLATCH_SMART_ACCOUNT`). Middleware alone is not custody-grade if a signer can bypass the gate — and **a funded treasury private key in the agent defeats the on-chain ceiling**. The site does not offer MetaMask Connect. Put the gate in `createGatedAgentKit` / host execute. Policy mutates require `ownerToken`. See [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [SECURITY.md](./SECURITY.md).
+Honest scope: AllowLatch is middleware authorization (+ receipt) for **AgentKit / CDP agents**. Default `ALLOWLATCH_ENFORCEMENT=hybrid` is **fail-closed**: site kit and host execute refuse a spend until a Coinbase Spend Permission matching the daily cap is synced (primary: agent `hybrid_plan` + `hybrid_report`; operator: `sync_wallet`). **A funded treasury private key in the agent defeats the on-chain ceiling.** The site does not offer MetaMask Connect. Policy mutates require `ownerToken`. See [WALLET_NATIVE.md](./WALLET_NATIVE.md) · [SECURITY.md](./SECURITY.md).
 
 The public site (allowlatch.vercel.app) is the **product UI + always-on gate** (`/api/gate`). OpenServ is optional fallback. Details: [GUIDE.md](./GUIDE.md) · [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -99,9 +99,9 @@ This is the shipped product on https://allowlatch.vercel.app (`GET /api/gate` �
 3. ALLOW (or escalate cleared with `humanApproved` + `ownerToken`) issues an action-bound receipt and reserves budget.
 4. `createGatedAgentKit({ kind: 'site' })` **consumes** `jti`, then the caller may sign that intent.
 5. Unused receipts past `expiresAt` release the reserved budget on the next evaluate.
-6. Agents pay **$0.025** USDC x402, or `buy_pack` credits. Optional hybrid Spend Permission is a daily on-chain ceiling when the treasury key stays off the agent.
+6. Agents pay **$0.025** USDC x402, or `buy_pack` credits. Default hybrid is fail-closed: no synced Spend Permission → no consumed receipt.
 
-Not in this MVP: a third-party audit, swap-calldata economics (swaps stay off), or a vault that can stop an agent who already holds the funded private key.
+Ordinary small balances: treasury on an owner Smart Account, AgentKit is only the spender, `hybrid_status.matchesPolicy`, durable Turso. Middleware / no SA is the lab. Not in this MVP: a third-party audit, swap-calldata economics (swaps stay off), or a vault that stops an agent who already holds the funded private key.
 
 ## What we are not
 
@@ -118,9 +118,9 @@ Not in this MVP: a third-party audit, swap-calldata economics (swaps stay off), 
 | Step | Do this |
 |------|---------|
 | 1 | `createGatedAgentKit({ kind: 'site' })` only — no parallel raw signer |
-| 2 | Optional AgentKit ceiling — Copy for my AI → `hybrid_plan` (hybrid = defense-in-depth daily USDC; re-sync after capital changes; `wallet_native` for hard stop) |
+| 2 | Required on-chain ceiling — Copy for my AI → `hybrid_plan` → `hybrid_report` (fail-closed until synced; re-sync after capital changes) |
 | 3 | Human confirms SERV draft before Go live; Turso + `ALLOWLATCH_RECEIPT_SECRET` for durable gate |
-| 4 | Coffee-money hot wallet; `buy_pack` / `packKey` for micro evaluates; reject → no receipt |
+| 4 | Ordinary small balances only after `readyForOrdinaryBalances`; `buy_pack` / `packKey` for micro evaluates; reject → no receipt |
 
 Without (1)+(2), AllowLatch is a useful advisor and denial journal — not a physical lock. See [SECURITY.md](./SECURITY.md) · `recommendProductionShape()` in the SDK.
 

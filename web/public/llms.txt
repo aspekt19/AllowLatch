@@ -41,7 +41,7 @@ await createGatedAgentKit({
 })
 ```
 
-`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Optional AgentKit ceiling: `hybrid_plan` → `hybrid_report` (hybrid = defense-in-depth daily USDC; re-sync after capital changes). Check `recommendProductionShape()` / `agent.productionShape.productionPrerequisitesSatisfied`.
+`assertSpend` alone is **advisory** if a raw signer remains. SERV drafts and explains — **never** decides allow/deny/escalate (`engine.ts` does). Hybrid is fail-closed: `hybrid_plan` → `hybrid_report` (synced daily USDC) before the kit consumes a receipt. Re-sync after capital changes. Ordinary small balances need `readyForOrdinaryBalances` (SA + CDP + Turso + receipt secret). Middleware without that is lab-only.
 
 ### Before every spend
 

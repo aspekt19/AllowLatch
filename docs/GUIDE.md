@@ -28,7 +28,7 @@ Machine card: https://allowlatch.vercel.app/agent.json · https://allowlatch.ver
 2. **Simple rules** or paste a mandate → **Draft** (SERV Reasoning) → **Apply**
 3. **Go live (server gate)** — policy + `sessionSeal` (survives cold starts; production also persists ledger on Turso when configured)
 4. **Copy for my AI** — paste into your AgentKit agent (needs `sessionSeal`)
-5. Optional AgentKit daily ceiling (right rail) or leave `hybrid_plan` to the agent
+5. Required AgentKit daily ceiling — `hybrid_plan` then `hybrid_report` (site kit refuses spend until synced)
 6. Click spend chips → see **ALLOW / DENY / ESCALATE** + receipts (free from the site)
 7. Optional: **Install** (`#install`) and **Live case** (`#case`) — full SERV + paid Base path
 
@@ -68,7 +68,7 @@ await agent.transfer({ toAddress: '0x…', amountUsd: 0.04, reason: 'gated spend
 
 `assertSpend` alone is **advisory** (checks the gate but does not remove a raw signer). Prefer the gated kit above.
 
-**Optional AgentKit ceiling:** `POST action=hybrid_plan` → CDP `createSpendPermission` (funded SA → your AgentKit address) → optional `hybrid_report`. Host `sync_wallet` is operator-advanced only. Never hold the treasury private key.
+**Required AgentKit ceiling (hybrid fail-closed):** `POST action=hybrid_plan` → CDP `createSpendPermission` (funded SA → your AgentKit address) → `hybrid_report` with `status=synced`. `createGatedAgentKit` checks `hybrid_status` and will not consume a receipt until the binding matches the daily cap. Host `sync_wallet` is operator-advanced. Never hold the treasury private key. Demo-only escape: `ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1`.
 
 ### Local HTTP host / OpenServ (dev or fallback)
 

@@ -35,6 +35,7 @@ import {
 import {
   invalidateWalletBindingIfStale,
   planSpendPermission,
+  spendPermissionMatchesPolicy,
   syncSpendPermission,
   type WalletNativePlan,
 } from '../wallet/spend-permissions.js'
@@ -817,6 +818,38 @@ export async function siteGateHybridReport(args: {
     binding,
     invariant: HYBRID_KEY_INVARIANT,
     durable,
+  }
+}
+
+/** Read Spend Permission binding + whether it matches the current policy daily cap. */
+export async function siteGateHybridStatus(args: {
+  policyId: string
+  sessionSeal?: string
+}): Promise<{
+  ok: true
+  policyId: string
+  binding: Record<string, unknown> | null
+  matchesPolicy: boolean
+  required: boolean
+  invariant: string
+  durable: boolean
+  dailyUsd: number
+  allowanceAtomicExpected: string
+}> {
+  const { policy, durable } = await loadPolicyForHybrid(args)
+  const binding = await siteGateGetWalletBinding(args.policyId)
+  const matchesPolicy = spendPermissionMatchesPolicy(binding, policy)
+  const plan = planSpendPermission({ policy })
+  return {
+    ok: true,
+    policyId: args.policyId,
+    binding,
+    matchesPolicy,
+    required: plan.mode === 'hybrid' || plan.mode === 'wallet_native',
+    invariant: HYBRID_KEY_INVARIANT,
+    durable,
+    dailyUsd: policy.capital.maxNotionalUsdPerDay,
+    allowanceAtomicExpected: plan.allowanceAtomic,
   }
 }
 

@@ -1,6 +1,6 @@
 /**
- * Recommended production shape for AllowLatch — distilled from security reviews.
- * hybrid = defense-in-depth (receipt + optional on-chain ceiling); not hard enforcement alone.
+ * Recommended production shape for AllowLatch.
+ * hybrid = receipt + required on-chain daily ceiling (fail-closed); not soft fallthrough.
  */
 import { SITE_GATE_PRICE_USD } from '../http/x402-site-gate-config.js'
 
@@ -13,17 +13,22 @@ export type ProductionCheck = {
 
 export type ProductionShapeReport = {
   /**
-   * Small live balances OK only when gated path + on-chain ceiling are actually configured
-   * (SA + CDP). Middleware / hybrid-intent-without-SA is not coffee-ready.
+   * Small live AgentKit balances OK only when gated path + on-chain ceiling are configured
+   * (SA + CDP). Middleware / hybrid-without-SA is not ready.
    */
   readyForCoffeeMoney: boolean
-  /** @deprecated Use productionPrerequisitesSatisfied — name implied unaudited custody. */
+  /**
+   * Ordinary small personal balances: hybrid/native + SA + CDP + Turso + receipt secret.
+   * Still not a third-party audit / custody-grade vault.
+   */
+  readyForOrdinaryBalances: boolean
+  /** @deprecated Use productionPrerequisitesSatisfied / readyForOrdinaryBalances. */
   readyForSeriousFunds: boolean
-  /** Infra checklist for small live AgentKit balances (still not a third-party audit). */
+  /** Infra checklist for ordinary small AgentKit balances (still not a third-party audit). */
   productionPrerequisitesSatisfied: boolean
   /** hybrid/wallet_native + Smart Account + CDP credentials present. */
   readyForHybridCeiling: boolean
-  /** wallet_native mode + SA + CDP (execution refuses without synced permission). */
+  /** wallet_native mode + SA + CDP (same fail-closed ceiling naming). */
   readyForWalletNative: boolean
   checks: ProductionCheck[]
   summary: string
@@ -37,7 +42,7 @@ export type FeeAdvice = {
   message: string
 }
 
-/** Fee economics: $0.025/check is steep vs coffee-money transfers — prefer packKey. */
+/** Fee economics: $0.025/check is steep vs micro transfers — prefer packKey. */
 export function feeAdviceForSpend(amountUsd: number, opts?: { hasPackKey?: boolean }): FeeAdvice {
   const amount = Number.isFinite(amountUsd) ? Math.max(0, amountUsd) : 0
   const feeRatio = amount > 0 ? SITE_GATE_PRICE_USD / amount : Number.POSITIVE_INFINITY
@@ -47,8 +52,8 @@ export function feeAdviceForSpend(amountUsd: number, opts?: { hasPackKey?: boole
         amount > 0 ? `${Math.round(feeRatio * 100)}% of this $${amount} spend` : 'charged per evaluate'
       }. Prefer buy_pack + packKey (~$0.008/check) for micro transfers.`
     : opts?.hasPackKey
-      ? 'Using prepaid packKey credits — good for micro evaluates.'
-      : `Per-call x402 ($${SITE_GATE_PRICE_USD}) is acceptable vs this spend size.`
+    ? 'Using prepaid packKey credits — good for micro evaluates.'
+    : `Per-call x402 ($${SITE_GATE_PRICE_USD}) is acceptable vs this spend size.`
   return {
     gatePriceUsd: SITE_GATE_PRICE_USD,
     amountUsd: amount,
@@ -72,13 +77,14 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
   const packKey = Boolean(env.ALLOWLATCH_PACK_KEY?.trim())
   const hasCdp =
     Boolean(env.CDP_API_KEY_ID?.trim()) && Boolean(env.CDP_API_KEY_SECRET?.trim())
+  const middlewareEscape = env.ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND === '1'
 
   const readyForHybridCeiling = hybridOrNative && smartAccount && hasCdp
   const readyForWalletNative = walletNative && smartAccount && hasCdp
   const productionPrerequisitesSatisfied =
     readyForHybridCeiling && turso && receiptSecret
-  // Coffee-money needs the on-chain ceiling configured — hybrid intent alone is a journal.
   const readyForCoffeeMoney = readyForHybridCeiling
+  const readyForOrdinaryBalances = productionPrerequisitesSatisfied
   const readyForSeriousFunds = productionPrerequisitesSatisfied
 
   const checks: ProductionCheck[] = [
@@ -98,11 +104,13 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
     },
     {
       id: 'hybrid',
-      ok: hybridOrNative,
+      ok: hybridOrNative && !middlewareEscape,
       severity: 'required',
-      message: hybridOrNative
-        ? `Enforcement=${enforcement} (receipt + on-chain ceiling intent; hybrid is defense-in-depth).`
-        : 'ALLOWLATCH_ENFORCEMENT=middleware — not custody-grade. Use hybrid or wallet_native.',
+      message: middlewareEscape
+        ? 'ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1 — demo/lab only; not for ordinary balances.'
+        : hybridOrNative
+          ? `Enforcement=${enforcement} (receipt + required on-chain daily ceiling; fail-closed without synced Spend Permission).`
+          : 'ALLOWLATCH_ENFORCEMENT=middleware — demo only. Use hybrid or wallet_native for ordinary balances.',
     },
     {
       id: 'spend-permission',
@@ -110,8 +118,8 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
       severity: 'required',
       message:
         smartAccount && hasCdp
-          ? 'Smart account + CDP set — sync Spend Permission so daily USDC cap holds on-chain (re-sync after policy capital changes).'
-          : 'Set ALLOWLATCH_SMART_ACCOUNT + CDP_* and sync Spend Permission. Without this, hybrid is receipt-only defense-in-depth.',
+          ? 'Smart account + CDP set — sync Spend Permission (hybrid_plan / hybrid_report). Re-sync after capital changes.'
+          : 'Set ALLOWLATCH_SMART_ACCOUNT + CDP_* and sync Spend Permission. Without this, hybrid/wallet_native refuse spend.',
     },
     {
       id: 'receipt-secret',
@@ -135,31 +143,33 @@ export function recommendProductionShape(env: NodeJS.ProcessEnv = process.env): 
       severity: 'info',
       message: packKey
         ? 'ALLOWLATCH_PACK_KEY set — micro evaluates avoid full $0.025 each time.'
-        : 'For coffee-money transfers, buy_pack + packKey (~$0.008/check) beats $0.025 per evaluate.',
+        : 'For micro transfers, buy_pack + packKey (~$0.008/check) beats $0.025 per evaluate.',
     },
     {
-      id: 'coffee-money',
-      ok: true,
+      id: 'ordinary-balances',
+      ok: readyForOrdinaryBalances,
       severity: 'required',
-      message:
-        'Keep hot balances coffee-money until independent audit. Hosted gate = SaaS authorization (operator trust), not a vault.',
+      message: readyForOrdinaryBalances
+        ? 'Ordinary small balances: SA + synced Spend Permission + durable Turso + receipt secret. Still no third-party audit.'
+        : 'Ordinary balances need hybrid/native + SA + CDP + Turso + receipt secret. Demo/middleware without SA stays lab-only.',
     },
   ]
 
   return {
     readyForCoffeeMoney,
+    readyForOrdinaryBalances,
     readyForSeriousFunds,
     productionPrerequisitesSatisfied,
     readyForHybridCeiling,
     readyForWalletNative,
     checks,
     summary: productionPrerequisitesSatisfied
-      ? 'Production prerequisites satisfied for small live AgentKit balances (hybrid = defense-in-depth; not audited custody).'
+      ? 'Ordinary small AgentKit balances OK with fail-closed hybrid ceiling (not audited custody). Keep treasury key off the agent.'
       : readyForHybridCeiling
-        ? 'Hybrid ceiling configured — finish Turso + receipt secret; keep balances small.'
+        ? 'Hybrid ceiling credentials present — finish Turso + receipt secret before ordinary balances.'
         : hybridOrNative
-          ? 'Enforcement intent set but Smart Account/CDP missing — this is a journal/advisor until Spend Permission sync.'
-          : 'Use createGatedAgentKit + hybrid Spend Permissions; middleware alone is not a lock.',
+          ? 'Enforcement fail-closed but Smart Account/CDP missing — spends will refuse until Spend Permission sync.'
+          : 'Use createGatedAgentKit + hybrid Spend Permissions; middleware alone is demo-only.',
   }
 }
 

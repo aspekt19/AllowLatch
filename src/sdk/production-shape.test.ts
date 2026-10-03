@@ -21,10 +21,11 @@ describe('production-shape', () => {
   it('hybrid intent without SA is not coffee-ready', () => {
     const thin = recommendProductionShape({ ALLOWLATCH_ENFORCEMENT: 'hybrid' })
     assert.equal(thin.readyForCoffeeMoney, false)
+    assert.equal(thin.readyForOrdinaryBalances, false)
     assert.equal(thin.readyForHybridCeiling, false)
     assert.equal(thin.productionPrerequisitesSatisfied, false)
     assert.equal(thin.readyForSeriousFunds, false)
-    assert.match(thin.summary, /journal|advisor|missing/i)
+    assert.match(thin.summary, /fail-closed|refuse|missing/i)
   })
 
   it('requires SA + CDP + Turso + receipt for production prerequisites', () => {
@@ -38,18 +39,20 @@ describe('production-shape', () => {
     })
     assert.equal(full.readyForHybridCeiling, true)
     assert.equal(full.readyForCoffeeMoney, true)
+    assert.equal(full.readyForOrdinaryBalances, true)
     assert.equal(full.productionPrerequisitesSatisfied, true)
     assert.equal(full.readyForSeriousFunds, true)
-    assert.match(full.summary, /defense-in-depth|small live/i)
+    assert.match(full.summary, /ordinary small|fail-closed/i)
     assert.match(formatProductionShapeHint(full), /AllowLatch/)
   })
 
-  it('marks middleware as not custody-grade', () => {
+  it('marks middleware as demo-only', () => {
     const report = recommendProductionShape({ ALLOWLATCH_ENFORCEMENT: 'middleware' })
     const hybrid = report.checks.find((c) => c.id === 'hybrid')
     assert.ok(hybrid)
     assert.equal(hybrid.ok, false)
     assert.equal(report.readyForCoffeeMoney, false)
+    assert.equal(report.readyForOrdinaryBalances, false)
   })
 
   it('readyForWalletNative only in wallet_native mode with SA+CDP', () => {

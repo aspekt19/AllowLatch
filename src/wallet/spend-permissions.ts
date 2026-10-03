@@ -1,6 +1,6 @@
 /**
  * Mirror MandatePolicy caps into Coinbase Spend Permissions (wallet-native).
- * Middleware gate still decides ALLOW; on-chain permission limits what the spender can pull.
+ * Middleware gate still decides ALLOW; on-chain permission is required for hybrid/wallet_native spends.
  */
 import { parseUnits } from 'viem'
 import type { MandatePolicy } from '../policy/schema.js'
@@ -28,7 +28,7 @@ export type WalletNativePlan = {
 export function resolveEnforcementMode(): EnforcementMode {
   const raw = (process.env.ALLOWLATCH_ENFORCEMENT || '').trim().toLowerCase()
   if (raw === 'middleware' || raw === 'hybrid' || raw === 'wallet_native') return raw
-  // Recommended default: hybrid (receipt + Spend Permission when SMART_ACCOUNT is set).
+  // Recommended default: hybrid = receipt + required on-chain daily ceiling (fail-closed).
   return 'hybrid'
 }
 
@@ -76,11 +76,11 @@ export function planSpendPermission(args: {
       allowanceAtomic,
       periodSeconds: 86_400,
       maxPerOrderUsd: args.policy.capital.maxPerOrderUsd,
-      status: mode === 'wallet_native' ? 'error' : 'skipped',
+      status: 'error',
       message:
         mode === 'wallet_native'
           ? 'ALLOWLATCH_SMART_ACCOUNT required for wallet_native enforcement.'
-          : 'Set ALLOWLATCH_SMART_ACCOUNT to mirror daily USDC caps on-chain (hybrid).',
+          : 'ALLOWLATCH_SMART_ACCOUNT required for hybrid fail-closed spends (receipt + on-chain daily ceiling).',
     }
   }
 
@@ -100,7 +100,7 @@ export function planSpendPermission(args: {
 
 /**
  * Create / refresh a CDP Spend Permission matching the policy daily cap.
- * No-ops (planned/skipped) when CDP or smart account missing — unless wallet_native.
+ * No-ops (planned/skipped) when CDP missing in middleware; hybrid/wallet_native error without creds.
  */
 export async function syncSpendPermission(args: {
   policy: MandatePolicy
@@ -125,7 +125,7 @@ export async function syncSpendPermission(args: {
   if (!apiKeyId || !apiKeySecret || !walletSecret) {
     return {
       ...plan,
-      status: plan.mode === 'wallet_native' ? 'error' : 'skipped',
+      status: plan.mode === 'middleware' ? 'skipped' : 'error',
       message: 'CDP credentials missing — cannot submit Spend Permission.',
     }
   }
@@ -181,9 +181,14 @@ function resolveExecuteIsDry(): boolean {
   )
 }
 
-/** True when live execute must have a synced on-chain permission. */
+/**
+ * True when live spend must have a synced on-chain Spend Permission matching the policy.
+ * hybrid and wallet_native are fail-closed. Escape: ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1 or enforcement=middleware.
+ */
 export function requiresSyncedPermission(): boolean {
-  return resolveEnforcementMode() === 'wallet_native'
+  if (process.env.ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND === '1') return false
+  const mode = resolveEnforcementMode()
+  return mode === 'hybrid' || mode === 'wallet_native'
 }
 
 /** Expected daily USDC allowance (atomic 6-decimal) for a policy. */
@@ -205,7 +210,7 @@ export function spendPermissionMatchesPolicy(
 
 /**
  * After policy apply: if a previously synced binding no longer matches the daily cap,
- * mark it planned/stale so wallet_native fails closed until re-sync.
+ * mark it planned/stale so hybrid/wallet_native fails closed until re-sync.
  */
 export function invalidateWalletBindingIfStale(
   previous: Record<string, unknown> | null | undefined,

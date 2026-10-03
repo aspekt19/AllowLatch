@@ -273,7 +273,7 @@ export async function gatedTransfer(
     const enforcement = resolveEnforcementMode()
     const binding = store.getWalletBinding(input.policyId)
 
-    // Prerequisites BEFORE consume — do not burn receipt on wallet_native gaps.
+    // Prerequisites BEFORE consume — do not burn receipt when on-chain ceiling is required.
     if (requiresSyncedPermission() && !spendPermissionMatchesPolicy(binding, policy)) {
       return {
         mode,
@@ -282,8 +282,8 @@ export async function gatedTransfer(
         receiptConsumed: false,
         message:
           binding?.status === 'synced'
-            ? 'wallet_native: Spend Permission is stale vs policy daily cap — re-sync (sync_wallet_permissions / sync_wallet / hybrid_report).'
-            : 'wallet_native enforcement requires a synced Spend Permission matching the policy daily cap. Call sync_wallet_permissions / apply_policy with ALLOWLATCH_SMART_ACCOUNT + CDP credentials.',
+            ? `${enforcement}: Spend Permission is stale vs policy daily cap — re-sync (sync_wallet_permissions / sync_wallet / hybrid_report).`
+            : `${enforcement}: synced Spend Permission matching the policy daily cap is required (fail-closed). Call hybrid_plan → createSpendPermission → hybrid_report, or sync_wallet.`,
         requestId,
       }
     }
@@ -299,20 +299,20 @@ export async function gatedTransfer(
         walletAddress = bundle.walletAddress
         networkId = bundle.networkId
       } catch (err) {
-        if (enforcement === 'wallet_native') {
+        if (requiresSyncedPermission()) {
           return {
             mode,
             evaluation,
             executed: false,
             receiptConsumed: false,
-            message: `wallet_native: AgentKit unavailable before consume — ${
+            message: `${enforcement}: AgentKit unavailable before consume — ${
               err instanceof Error ? err.message : String(err)
             }`,
             requestId,
           }
         }
       }
-      if (enforcement === 'wallet_native' && kit) {
+      if (requiresSyncedPermission() && kit) {
         const usePerm = kit.getActions().find((a: { name: string }) => a.name === 'use_spend_permission')
         if (!usePerm) {
           return {
@@ -320,7 +320,7 @@ export async function gatedTransfer(
             evaluation,
             executed: false,
             receiptConsumed: false,
-            message: 'use_spend_permission action unavailable on this AgentKit wallet provider.',
+            message: `${enforcement}: use_spend_permission action unavailable on this AgentKit wallet provider.`,
             requestId,
           }
         }
@@ -378,27 +378,61 @@ export async function gatedTransfer(
     const tokenAddress = usdcAddressForNetwork(networkId)
     const smartAccount = process.env.ALLOWLATCH_SMART_ACCOUNT?.trim()
 
-    // Hybrid: defense-in-depth — use Spend Permission when synced; else fall through to transfer.
-    // wallet_native: already verified use_spend_permission exists above.
-    if (
-      (enforcement === 'hybrid' || enforcement === 'wallet_native') &&
-      smartAccount &&
-      spendPermissionMatchesPolicy(binding, policy)
-    ) {
-      const usePerm = kit.getActions().find((a: { name: string }) => a.name === 'use_spend_permission')
-      if (usePerm) {
-        await usePerm.invoke({
-          smartAccountAddress: smartAccount,
-          value: String(input.intent.amountUsd),
-          network: networkId.includes('sepolia') ? 'base-sepolia' : 'base',
-        })
-        await store.audit({
-          type: 'wallet.spend_permission_used',
-          policyId: input.policyId,
-          requestId,
-          payload: { smartAccount, amountUsd: input.intent.amountUsd },
-        })
+    // hybrid/wallet_native fail-closed: pull only via use_spend_permission (no raw transfer fallthrough).
+    if (requiresSyncedPermission()) {
+      if (!smartAccount || !spendPermissionMatchesPolicy(binding, policy)) {
+        throw new Error(
+          `${enforcement}: synced Spend Permission required after consume gate — refuse raw transfer fallthrough`
+        )
       }
+      const usePerm = kit.getActions().find((a: { name: string }) => a.name === 'use_spend_permission')
+      if (!usePerm) {
+        throw new Error(`${enforcement}: use_spend_permission unavailable — refuse raw transfer`)
+      }
+      await store.audit({
+        type: 'tx.submitted',
+        policyId: input.policyId,
+        requestId,
+        payload: {
+          amountUsd: input.intent.amountUsd,
+          to: input.intent.toAddress,
+          walletAddress,
+          enforcement,
+          via: 'use_spend_permission',
+        },
+      })
+      const result = await usePerm.invoke({
+        smartAccountAddress: smartAccount,
+        value: String(input.intent.amountUsd),
+        network: networkId.includes('sepolia') ? 'base-sepolia' : 'base',
+      })
+      await store.audit({
+        type: 'wallet.spend_permission_used',
+        policyId: input.policyId,
+        requestId,
+        payload: { smartAccount, amountUsd: input.intent.amountUsd },
+      })
+      await store.setLedger(input.policyId, commitIntent(ledger, input.intent))
+      const resultText = typeof result === 'string' ? result : JSON.stringify(result)
+      const txHash = resultText.match(/0x[a-fA-F0-9]{64}/)?.[0]
+      await store.audit({
+        type: 'tx.confirmed',
+        policyId: input.policyId,
+        requestId,
+        payload: { txHash, walletAddress, amountUsd: input.intent.amountUsd, enforcement },
+      })
+      const livePerm: GatedTransferResult = {
+        mode,
+        evaluation,
+        executed: true,
+        txHash,
+        walletAddress,
+        receiptConsumed: true,
+        message: resultText,
+        requestId,
+      }
+      store.saveIdempotentResult(requestId, JSON.stringify(livePerm))
+      return livePerm
     }
 
     const transfer = kit.getActions().find((a: { name: string }) => a.name === 'transfer')
@@ -415,6 +449,7 @@ export async function gatedTransfer(
         to: input.intent.toAddress,
         walletAddress,
         enforcement,
+        via: 'transfer',
       },
     })
 

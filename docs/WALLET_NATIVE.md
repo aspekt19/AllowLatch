@@ -36,9 +36,9 @@ AllowLatch gate              (addresses, escalate, receipt)
 
 | Mode | Behavior |
 |------|----------|
-| `hybrid` | **Default.** Receipt gate + **defense-in-depth** on-chain daily ceiling when SA → AgentKit is synced. If `use_spend_permission` is unavailable, hybrid may still fall through to a normal AgentKit transfer (not hard stop). |
-| `middleware` | Receipt gate only — **not custody-grade** if the signer can bypass the gate. |
-| `wallet_native` | Live execute **refuses** unless Spend Permission is `synced` **and** matches the current policy daily cap; requires `use_spend_permission` **before** receipt consume. |
+| `hybrid` | **Default.** Fail-closed: receipt **and** a synced Spend Permission matching the policy daily cap. Host execute uses `use_spend_permission` only (no raw transfer fallthrough). Site `createGatedAgentKit` refuses to consume a receipt until `hybrid_status.matchesPolicy`. |
+| `middleware` | Receipt gate only — **demo / lab**. Not for ordinary balances. Explicit: `ALLOWLATCH_ENFORCEMENT=middleware` or `ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1`. |
+| `wallet_native` | Same fail-closed ceiling as hybrid, named as the hard stop. Live execute refuses without a matching synced permission and `use_spend_permission`. |
 
 On-chain permission mirrors **daily** USDC (`maxNotionalUsdPerDay`) only. Per-tx / allowlists stay in `engine.ts`. Changing the daily cap marks a synced binding stale until re-sync (`hybrid_plan` / `sync_wallet` / `sync_wallet_permissions`).
 

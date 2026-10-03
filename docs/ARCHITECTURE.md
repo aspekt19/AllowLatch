@@ -36,9 +36,9 @@ Unused authorized receipts past `expiresAt` release reserved daily/lifetime budg
 
 See [WALLET_NATIVE.md](./WALLET_NATIVE.md). Short version:
 
-- `hybrid` - **default** — receipt + CDP Spend Permission daily USDC cap when funded SA → AgentKit wallet is synced (primary: agent `hybrid_plan`; operator: `sync_wallet` / host env)
-- `middleware` - receipt only (not custody-grade if the signer can bypass the gate)
-- `wallet_native` - live execute blocked until permission is `synced`
+- `hybrid` - **default, fail-closed** — receipt plus a synced Spend Permission; no raw transfer fallthrough
+- `middleware` - receipt only (demo / lab; `ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1`)
+- `wallet_native` - same fail-closed ceiling, explicit hard-stop name
 
 **Invariant:** if the agent holds the private key to the funded account, on-chain Spend Permissions do not stop a raw `transfer`. Keep USDC on the owner Smart Account; AgentKit wallet only. Site UX is AgentKit turnstile — not consumer wallet connect.
 

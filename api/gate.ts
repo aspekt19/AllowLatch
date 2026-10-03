@@ -29,6 +29,7 @@ import {
   siteGateEvaluate,
   siteGateHybridPlan,
   siteGateHybridReport,
+  siteGateHybridStatus,
   siteGateSyncWallet,
   siteGateTryConsumePack,
 } from '../src/web/site-gate.js'
@@ -108,6 +109,12 @@ const HybridReportSchema = z.object({
   message: z.string().max(2000).optional(),
 })
 
+const HybridStatusSchema = z.object({
+  action: z.literal('hybrid_status'),
+  policyId: z.string().min(1).max(80),
+  sessionSeal: z.string().max(50_000).optional(),
+})
+
 const BodySchema = z.discriminatedUnion('action', [
   ApplySchema,
   EvaluateSchema,
@@ -116,6 +123,7 @@ const BodySchema = z.discriminatedUnion('action', [
   HybridPlanSchema,
   SyncWalletSchema,
   HybridReportSchema,
+  HybridStatusSchema,
 ])
 
 function backend(): 'site' | 'openserv' {
@@ -182,8 +190,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mode === 'openserv'
           ? 'POST apply|evaluate via OpenServ x402 (fallback)'
           : durable
-            ? 'POST apply|evaluate|consume|buy_pack|hybrid_plan|sync_wallet|hybrid_report — Turso durable ledger. evaluate: agents pay $0.025 or pack credits; escalate retry with humanApproved+ownerToken; consume settles jti (free with valid receipt); expired authorized receipts release reserved budget.'
-            : 'POST apply|evaluate|consume|hybrid_plan|sync_wallet|hybrid_report — memory+sessionSeal (demo). evaluate supports humanApproved+ownerToken; consume settles jti. Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402 on evaluate.',
+            ? 'POST apply|evaluate|consume|buy_pack|hybrid_plan|hybrid_status|sync_wallet|hybrid_report — Turso durable ledger. evaluate: agents pay $0.025 or pack credits; escalate retry with humanApproved+ownerToken; consume settles jti (free with valid receipt); hybrid_status checks synced Spend Permission (fail-closed hybrid); expired authorized receipts release reserved budget.'
+            : 'POST apply|evaluate|consume|hybrid_plan|hybrid_status|sync_wallet|hybrid_report — memory+sessionSeal (demo). evaluate supports humanApproved+ownerToken; consume settles jti; hybrid fail-closed without synced binding. Set ALLOWLATCH_TURSO_DATABASE_URL for durable multi-instance ledger. Browser same-site free; agents pay $0.025 USDC x402 on evaluate.',
     })
     return
   }
@@ -292,8 +300,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // consume settles an already-paid ALLOW receipt — no second x402 charge.
-    const skipPaywall = body.action === 'consume'
+    // consume / hybrid_status are free — sessionSeal + receipt are the credentials.
+    const skipPaywall = body.action === 'consume' || body.action === 'hybrid_status'
 
     if (paidVia !== 'pack' && !skipPaywall) {
       const paid = await enforceSiteGateX402({
@@ -479,6 +487,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         action: 'hybrid_report',
         backend: 'site',
         priceUsd: settlement ? String(SITE_GATE_PRICE_USD) : '0',
+        settlement: settlement ?? null,
+      })
+      return
+    }
+
+    if (body.action === 'hybrid_status') {
+      if (mode !== 'site') {
+        res.status(400).json({ ok: false, error: 'hybrid_status is site-gate only' })
+        return
+      }
+      const status = await siteGateHybridStatus({
+        policyId: body.policyId,
+        sessionSeal: body.sessionSeal,
+      })
+      res.status(200).json({
+        ...status,
+        ok: true,
+        action: 'hybrid_status',
+        backend: 'site',
+        priceUsd: '0',
         settlement: settlement ?? null,
       })
       return

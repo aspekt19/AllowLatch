@@ -127,18 +127,18 @@ Public bypass teaching case: `npx tsx examples/bypass-negative.ts`
 | Stale `sessionSeal` replay | Monotonic `seq` on site gate (memory + durable); client must use latest seal after each evaluate |
 | API abuse | HTTP Bearer off-loopback; CORS + rate limits. Site gate counts limits in Turso (shared across isolates) and keys them by `x-vercel-forwarded-for` so a spoofed `X-Forwarded-For` does not rotate the bucket |
 
-Honest limitation: **middleware-only** mode is not custody-grade if the AgentKit signer retains an ungated private key. `createGatedAgentKit({ kind: 'site' })` authorizes via ALLOW + receipt and returns for external sign — it does **not** remove a raw signer. Pair with hybrid Spend Permissions (**treasury on owner SA, AgentKit wallet only**) and a low-balance hot wallet. Giving the agent the funded/treasury private key defeats the on-chain ceiling. The always-on site gate is **SaaS authorization** (operator trust for policy, ledger, receipts), not a cryptographic vault. Swaps stay off until a router adapter can bind real calldata notional. No third-party audit yet — coffee-money balances only.
+Honest limitation: a funded private key in the agent still defeats the ceiling. `createGatedAgentKit({ kind: 'site' })` will not consume a receipt unless `hybrid_status` shows a synced Spend Permission matching the daily cap (`ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1` is demo-only). Host execute in hybrid/wallet_native pulls only via `use_spend_permission`. The always-on site gate is **SaaS authorization** (operator trust for policy, ledger, receipts), not a cryptographic vault. Swaps stay off until a router adapter can bind real calldata notional. No third-party audit yet. Ordinary small balances: SA + synced permission + durable Turso. Middleware / no SA is lab-only.
 
 ## Recommended production shape
 
 Use AllowLatch as a lock only when all of these hold:
 
 1. **Gated signer only** — spends go through `createGatedAgentKit({ kind: 'site' })`. No parallel raw `wallet.sendTransaction`. Prefer a session key / smart-account spender, not a long-lived hot key in the agent process.
-2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) = defense-in-depth: synced Coinbase Spend Permission (daily USDC only) via agent `hybrid_plan` / operator `sync_wallet`. Not a full on-chain MandatePolicy. Re-sync after capital changes. `wallet_native` fails closed without a matching synced permission (prereqs before receipt consume). See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
+2. **Hybrid on-chain ceiling** — `ALLOWLATCH_ENFORCEMENT=hybrid` (default) is fail-closed: synced Coinbase Spend Permission (daily USDC only) via agent `hybrid_plan` / `hybrid_report` or operator `sync_wallet`. Without a matching binding, site kit and host execute refuse the spend. Not a full on-chain MandatePolicy. Re-sync after capital changes. `wallet_native` is the same hard stop under an explicit name. See [WALLET_NATIVE.md](./WALLET_NATIVE.md).
 3. **Durable host** — Turso on `/api/gate`, dedicated `ALLOWLATCH_RECEIPT_SECRET`, owner confirms SERV drafts before Go live (compilation residual risk is human, not the gate).
 4. **Coffee-money hot balance** — until independent audit. Reject / DENY never mints a receipt. Micro evaluates should use `buy_pack` + `packKey` (~$0.008) so a $0.10 transfer is not paying 25% in gate fees.
 
-SDK helper: `recommendProductionShape()` / `agent.productionShape` — use `productionPrerequisitesSatisfied` / `readyForHybridCeiling` (hybrid = defense-in-depth; coffee-ready requires SA+CDP, not mode alone). Site lab: [#lab](https://allowlatch.vercel.app/#lab).
+SDK helper: `recommendProductionShape()` / `agent.productionShape` — `readyForOrdinaryBalances` needs hybrid/native + SA + CDP + Turso + receipt secret. Site lab: [#lab](https://allowlatch.vercel.app/#lab).
 
 ## Production checklist
 

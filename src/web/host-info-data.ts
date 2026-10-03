@@ -122,8 +122,7 @@ function buildNote(durable: boolean, credits: number): string {
     'Primary: always-on https://allowlatch.vercel.app/api/gate — website Origin free to try; ' +
     `agents pay $${SITE_GATE_PRICE_USD} USDC x402 on Base (or buy_pack → ${credits} evaluates ≈ $${pack}/check). ` +
     'OpenServ discover/paywall is optional fallback. End users never run the local OpenServ host. ' +
-    'Middleware without hybrid Spend Permissions is not custody-grade if the agent retains a raw key. ' +
-    'Hybrid for AgentKit: Copy for my AI → hybrid_plan (operator sync_wallet advanced); funded treasury key in the agent defeats the ceiling. No MetaMask Connect on site.'
+    'Hybrid is fail-closed: createGatedAgentKit will not consume a receipt until hybrid_status shows a synced Spend Permission (hybrid_plan → hybrid_report). Funded treasury key in the agent defeats the ceiling. No MetaMask Connect on site.'
   return durable
     ? base + ' Durable Turso ledger enabled on this deployment.'
     : base + ' Durable Turso ledger not configured (memory+sessionSeal demo mode).'

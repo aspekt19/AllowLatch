@@ -28,13 +28,17 @@
         "apply",
         "evaluate",
         "consume",
-        "buy_pack"
+        "buy_pack",
+        "hybrid_plan",
+        "hybrid_status",
+        "hybrid_report",
+        "sync_wallet"
       ],
       "priceUsd": "0.025",
       "evaluatePack": "buy_pack \u2014 each paid $0.025 x402 mints fixed credits (default 3); evaluate with packKey (~$0.008/check). Requires Turso durable.",
       "freeForWebsiteOrigin": true,
       "sessionSeal": "HMAC blob returned on apply/evaluate \u2014 client must send it back to survive Vercel cold starts",
-      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base (or burn packKey credits). Required: createGatedAgentKit({ kind: site, gateUrl, sessionSeal, walletPrivateKey, packKey? }). assertSpend is advisory. OpenServ is optional fallback."
+      "note": "Primary always-on path. Website Origin free; agents pay $0.025 USDC x402 on Base (or burn packKey credits). Required: createGatedAgentKit({ kind: site }). Hybrid is fail-closed: hybrid_status must show a synced Spend Permission before consume. assertSpend is advisory. OpenServ is optional fallback."
     }
   },
   "agentSkill": {
@@ -61,7 +65,7 @@
     },
     {
       "id": "sync_wallet_permissions",
-      "description": "Optional: mirror daily USDC cap into Coinbase Spend Permissions (requires ownerToken). Site gate also exposes sync_wallet / hybrid_plan / hybrid_report."
+      "description": "Required for ordinary balances: mirror daily USDC cap into Coinbase Spend Permissions (ownerToken). Site gate: hybrid_plan / hybrid_report / hybrid_status."
     },
     {
       "id": "hybrid_plan",
@@ -74,6 +78,10 @@
     {
       "id": "hybrid_report",
       "description": "Site gate: AgentKit agent reports Spend Permission status after creating permission via CDP."
+    },
+    {
+      "id": "hybrid_status",
+      "description": "Site gate: fail-closed check — synced Spend Permission matches policy daily cap (sessionSeal). createGatedAgentKit calls this before consume."
     },
     {
       "id": "evaluate_intent",
@@ -116,7 +124,7 @@
     "Tenant mutates require ownerToken (minted on first apply) or ALLOWLATCH_OPERATOR_TOKEN",
     "Lifetime budget is not reset by public APIs; reset_daily_ledger clears day/hour only",
     "End users never run npm run dev or set SERV_API_KEY \u2014 they connect via /api/gate Connect pack; agents must use createGatedAgentKit({ kind: \"site\" }); assertSpend alone is advisory",
-    "AllowLatch does not custody user funds or private keys (hosted gate = SaaS authorization; AgentKit turnstile — Copy for my AI primary; hybrid_plan ceiling optional; funded treasury key in the agent defeats the ceiling; no MetaMask Connect on site)",
+    "AllowLatch does not custody user funds or private keys (hosted gate = SaaS authorization; AgentKit turnstile — Copy for my AI; hybrid fail-closed until Spend Permission is synced; funded treasury key in the agent defeats the ceiling; no MetaMask Connect on site)",
     "End users do not configure SERV_API_KEY or CDP - the host operator does; x402 pays the call"
   ],
   "stacks": [

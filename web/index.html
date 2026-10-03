@@ -81,7 +81,7 @@
             <a class="btn btn-solid" href="#gate">Set my limits</a>
             <a class="btn btn-line" href="#install">How to connect</a>
           </div>
-          <p class="hero-meta">No end-user API keys · SERV drafts · No policy → DENY · Base / USDC · coffee-money until audit</p>
+          <p class="hero-meta">No end-user API keys · SERV drafts · No policy → DENY · Base / USDC · ordinary balances need a synced Spend Permission</p>
         </div>
       </section>
 
@@ -163,12 +163,13 @@
               </p>
             </li>
             <li>
-              <h3>AgentKit on-chain ceiling (optional)</h3>
+              <h3>AgentKit on-chain ceiling (required)</h3>
               <p>
                 For agents with Coinbase AgentKit / CDP: after Go live, <strong>Copy for my AI</strong>
-                tells the agent to set a daily USDC Spend Permission (defense-in-depth — not the full
-                MandatePolicy on-chain). Re-sync after you change the daily cap. Keep USDC off the
-                agent’s signing key when you can. This site does not ask you to connect MetaMask.
+                sets a daily USDC Spend Permission and reports it (<code>hybrid_plan</code> →
+                <code>hybrid_report</code>). The gated kit will not consume a receipt until that
+                binding matches the daily cap. Keep USDC on the owner Smart Account. This site does
+                not ask you to connect MetaMask.
               </p>
             </li>
             <li>
@@ -179,9 +180,10 @@
               </p>
             </li>
             <li>
-              <h3>Coffee-money + pack credits</h3>
+              <h3>Ordinary small balances</h3>
               <p>
-                Small hot balance until audit. Reject / DENY → no receipt. Micro evaluates:
+                SA + synced Spend Permission + durable Turso. No third-party audit yet. Reject / DENY
+                → no receipt. Micro evaluates:
                 <code>buy_pack</code> + <code>packKey</code> (~$0.008) instead of $0.025 every time.
               </p>
             </li>
@@ -332,7 +334,7 @@ Primary gateUrl: https://allowlatch.vercel.app/api/gate (always-on; agents pay $
 I do not run a host and I will not give you SERV_API_KEY or ownerToken.
 
 Required: npm i allowlatch@^0.2.3 → createGatedAgentKit({ gate: { kind: "site", gateUrl, sessionSeal, walletPrivateKey } })
-so spends go through AllowLatch before signing (hybrid Spend Permissions when available; middleware ≠ custody).
+so spends go through AllowLatch before signing. Hybrid is fail-closed: hybrid_plan → hybrid_report before the kit consumes a receipt.
 assertSpend alone is advisory only — do not use it as the sole control if a raw CDP/wallet signer remains.
 walletPrivateKey is the x402 payer only, not a host key.
 - The kit consumes allow-receipt jti on ALLOW → only then may you sign that intent.
@@ -507,8 +509,8 @@ Never invent ALLOW.</pre>
 const agent = await createGatedAgentKit({
   gate: { kind: 'site', gateUrl, sessionSeal, walletPrivateKey, packKey }, // packKey for micro fees
 })
-await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE; kit consumes jti on ALLOW
-// ESCALATE → ask human, retry with humanApproved + ownerToken. Prefer hybrid Spend Permissions.</code></pre>
+await agent.transfer({ toAddress, amountUsd }) // throws on DENY / ESCALATE / missing Spend Permission
+// ESCALATE → ask human, retry with humanApproved + ownerToken. Hybrid fail-closed until hybrid_report.</code></pre>
         </div>
       </section>
 

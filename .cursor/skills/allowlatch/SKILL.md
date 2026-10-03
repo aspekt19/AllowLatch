@@ -42,7 +42,7 @@ await agent.transfer({ toAddress, amountUsd })
 
 `createGatedAgentKit({ kind: 'site' })` evaluates, **consumes** the receipt `jti`, then you may sign that intent. DENY / timeout → stop. Never invent ALLOW.
 ESCALATE → ask the human, then retry `transfer({ humanApproved: true })` with `gate.ownerToken`. Never set `humanApproved` yourself. Never put `ownerToken` in a public Connect pack.
-The kit does not remove a raw signer — optional ceiling via `hybrid_plan` (host `sync_wallet` is operator-advanced). Never accept the funded/treasury private key. Swaps are off by default. Unused receipts expire and release reserved budget.
+The kit refuses to consume a receipt until `hybrid_status` shows a synced Spend Permission (`hybrid_plan` → `hybrid_report`). Demo-only: `ALLOWLATCH_ALLOW_MIDDLEWARE_SPEND=1`. Never accept the funded/treasury private key. Swaps are off by default. Unused receipts expire and release reserved budget.
 Hosted gate = SaaS authorization (operator trust), not a vault. Keep balances small until audit.
 DENY / human reject → no receipt → do not sign. Micro evaluates: `packKey` from `buy_pack` (~$0.008) beats $0.025/call.
 Check `agent.productionShape` / `recommendProductionShape()` before putting meaningful balance behind the gate.
