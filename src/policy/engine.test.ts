@@ -16,6 +16,8 @@ import {
   releaseIntent,
   USDC_BY_CHAIN,
 } from './engine.js'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 import {
   hashAction,
   issueAllowReceipt,
@@ -165,6 +167,41 @@ describe('evaluateIntent', () => {
       freshLedger()
     )
     assert.equal(r.decision, 'deny')
+  })
+
+  it('hard-denies ERC-20 approve even without a selector allowlist', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      usdcIntent(1, { functionSelector: '0x095ea7b3' }),
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /hard-denied|approve/i)
+  })
+
+  it('hard-denies approve selector inferred from calldata', () => {
+    // approve(spender, amount) — leading selector only; rest padded zeros
+    const calldata =
+      '0x095ea7b3' +
+      '0000000000000000000000003333333333333333333333333333333333333333' +
+      'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      usdcIntent(1, { functionSelector: undefined, calldata }),
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /hard-denied|0x095ea7b3/i)
+  })
+
+  it('denies transfer to the zero address', () => {
+    const r = evaluateIntent(
+      DEMO_POLICY,
+      usdcIntent(1, { toAddress: ZERO_ADDRESS }),
+      freshLedger()
+    )
+    assert.equal(r.decision, 'deny')
+    assert.match(r.reasons.join(' '), /zero address/i)
   })
 
   it('commits lifetime spend', () => {

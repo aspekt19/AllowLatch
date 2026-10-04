@@ -66,6 +66,8 @@ Receipt also carries `chain` (policy chain at issue) and optional `calldataHash`
 - Intent `chainId` / `networkId`, when present, must match policy.
 - Prefer `universe.allowedTokenAddresses` over symbols alone.
 - If `symbol === USDC` and `tokenAddress` is set, it must be the canonical USDC for that chain.
+- **Hard-denied selectors** (always): ERC-20 `approve` (`0x095ea7b3`) and `increaseAllowance` (`0x39509351`) — including when inferred from calldata. AllowLatch authorizes spends, not unbounded allowances.
+- **Zero destination**: `transfer` / `x402_pay` to `0x0…0` is always DENY.
 
 ## Enforcement placement (critical)
 

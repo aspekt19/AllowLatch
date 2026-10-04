@@ -17,9 +17,39 @@ export const CHAIN_IDS = {
   'base-sepolia': 84532,
 } as const
 
+/** Always denied — ERC-20 approvals are not AllowLatch spend intents (MaxUint256 drain vector). */
+export const HARD_DENIED_FUNCTION_SELECTORS = [
+  '0x095ea7b3', // approve(address,uint256)
+  '0x39509351', // increaseAllowance(address,uint256)
+] as const
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
 function normalizeAddress(addr?: string): string | undefined {
   if (!addr) return undefined
   return addr.trim().toLowerCase()
+}
+
+function isZeroAddress(addr?: string): boolean {
+  const a = normalizeAddress(addr)
+  return Boolean(a && /^0x0+$/.test(a))
+}
+
+function normalizeSelector(sel?: string): string | undefined {
+  if (!sel?.trim()) return undefined
+  const s = sel.trim().toLowerCase()
+  return s.startsWith('0x') ? s : `0x${s}`
+}
+
+/** Selector from intent.functionSelector or leading 4 bytes of calldata. */
+function resolveFunctionSelector(intent: SpendIntent): string | undefined {
+  const fromField = normalizeSelector(intent.functionSelector)
+  if (fromField) return fromField
+  const raw = intent.calldata?.trim().toLowerCase()
+  if (!raw) return undefined
+  const hex = raw.startsWith('0x') ? raw : `0x${raw}`
+  if (hex.length < 10) return undefined
+  return hex.slice(0, 10)
 }
 
 function utcDayKey(d = new Date()): string {
@@ -216,6 +246,9 @@ export function evaluateIntent(
   const denied = policy.universe.deniedAddresses.map(normalizeAddress)
   const allowed = policy.universe.allowedAddresses.map(normalizeAddress)
 
+  if (intent.action !== 'swap' && isZeroAddress(intent.toAddress)) {
+    reasons.push('Destination is the zero address — transfers/approvals to 0x0 are denied.')
+  }
   if (to && denied.includes(to)) {
     reasons.push(`Destination ${intent.toAddress} is denied.`)
   }
@@ -241,18 +274,25 @@ export function evaluateIntent(
     reasons.push('contractAddress required when a contract allowlist is active for swaps.')
   }
 
-  const sel = intent.functionSelector?.toLowerCase()
+  const sel = resolveFunctionSelector(intent)
   const deniedSelectors = (policy.universe.deniedFunctionSelectors ?? []).map((s) =>
     s.toLowerCase()
   )
   const allowedSelectors = (policy.universe.allowedFunctionSelectors ?? []).map((s) =>
     s.toLowerCase()
   )
+  if (sel && (HARD_DENIED_FUNCTION_SELECTORS as readonly string[]).includes(sel)) {
+    reasons.push(
+      `Function selector ${sel} is hard-denied (ERC-20 approve/increaseAllowance — not a gated spend; use exact transfers only).`
+    )
+  }
   if (sel && deniedSelectors.includes(sel)) {
-    reasons.push(`Function selector ${intent.functionSelector} is denied.`)
+    reasons.push(`Function selector ${intent.functionSelector ?? sel} is denied.`)
   }
   if (sel && allowedSelectors.length > 0 && !allowedSelectors.includes(sel)) {
-    reasons.push(`Function selector ${intent.functionSelector} is not on the selector allowlist.`)
+    reasons.push(
+      `Function selector ${intent.functionSelector ?? sel} is not on the selector allowlist.`
+    )
   }
   if (!sel && allowedSelectors.length > 0) {
     reasons.push('functionSelector required when a selector allowlist is active.')
